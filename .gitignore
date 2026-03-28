@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Data (raw PDFs can be large)
+data/raw/
+
+# Qdrant local storage
+qdrant_data/
+
+# Postgres local data
+pg_data/
+
+# Evaluation results (regenerated)
+tests/evaluation/eval_results/*.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Docker
+*.log
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*

@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rag-agent"
+version = "0.1.0"
+description = "Enterprise RAG Agent — Multi-agent LangGraph system for RBAC-secured financial document Q&A"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11,<3.14"
+authors = [{ name = "Rishabh" }]
+
+dependencies = [
+    # --- Orchestration ---
+    "langgraph>=0.6,<1.0",
+    "langchain>=0.3,<1.0",
+    "langchain-core>=0.3,<1.0",
+    "langchain-openai>=0.3,<1.0",
+    "langchain-groq>=0.2,<1.0",
+
+    # --- Backend ---
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.34,<1.0",
+    "sse-starlette>=2.0,<3.0",
+    "python-multipart>=0.0.18",
+
+    # --- Frontend ---
+    "gradio>=5.0,<6.0",
+
+    # --- Vector DB ---
+    "qdrant-client>=1.13,<2.0",
+
+    # --- Document Processing ---
+    "docling>=2.70,<3.0",
+
+    # --- Embeddings ---
+    "openai>=1.60,<3.0",
+
+    # --- Auth ---
+    "PyJWT>=2.9,<3.0",
+    "python-jose[cryptography]>=3.3,<4.0",
+
+    # --- Guardrails ---
+    "presidio-analyzer>=2.2,<3.0",
+    "presidio-anonymizer>=2.2,<3.0",
+    "llm-guard>=0.3,<1.0",
+
+    # --- LangGraph Persistence ---
+    "langgraph-checkpoint-postgres>=2.0,<3.0",
+    "psycopg[binary]>=3.2,<4.0",
+
+    # --- Config ---
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "python-dotenv>=1.0,<2.0",
+
+    # --- Observability ---
+    "langsmith>=0.4,<1.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.24,<1.0",
+    "pytest-timeout>=2.3,<3.0",
+    "httpx>=0.28,<1.0",
+]
+eval = [
+    "ragas>=0.2,<1.0",
+    "datasets>=3.0,<4.0",
+]
+dev = [
+    "ruff>=0.8,<1.0",
+    "pre-commit>=4.0,<5.0",
+    "rag-agent[test]",
+    "rag-agent[eval]",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
