@@ -24,6 +24,8 @@ def hallucination_checker_node(state: RAGState) -> dict:
 
     prompt = HALLUCINATION_CHECK_PROMPT.format(sources=sources, answer=answer)
 
+    retry_count = state.get("generation_retry_count", 0)
+
     try:
         llm = LLMFactory.get_hallucination_llm()
         structured_llm = llm.with_structured_output(HallucinationCheck)
@@ -31,10 +33,16 @@ def hallucination_checker_node(state: RAGState) -> dict:
 
         logger.info(f"Hallucination check: grounded={result.grounded}, score={result.score:.2f}")
 
+        is_grounded = result.grounded
         return {
-            "hallucination_status": "grounded" if result.grounded else "hallucinated",
+            "hallucination_status": "grounded" if is_grounded else "hallucinated",
             "hallucination_score": result.score,
+            "generation_retry_count": retry_count if is_grounded else retry_count + 1,
         }
     except Exception as e:
         logger.error(f"Hallucination check failed, assuming grounded: {e}")
-        return {"hallucination_status": "grounded", "hallucination_score": 0.5}
+        return {
+            "hallucination_status": "grounded",
+            "hallucination_score": 0.5,
+            "generation_retry_count": retry_count,
+        }

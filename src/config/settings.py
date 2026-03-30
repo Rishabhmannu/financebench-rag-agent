@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # --- Agent Thresholds ---
     HALLUCINATION_THRESHOLD: float = 0.7
-    GRADING_MIN_RELEVANT_CHUNKS: int = 3
+    GRADING_MIN_RELEVANT_CHUNKS: int = 1
     MAX_RETRIEVAL_RETRIES: int = 2
     MAX_GENERATION_RETRIES: int = 2
     HITL_AMOUNT_THRESHOLD: int = 100_000
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # --- LLM Models ---
     ROUTER_MODEL: str = "llama-3.3-70b-versatile"
-    GRADER_MODEL: str = "qwen-qwq-32b"
+    GRADER_MODEL: str = "llama-3.3-70b-versatile"
     GENERATOR_MODEL: str = "gpt-4o-mini"
     HALLUCINATION_MODEL: str = "gpt-4o-mini"
 
