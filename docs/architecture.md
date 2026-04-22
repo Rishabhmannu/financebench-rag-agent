@@ -152,17 +152,19 @@ Project names are environment-specific via `settings.langchain_project_name` (e.
 
 ## Evaluation Baseline
 
-Captured 2026-04-22 against the Sprint-6 pipeline (pure dense retrieval, GPT-4o-mini generator, Llama 3.3 on Groq for routing/grading). Source: [`tests/evaluation/eval_results/baseline_pre_optimization.json`](../tests/evaluation/eval_results/baseline_pre_optimization.json).
+Captured 2026-04-22 against the Sprint-6 pipeline (pure dense retrieval, GPT-4o-mini generator, Llama 3.3 on Groq for routing/grading) with **real SEC FY2023 10-K filings** for AAPL, MSFT, TSLA (249 chunks). Source: [`baseline_real_sec_fy2023.json`](../tests/evaluation/eval_results/baseline_real_sec_fy2023.json).
 
 | Metric | Baseline | Interpretation |
 |--------|----------|----------------|
-| Faithfulness | 0.50 | ~50% of generated claims are backed by retrieved chunks. Low — partly from generator confabulation, partly from garbled sample PDFs. |
-| Answer Relevancy | 0.68 | Responses often hedge ("I don't have enough information") when chunks are weak, pulling the average down. |
-| Context Precision | 0.65 | Pure dense retrieval pulls relevant chunks but also noise. Reranker (Sprint 7a) should move this the most. |
-| Context Recall | 0.67 | Retrieval is finding enough of the right chunks — the issue is ranking, not recall. |
+| Faithfulness | 0.586 | Generator cites real 10-K numbers; confabulation dropped vs synthetic-data baseline (0.50). |
+| Answer Relevancy | 0.645 | Limited by "I don't have enough info" responses on questions whose exact wording doesn't match formal 10-K terminology. |
+| Context Precision | 0.568 | Pure dense retrieval struggles with 249 chunks competing for top-8 slots. Reranker (Sprint 7a) targets this directly. |
+| Context Recall | 0.555 | Vocabulary gap between casual eval questions ("revenue") and formal 10-K phrasing ("total net sales"). Hybrid search (Sprint 7a) adds BM25 to close this gap. |
 
-Runtime: 15 min pipeline (61 questions × ~15s each), 1.5 min RAGAS scoring (4 metrics × 61 samples via `gpt-4o-mini` as evaluator).
+Runtime: ~16 min pipeline (61 questions × ~16s each), ~1.5 min RAGAS scoring via `gpt-4o-mini` as evaluator.
 
-**Diagnostic signal**: `context_recall (0.67) > context_precision (0.65)` is the textbook "finding right chunks, ranking poorly" pattern — exactly what cross-encoder reranking in Sprint 7a is designed to fix. Expect the biggest single metric jump there.
+**Diagnostic signal**: `context_recall (0.555) ≈ context_precision (0.568)` with both below threshold signals "finding most right chunks but ranking and breadth both weak" — exactly what hybrid search + cross-encoder reranking in Sprint 7a are designed to fix.
 
-CI thresholds in [`tests/evaluation/eval_config.py`](../tests/evaluation/eval_config.py) are set at baseline + 0.02 so the gate catches regressions but doesn't require Sprint 7 to land. `TARGET_THRESHOLDS` in the same file captures the aspirational post-Sprint-7 values.
+**Data journey**: an earlier synthetic-data baseline (36 chunks, faithfulness 0.50) appeared better on some metrics but was misleading — the tiny corpus made retrieval artificially easy. Also tested FY2025 10-Ks against an FY2023 eval set (context_recall dropped to 0.33) — a real production lesson that source data must match eval temporally.
+
+CI thresholds in [`tests/evaluation/eval_config.py`](../tests/evaluation/eval_config.py) are set at baseline + ~0.02 so the gate catches regressions but doesn't require Sprint 7 to land. `TARGET_THRESHOLDS` in the same file captures the aspirational post-Sprint-7 values.

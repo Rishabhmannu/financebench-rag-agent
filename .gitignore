@@ -31,6 +31,8 @@ env/
 
 # Data (raw PDFs can be large)
 data/raw/
+# Raw SEC HTMLs (downloaded; regenerable via scripts/download_sec_filings.py)
+data/raw/sec/
 
 # Qdrant local storage
 qdrant_data/
@@ -43,6 +45,8 @@ tests/evaluation/eval_results/*.json
 # ...except committed baselines and final snapshots, kept for historical comparison
 !tests/evaluation/eval_results/baseline_*.json
 !tests/evaluation/eval_results/final_*.json
+# ...but re-ignore pipeline caches (they're intermediate, regenerated on each run)
+tests/evaluation/eval_results/*.pipeline.json
 
 # Jupyter
 .ipynb_checkpoints/

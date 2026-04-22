@@ -54,16 +54,18 @@ START → rbac_gate → guardrails → router ─→ retrieval → grader → ge
 
 ## Evaluation Results
 
-### Baseline (2026-04-22, pre-optimization)
+### Baseline (2026-04-22, pre-optimization, real SEC FY2023 10-Ks)
 
 | Metric | Baseline | CI Gate | Sprint 7 Target |
 |--------|----------|---------|-----------------|
-| Faithfulness | 0.50 | >= 0.52 | >= 0.80 |
-| Answer Relevancy | 0.68 | >= 0.70 | >= 0.75 |
-| Context Precision | 0.65 | >= 0.67 | >= 0.70 |
-| Context Recall | 0.67 | (informational, target 0.65) | — |
+| Faithfulness | 0.586 | >= 0.60 | >= 0.80 |
+| Answer Relevancy | 0.645 | >= 0.66 | >= 0.75 |
+| Context Precision | 0.568 | >= 0.58 | >= 0.70 |
+| Context Recall | 0.555 | (informational) | — |
 
-Evaluated on 61 Q&A pairs across 9 categories with `gpt-4o-mini` as the evaluator model. The CI gate tracks regression from baseline; the Sprint 7 targets will be restored after hybrid search + reranker + Claude Sonnet 4.6 upgrade land. See [`tests/evaluation/`](tests/evaluation/) and the raw scores in [`tests/evaluation/eval_results/baseline_pre_optimization.json`](tests/evaluation/eval_results/baseline_pre_optimization.json).
+Evaluated on 61 Q&A pairs against real SEC 10-K filings for AAPL / MSFT / TSLA fiscal year 2023 (249 chunks in Qdrant). Evaluator model: `gpt-4o-mini`. The CI gate tracks regression from baseline; the Sprint 7 targets will be restored after hybrid search + reranker + Claude Sonnet 4.6 upgrade land. Raw scores: [`baseline_real_sec_fy2023.json`](tests/evaluation/eval_results/baseline_real_sec_fy2023.json).
+
+An earlier baseline on synthetic PDFs ([`baseline_pre_optimization.json`](tests/evaluation/eval_results/baseline_pre_optimization.json)) is preserved for historical comparison — it was replaced because the synthetic corpus was too small (36 chunks) to exercise the retrieval stack realistically.
 
 ## Quick Start
 
