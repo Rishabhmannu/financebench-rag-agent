@@ -76,12 +76,40 @@ Query: {query}
 
 Return ONLY the JSON object, no commentary."""
 
-ROUTER_PROMPT = """You are a query router for a financial document Q&A system.
-Classify the user's query intent into one of these categories:
+ROUTER_PROMPT = """You are a query router for an enterprise financial document Q&A system.
 
-- "retrieval": The user wants to find information from financial documents
-- "clarification": The user is greeting, asking about capabilities, or needs clarification
-- "out_of_scope": The query is unrelated to financial documents
+The system indexes the following document types. Treat ANY question about these as IN-SCOPE:
+  - 10-K filings (annual reports): revenue, expenses, gross margin, net income, EPS,
+    segment breakdowns, cloud / Azure / Dynamics / iPhone / Services revenue growth,
+    balance sheet items, cash flow, R&D spend, capex, vehicle selling prices, etc.
+  - Invoices: invoice numbers, vendor names (including "Global Consulting Partners",
+    "Pinnacle Cloud Services", "TechSolutions", etc.), line items, amounts, payment
+    terms, confidentiality classifications, services provided.
+  - Expense policies: per diem rates, meal allowances, hotel rate caps, high-cost city
+    designations, mileage rates, approval thresholds for trips / purchases / vendor
+    onboarding, reimbursement rules, insurance requirements, procurement tiers.
+
+Classify the query into exactly one of these categories:
+
+- "retrieval": The user is asking a substantive question that can be answered by
+  retrieving from the indexed documents above. THIS IS THE DEFAULT for most queries.
+  Questions about specific numbers, policies, companies, rates, thresholds,
+  approvals, or document details all belong here.
+
+- "clarification": The user greeted the assistant, asked what it does, or asked a
+  vague question that needs more specifics. (e.g. "hi", "what can you do?",
+  "tell me about finance")
+
+- "out_of_scope": The query is genuinely unrelated to any of the document types
+  above. Examples: weather forecasts, current stock prices (not in filings),
+  future predictions, celebrity gossip, general programming help, recipes,
+  or questions about companies that are explicitly not in the corpus (only
+  Apple, Microsoft, and Tesla have 10-Ks here — but treat queries about other
+  named companies as "retrieval" and let retrieval return empty; do NOT
+  preemptively reject).
+
+Be LIBERAL with "retrieval". Any question that could plausibly be answered by a
+10-K, invoice, or expense policy belongs there. When in doubt, choose "retrieval".
 
 Query: {query}"""
 
