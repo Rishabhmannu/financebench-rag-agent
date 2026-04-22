@@ -1,4 +1,9 @@
-"""Extract metadata from documents for RBAC filtering and source attribution."""
+"""Extract metadata from documents for RBAC filtering and source attribution.
+
+The `company` field is stored as a lowercase slug ("apple", "microsoft", "tesla",
+"unknown") to support deterministic Qdrant payload filtering. The full display
+name lives in `company_name` ("Apple Inc.").
+"""
 
 import logging
 import re
@@ -12,6 +17,20 @@ DOC_TYPE_PATTERNS = {
     "invoice": [r"invoice", r"bill to", r"amount due", r"payment terms"],
     "expense_policy": [r"expense policy", r"reimbursement", r"travel policy", r"per diem"],
 }
+
+# Slug -> display name. Slug is what lands in Qdrant's `company` payload field
+# and what the entity_extractor node emits at query time.
+KNOWN_COMPANIES: dict[str, str] = {
+    "apple": "Apple Inc.",
+    "microsoft": "Microsoft Inc.",
+    "tesla": "Tesla Inc.",
+    "google": "Google Inc.",
+    "amazon": "Amazon Inc.",
+    "meta": "Meta Platforms Inc.",
+}
+
+UNKNOWN_COMPANY_SLUG = "unknown"
+UNKNOWN_COMPANY_NAME = "Unknown"
 
 
 def extract_metadata(file_path: Path, document: dict, doc_type_override: str | None = None) -> dict:
@@ -30,12 +49,14 @@ def extract_metadata(file_path: Path, document: dict, doc_type_override: str | N
     if "confidential" in text_preview or "internal use only" in text_preview:
         confidentiality = "internal"
 
-    # Try to extract company name from filename or content
-    company = _extract_company(filename, text_preview)
+    # Extract company as a lowercase slug for filtering; name for display
+    company_slug = _extract_company_slug(filename, text_preview)
+    company_name = KNOWN_COMPANIES.get(company_slug, UNKNOWN_COMPANY_NAME)
 
     return {
         "doc_type": doc_type,
-        "company": company,
+        "company": company_slug,
+        "company_name": company_name,
         "confidentiality": confidentiality,
         "source_file": file_path.name,
         "num_pages": document.get("num_pages", 0),
@@ -52,11 +73,17 @@ def _detect_doc_type(filename: str, text_preview: str) -> str:
     return "unknown"
 
 
-def _extract_company(filename: str, text_preview: str) -> str:
-    """Try to extract company name. Returns 'Unknown' if not found."""
-    known_companies = ["apple", "microsoft", "tesla", "google", "amazon", "meta"]
+def _extract_company_slug(filename: str, text_preview: str) -> str:
+    """Return a lowercase slug for the company, or UNKNOWN_COMPANY_SLUG if not found."""
     combined = filename + " " + text_preview
-    for company in known_companies:
-        if company in combined:
-            return company.title() + " Inc."
-    return "Unknown"
+    for slug in KNOWN_COMPANIES:
+        if slug in combined:
+            return slug
+    return UNKNOWN_COMPANY_SLUG
+
+
+# Legacy alias — some older callers imported `_extract_company` expecting the
+# display name. Kept as a thin wrapper to avoid silent breakage.
+def _extract_company(filename: str, text_preview: str) -> str:
+    slug = _extract_company_slug(filename, text_preview)
+    return KNOWN_COMPANIES.get(slug, UNKNOWN_COMPANY_NAME)

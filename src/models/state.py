@@ -23,9 +23,18 @@ class RAGState(TypedDict):
     # --- Routing ---
     query_intent: str  # "retrieval", "clarification", "out_of_scope"
 
+    # --- Entity extraction (Sprint 7a.v2) ---
+    # Lowercase slug matching a `company` payload value in Qdrant, or None if the
+    # query isn't scoped to a specific company (e.g. "compare Apple and MSFT").
+    target_company: str | None
+    target_fiscal_year: int | None
+
     # --- Retrieval ---
-    retrieved_chunks: list[dict]
+    retrieved_chunks: list[dict]  # Hybrid candidates (top ~50 from dense+BM25 RRF)
     retrieval_query: str
+
+    # --- Reranking ---
+    reranked_chunks: list[dict]  # Cross-encoder top-K selected from retrieved_chunks
 
     # --- Grading ---
     relevant_chunks: list[dict]

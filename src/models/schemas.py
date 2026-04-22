@@ -33,6 +33,18 @@ class InjectionCheck(BaseModel):
     reason: str
 
 
+class EntityExtraction(BaseModel):
+    """Structured output for entity extraction (Sprint 7a.v2).
+
+    `company` is a lowercase slug matching the `company` payload field in Qdrant.
+    `fiscal_year` is the integer year referenced in the query. Both are None when
+    the query is comparative (multiple companies), generic, or doesn't specify.
+    """
+
+    company: Literal["apple", "microsoft", "tesla"] | None = None
+    fiscal_year: int | None = None
+
+
 class ChatRequest(BaseModel):
     """Request body for the chat endpoint."""
 

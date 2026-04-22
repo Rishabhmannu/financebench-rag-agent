@@ -31,6 +31,10 @@ dependencies = [
 
     # --- Vector DB ---
     "qdrant-client>=1.13,<2.0",
+    "fastembed>=0.4,<1.0",        # BM25 sparse vectors for hybrid search
+
+    # --- Reranker ---
+    "sentence-transformers>=3.0,<5.0",  # BGE cross-encoder for post-retrieval reranking
 
     # --- Document Processing ---
     "docling>=2.70,<3.0",

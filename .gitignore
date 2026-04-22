@@ -42,8 +42,9 @@ pg_data/
 
 # Evaluation results (regenerated)
 tests/evaluation/eval_results/*.json
-# ...except committed baselines and final snapshots, kept for historical comparison
+# ...except committed baselines, sprint milestone snapshots, and final results
 !tests/evaluation/eval_results/baseline_*.json
+!tests/evaluation/eval_results/after_sprint*.json
 !tests/evaluation/eval_results/final_*.json
 # ...but re-ignore pipeline caches (they're intermediate, regenerated on each run)
 tests/evaluation/eval_results/*.pipeline.json

@@ -52,7 +52,11 @@ class Settings(BaseSettings):
     MAX_RETRIEVAL_RETRIES: int = 2
     MAX_GENERATION_RETRIES: int = 2
     HITL_AMOUNT_THRESHOLD: int = 100_000
-    RETRIEVAL_TOP_K: int = 8
+    # Retrieval: cast a wide net (hybrid dense+BM25 with RRF) so the reranker has
+    # enough variety to pick from.
+    RETRIEVAL_TOP_K: int = 50
+    # Reranker: cross-encoder narrows to the final set that feeds the grader + generator.
+    RERANKER_TOP_K: int = 8
 
     # --- Embedding ---
     EMBEDDING_MODEL: str = "text-embedding-3-small"

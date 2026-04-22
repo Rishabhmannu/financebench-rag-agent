@@ -26,12 +26,18 @@ def test_chunk_document_missing_text_key_returns_empty_list():
 
 
 def test_chunk_document_short_text_returns_one_chunk():
-    """A short document that fits within MAX_CHUNK_CHARS produces exactly one chunk."""
+    """A short document that fits within MAX_CHUNK_CHARS produces exactly one chunk.
+
+    Sprint 7a.v2: chunk.content now includes a contextual prefix; the raw text
+    is preserved in raw_content.
+    """
     doc = {"text": "This is a short document about quarterly earnings."}
-    metadata = {"doc_type": "10k", "company": "Apple Inc."}
+    metadata = {"doc_type": "10k", "company": "apple"}
     result = chunk_document(doc, metadata)
     assert len(result) == 1
-    assert result[0]["content"] == doc["text"]
+    assert result[0]["raw_content"] == doc["text"]
+    assert doc["text"] in result[0]["content"]  # content = prefix + raw
+    assert result[0]["content"].startswith("[")  # contextual prefix present
 
 
 def test_chunk_document_preserves_metadata():

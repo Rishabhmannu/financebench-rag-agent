@@ -6,6 +6,7 @@ from pathlib import Path
 from src.ingestion.metadata_extractor import (
     _detect_doc_type,
     _extract_company,
+    _extract_company_slug,
     extract_metadata,
 )
 
@@ -56,17 +57,17 @@ def test_detect_doc_type_returns_unknown_for_unrecognized():
 
 
 # ---------------------------------------------------------------------------
-# _extract_company tests
+# _extract_company tests (legacy — returns display name)
 # ---------------------------------------------------------------------------
 
 def test_extract_company_from_filename():
-    """Company name is extracted when it appears in the filename."""
+    """Company display name is extracted when the slug appears in the filename."""
     result = _extract_company("apple_10k_2024", "")
     assert result == "Apple Inc."
 
 
 def test_extract_company_from_text_content():
-    """Company name is extracted from text when filename has no match."""
+    """Company display name is extracted from text when filename has no match."""
     result = _extract_company("generic_report", "this report covers microsoft quarterly earnings")
     assert result == "Microsoft Inc."
 
@@ -78,9 +79,25 @@ def test_extract_company_tesla():
 
 
 def test_extract_company_returns_unknown_when_no_match():
-    """Returns 'Unknown' when no known company is found."""
+    """Returns 'Unknown' (display) when no known company is found."""
     result = _extract_company("quarterly_report", "some numbers and data about widgets")
     assert result == "Unknown"
+
+
+# ---------------------------------------------------------------------------
+# _extract_company_slug tests — the version used for Qdrant payload filtering
+# ---------------------------------------------------------------------------
+
+def test_extract_company_slug_apple():
+    assert _extract_company_slug("apple_10k_2024", "") == "apple"
+
+
+def test_extract_company_slug_microsoft_from_text():
+    assert _extract_company_slug("generic_report", "microsoft reported revenue") == "microsoft"
+
+
+def test_extract_company_slug_returns_unknown_when_no_match():
+    assert _extract_company_slug("widgets_report", "data about widgets") == "unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -120,16 +137,17 @@ def test_extract_metadata_uses_doc_type_override():
 
 
 def test_extract_metadata_returns_complete_dict():
-    """extract_metadata returns a dict with all required keys."""
+    """extract_metadata returns a dict with all required keys including company slug + display name."""
     doc = {"text": "Apple Inc. annual report for fiscal year.", "num_pages": 42}
     result = extract_metadata(Path("apple_10k_2024.pdf"), doc)
 
-    required_keys = {"doc_type", "company", "confidentiality", "source_file", "num_pages"}
+    required_keys = {"doc_type", "company", "company_name", "confidentiality", "source_file", "num_pages"}
     assert required_keys == set(result.keys()), (
         f"Missing keys: {required_keys - set(result.keys())}"
     )
     assert result["doc_type"] == "10k"
-    assert result["company"] == "Apple Inc."
+    assert result["company"] == "apple"  # slug for filtering
+    assert result["company_name"] == "Apple Inc."  # display name
     assert result["confidentiality"] == "public"
     assert result["source_file"] == "apple_10k_2024.pdf"
     assert result["num_pages"] == 42

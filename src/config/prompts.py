@@ -41,6 +41,41 @@ Follow-up question: {query}
 
 Return ONLY the rewritten standalone question, nothing else."""
 
+ENTITY_EXTRACTOR_PROMPT = """You extract structured entities from a financial Q&A query so the retrieval layer can filter to the right company and year.
+
+Given the query (and optionally the last turn of the conversation for context),
+return JSON with exactly these keys:
+  - "company": one of ["apple", "microsoft", "tesla", null]
+       null if the query mentions multiple companies (comparative) or none at all.
+  - "fiscal_year": integer year (e.g. 2023, 2024, 2025) or null if no year is specified.
+
+Rules:
+  - Use "apple"/"microsoft"/"tesla" lowercase slugs only — no display names.
+  - If the query is about "both Apple and Microsoft" or "all three companies", return null for company.
+  - Resolve common aliases: MSFT → microsoft, AAPL → apple, TSLA → tesla.
+  - If a pronoun refers to a company mentioned earlier in the conversation, resolve it using the conversation history.
+
+Examples:
+
+Query: "What was Apple's total revenue in fiscal year 2023?"
+→ {"company": "apple", "fiscal_year": 2023}
+
+Query: "Compare MSFT and Tesla revenue."
+→ {"company": null, "fiscal_year": null}
+
+Query: "How much did Microsoft spend on R&D?"
+→ {"company": "microsoft", "fiscal_year": null}
+
+Query: "What about their operating margin?" (prior turn mentioned Apple)
+→ {"company": "apple", "fiscal_year": null}
+
+Conversation history:
+{history}
+
+Query: {query}
+
+Return ONLY the JSON object, no commentary."""
+
 ROUTER_PROMPT = """You are a query router for a financial document Q&A system.
 Classify the user's query intent into one of these categories:
 
