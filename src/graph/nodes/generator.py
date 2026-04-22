@@ -1,6 +1,6 @@
 import logging
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.config.prompts import GENERATOR_PROMPT
 from src.models.state import RAGState
@@ -39,7 +39,10 @@ def generator_node(state: RAGState) -> dict:
             HumanMessage(content=prompt),
         ])
         logger.info(f"Generated answer: {len(result.content)} chars")
-        return {"generated_answer": result.content}
+        return {
+            "generated_answer": result.content,
+            "messages": [AIMessage(content=result.content)],
+        }
     except Exception as e:
         logger.error(f"Generation failed: {e}")
         return {"generated_answer": "I encountered an error generating a response. Please try again."}

@@ -4,6 +4,9 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      - QDRANT_HOST=qdrant
+      - POSTGRES_HOST=postgres
     depends_on:
       qdrant:
         condition: service_healthy
@@ -11,6 +14,15 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    networks:
+      - rag-net
 
   frontend:
     build: .
@@ -20,7 +32,17 @@ services:
     environment:
       - API_URL=http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    networks:
+      - rag-net
 
   qdrant:
     image: qdrant/qdrant:v1.13.2
@@ -29,11 +51,14 @@ services:
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "timeout 3 bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - rag-net
 
   postgres:
     image: postgres:16-alpine
@@ -45,12 +70,19 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rag_user} -d ${POSTGRES_DB:-rag_agent}"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - rag-net
 
 volumes:
   qdrant_data:
   pg_data:
+
+networks:
+  rag-net:
+    driver: bridge

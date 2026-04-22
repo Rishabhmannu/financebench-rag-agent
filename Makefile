@@ -1,4 +1,4 @@
-.PHONY: run dev frontend test test-unit test-integration eval lint ingest seed-db docker-up docker-down clean
+.PHONY: run dev frontend test test-unit test-integration eval lint format ingest seed-db jwt docker-up docker-down docker-all docker-build docker-prod docker-logs docker-ps docker-restart check clean
 
 # --- Development ---
 run:
@@ -50,6 +50,26 @@ docker-down:
 
 docker-all:
 	docker compose up --build
+
+# --- Production ---
+docker-build:
+	docker compose build
+
+docker-prod:
+	docker compose up -d --build
+
+docker-logs:
+	docker compose logs -f
+
+docker-ps:
+	docker compose ps
+
+docker-restart:
+	docker compose restart api frontend
+
+# --- Checks ---
+check: lint test-unit
+	@echo "All checks passed"
 
 # --- Cleanup ---
 clean:

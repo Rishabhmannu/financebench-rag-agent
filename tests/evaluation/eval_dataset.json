@@ -1,0 +1,307 @@
+[
+  {
+    "question": "What was Apple's total revenue in fiscal year 2023?",
+    "ground_truth": "Apple's total net revenue in fiscal year 2023 was $383,285 million.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "What was Microsoft's revenue in fiscal year 2023?",
+    "ground_truth": "Microsoft's revenue in fiscal year 2023 was $211,915 million.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "What was Tesla's total revenue in fiscal year 2023?",
+    "ground_truth": "Tesla's total revenues in fiscal year 2023 were $96,773 million.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "How much did Apple's revenue change compared to 2022?",
+    "ground_truth": "Apple's total net revenue decreased 3% or $11.0 billion during 2023 compared to 2022, from $394,328 million to $383,285 million.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "How much did Tesla's revenue increase compared to the prior year?",
+    "ground_truth": "Tesla's revenue increased by $15.31 billion, or 19%, compared to the prior year.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "What was Microsoft's revenue growth in fiscal year 2023?",
+    "ground_truth": "Microsoft's revenue increased $13.6 billion or 7% in fiscal year 2023.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "Which company had the highest revenue in fiscal year 2023?",
+    "ground_truth": "Apple had the highest revenue at $383,285 million, followed by Microsoft at $211,915 million and Tesla at $96,773 million.",
+    "category": "10k_revenue"
+  },
+  {
+    "question": "What was Apple's net income in fiscal year 2023?",
+    "ground_truth": "Apple's net income in fiscal year 2023 was $96,995 million.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What was Microsoft's net income in fiscal year 2023?",
+    "ground_truth": "Microsoft's net income in fiscal year 2023 was $72,361 million.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What was Tesla's net income in fiscal year 2023?",
+    "ground_truth": "Tesla's net income attributable to common stockholders in fiscal year 2023 was $7,928 million.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What was Apple's operating income in 2023?",
+    "ground_truth": "Apple's operating income in 2023 was $114,301 million.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What was Apple's gross margin percentage in 2023?",
+    "ground_truth": "Apple's gross margin percentage was 44.1% in 2023, up from 43.3% in 2022.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What was Tesla's gross margin in 2023?",
+    "ground_truth": "Tesla's total gross margin was 18.2% in 2023, down from 25.6% in the prior year.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What was Apple's iPhone revenue in 2023?",
+    "ground_truth": "Apple's iPhone revenue was $200.6 billion during 2023, a decrease of 2% compared to 2022.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "How much revenue did Apple's Services segment generate in 2023?",
+    "ground_truth": "Apple's Services revenue was $85.2 billion in 2023, an all-time high, increasing 9% compared to 2022.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "What was Apple's Mac revenue in 2023?",
+    "ground_truth": "Apple's Mac revenue was $29.4 billion during 2023, a decrease of 27% compared to 2022.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "How fast did Microsoft Azure grow in fiscal year 2023?",
+    "ground_truth": "Azure and other cloud services revenue grew 29% in fiscal year 2023.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "What was Microsoft Office 365 Commercial revenue growth?",
+    "ground_truth": "Office 365 Commercial revenue grew 13% in fiscal year 2023.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "How many vehicles did Tesla deliver in 2023?",
+    "ground_truth": "Tesla delivered 1,808,581 vehicles in 2023, an increase of 38% compared to 1,313,851 in 2022.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "How much did Tesla's energy revenue grow in 2023?",
+    "ground_truth": "Tesla's energy generation and storage revenue increased by $4.03 billion or 54% in 2023.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "What was Microsoft Dynamics 365 revenue growth?",
+    "ground_truth": "Dynamics 365 revenue grew 24% in fiscal year 2023.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "What are Apple's total assets?",
+    "ground_truth": "Apple's total assets were $352,583 million as of fiscal year 2023.",
+    "category": "10k_balance_sheet"
+  },
+  {
+    "question": "What are Microsoft's total assets?",
+    "ground_truth": "Microsoft's total assets were $411,976 million as of June 30, 2023.",
+    "category": "10k_balance_sheet"
+  },
+  {
+    "question": "How much cash does Microsoft have?",
+    "ground_truth": "As of June 30, 2023, Microsoft had $111.3 billion in cash, cash equivalents, and short-term investments.",
+    "category": "10k_balance_sheet"
+  },
+  {
+    "question": "What was Tesla's cash position at the end of 2023?",
+    "ground_truth": "As of December 31, 2023, Tesla had $29.1 billion in cash and cash equivalents and investments.",
+    "category": "10k_balance_sheet"
+  },
+  {
+    "question": "How much long-term debt does Apple have?",
+    "ground_truth": "Apple's total long-term debt was $95,281 million in fiscal year 2023.",
+    "category": "10k_balance_sheet"
+  },
+  {
+    "question": "How much did Apple spend on research and development in 2023?",
+    "ground_truth": "Apple's research and development expense was $29.9 billion ($29,915 million) in 2023, up from $26.3 billion in 2022.",
+    "category": "10k_expenses"
+  },
+  {
+    "question": "What was Tesla's R&D spending in 2023?",
+    "ground_truth": "Tesla's research and development expenses increased 26% to $4.46 billion in 2023.",
+    "category": "10k_expenses"
+  },
+  {
+    "question": "What was Microsoft's operating cash flow in fiscal year 2023?",
+    "ground_truth": "Microsoft's cash from operations was $87.6 billion in fiscal year 2023, an increase of $2.2 billion from the prior year.",
+    "category": "10k_balance_sheet"
+  },
+  {
+    "question": "What is the total amount for the TechSolutions invoice?",
+    "ground_truth": "The TechSolutions Corp. invoice (TS-2024-0847) has a subtotal of $112,500.00 before tax. Line items include Cloud Infrastructure Services ($45,000), Data Analytics Platform License ($28,500), Professional Services at 120 hours x $225/hr ($27,000), and 24/7 Premium Support ($12,000).",
+    "category": "invoice"
+  },
+  {
+    "question": "What is the invoice number for Global Consulting Partners?",
+    "ground_truth": "The Global Consulting Partners LLP invoice number is GCP-2024-3291.",
+    "category": "invoice"
+  },
+  {
+    "question": "When is the TechSolutions invoice due?",
+    "ground_truth": "The TechSolutions Corp. invoice (TS-2024-0847) is due on February 14, 2024. Payment terms are Net 30.",
+    "category": "invoice"
+  },
+  {
+    "question": "What services did Global Consulting Partners provide?",
+    "ground_truth": "Global Consulting Partners provided Strategic Advisory Services for M&A Due Diligence (240 hours at $450/hr), Market Analysis Report for the Fintech Sector ($35,000), Regulatory Compliance Assessment (80 hours at $375/hr), and Travel and Expenses ($8,750). This relates to the Project Phoenix engagement.",
+    "category": "invoice"
+  },
+  {
+    "question": "How much does the Pinnacle Cloud Services invoice total?",
+    "ground_truth": "The Pinnacle Cloud Services invoice (PCS-INV-2024-0156) has a subtotal of $242,550.00 before tax. Line items include AWS Reserved Instances (12 months x $18,500 = $222,000), Kubernetes Cluster Management ($7,500), Data Transfer (45 TB x $90 = $4,050), Security Monitoring ($5,200), and Disaster Recovery ($3,800).",
+    "category": "invoice"
+  },
+  {
+    "question": "Was there a service credit applied on any invoice?",
+    "ground_truth": "Yes, a service credit of $2,100 was applied to the Pinnacle Cloud Services invoice (PCS-INV-2024-0156) for a February 12 outage per the SLA.",
+    "category": "invoice"
+  },
+  {
+    "question": "What is the hourly rate for Global Consulting's strategic advisory services?",
+    "ground_truth": "Global Consulting Partners charges $450 per hour for Strategic Advisory Services - M&A Due Diligence.",
+    "category": "invoice"
+  },
+  {
+    "question": "What are the late payment terms for TechSolutions?",
+    "ground_truth": "TechSolutions Corp. charges 1.5% monthly interest on late payments. Payment terms are Net 30.",
+    "category": "invoice"
+  },
+  {
+    "question": "What is the confidentiality level of the Global Consulting invoice?",
+    "ground_truth": "The Global Consulting Partners invoice is classified as confidential.",
+    "category": "invoice"
+  },
+  {
+    "question": "What is the maximum hotel rate for New York City?",
+    "ground_truth": "The maximum hotel rate for New York City is $350 per night, as it is designated a high-cost city along with San Francisco, Los Angeles, Boston, and Washington DC.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What is the daily meal allowance for business travel?",
+    "ground_truth": "The daily meal allowance (per diem) is: Breakfast $25, Lunch $35, Dinner $75, for a total daily maximum of $135.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What approval is needed for a $50,000 business trip?",
+    "ground_truth": "A business trip costing $25,001-$100,000 requires VP-level approval.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What is the mileage reimbursement rate?",
+    "ground_truth": "Personal vehicle mileage is reimbursed at the current IRS standard rate of $0.67 per mile for 2024.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What is the maximum reimbursable domestic airfare?",
+    "ground_truth": "The maximum reimbursable airfare for domestic travel is $1,500 round-trip. Exceptions require director approval.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What are the purchase authorization tiers in the procurement policy?",
+    "ground_truth": "Purchase authorization tiers are: Tier 1 ($0-$5,000) requires Department Manager; Tier 2 ($5,001-$25,000) requires Director + one quote; Tier 3 ($25,001-$100,000) requires VP + three quotes; Tier 4 ($100,001-$500,000) requires SVP + formal RFP; Tier 5 (over $500,000) requires CFO and CEO + Board notification + formal RFP.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What insurance is required for new vendor onboarding?",
+    "ground_truth": "New vendors must provide a Certificate of Insurance with minimum $1 million general liability coverage.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What is the standard payment term for vendor invoices?",
+    "ground_truth": "Standard payment terms are Net 30 from invoice receipt date.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What is the maximum per-person limit for a business dinner with clients?",
+    "ground_truth": "The maximum per-person limit for a business dinner is $150 per person. Business lunch is $75 per person.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "What additional approval is needed for technology purchases over $10,000?",
+    "ground_truth": "Software and technology purchases exceeding $10,000 require additional CTO/CIO approval regardless of the normal authorization tier.",
+    "category": "expense_policy"
+  },
+  {
+    "question": "Which company had the highest net income in 2023?",
+    "ground_truth": "Apple had the highest net income at $96,995 million, followed by Microsoft at $72,361 million and Tesla at $7,928 million.",
+    "category": "cross_document"
+  },
+  {
+    "question": "Compare the gross margins of Apple and Tesla in 2023.",
+    "ground_truth": "Apple's gross margin percentage was 44.1% in 2023, significantly higher than Tesla's 18.2%. Tesla's gross margin declined from 25.6% the prior year due to vehicle price reductions.",
+    "category": "cross_document"
+  },
+  {
+    "question": "Do any invoices exceed the Tier 4 procurement authorization threshold?",
+    "ground_truth": "No, none of the invoices exceed the Tier 4 threshold of $500,000. The Pinnacle Cloud Services invoice has the highest subtotal at $242,550, which falls in Tier 4 ($100,001-$500,000) requiring SVP authorization and formal RFP.",
+    "category": "cross_document"
+  },
+  {
+    "question": "How do Apple's and Microsoft's R&D expenses compare?",
+    "ground_truth": "Apple spent $29.9 billion on R&D in 2023, which is significantly more than the information available suggests about Microsoft's R&D. Microsoft's research and development expenses increased $1.1 billion or 4%.",
+    "category": "cross_document"
+  },
+  {
+    "question": "What is the current stock price of Apple?",
+    "ground_truth": "This information is not available in the financial documents. The documents contain historical financial data from 10-K filings, not real-time stock prices.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "What will Tesla's revenue be in 2025?",
+    "ground_truth": "This information is not available in the documents. The financial data covers fiscal year 2023 and does not include future projections or forecasts for 2025.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "What is the weather forecast for San Francisco?",
+    "ground_truth": "This question is outside the scope of the financial document knowledge base, which covers 10-K filings, invoices, and expense policies.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "Who is the CEO of Apple?",
+    "ground_truth": "The available 10-K excerpt does not include information about Apple's CEO or executive leadership.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "What was Amazon's revenue in 2023?",
+    "ground_truth": "Amazon's financial data is not available in the document collection. The available 10-K filings cover Apple, Microsoft, and Tesla only.",
+    "category": "out_of_scope"
+  },
+  {
+    "question": "How did Tesla's average vehicle selling price change in 2023?",
+    "ground_truth": "Tesla's average selling price per vehicle decreased approximately 17% year-over-year in 2023 due to price reductions across the vehicle lineup to stimulate demand.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "What was Apple's diluted earnings per share in 2023?",
+    "ground_truth": "Apple's diluted earnings per share was $6.13 in fiscal year 2023.",
+    "category": "10k_income"
+  },
+  {
+    "question": "What were Apple's Products versus Services revenue in 2023?",
+    "ground_truth": "Apple's Products revenue was $298,085 million and Services revenue was $85,200 million in 2023, for total net sales of $383,285 million.",
+    "category": "10k_segments"
+  },
+  {
+    "question": "What deadline applies for submitting expense reports?",
+    "ground_truth": "All expense reports must be submitted within 30 days of the expense or return from travel, whichever is later. Reports submitted after 60 days may not be reimbursed.",
+    "category": "expense_policy"
+  }
+]

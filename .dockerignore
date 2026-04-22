@@ -1,0 +1,46 @@
+# Version control
+.git/
+.gitignore
+
+# Data (large, not needed in image)
+data/raw/
+qdrant_data/
+pg_data/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment (secrets)
+.env
+.env.local
+.env.production
+
+# macOS
+.DS_Store
+
+# Testing (not needed in production image)
+tests/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Docs and course materials
+_course_materials/
+*.md
+
+# CI/CD and tooling configs
+.github/
+.claude/
+Makefile
+Untitled.txt

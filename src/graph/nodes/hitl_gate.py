@@ -10,7 +10,9 @@ from src.models.state import RAGState
 logger = logging.getLogger(__name__)
 
 # Regex to find dollar amounts in text
-AMOUNT_PATTERN = re.compile(r"\$[\d,]+(?:\.\d{2})?(?:\s*(?:million|billion|trillion|M|B|T))?", re.IGNORECASE)
+AMOUNT_PATTERN = re.compile(
+    r"\$[\d,]+(?:\.\d{1,2})?(?:\s*(?:million|billion|trillion|thousand|M|B|T|k))?", re.IGNORECASE
+)
 
 
 def _extract_max_amount(text: str) -> float:
@@ -23,7 +25,7 @@ def _extract_max_amount(text: str) -> float:
     for match in matches:
         cleaned = match.replace("$", "").replace(",", "").strip()
         multiplier = 1.0
-        for suffix, mult in [("trillion", 1e12), ("billion", 1e9), ("million", 1e6), ("T", 1e12), ("B", 1e9), ("M", 1e6)]:
+        for suffix, mult in [("trillion", 1e12), ("billion", 1e9), ("million", 1e6), ("thousand", 1e3), ("T", 1e12), ("B", 1e9), ("M", 1e6), ("k", 1e3)]:
             if suffix in cleaned:
                 cleaned = cleaned.replace(suffix, "").strip()
                 multiplier = mult

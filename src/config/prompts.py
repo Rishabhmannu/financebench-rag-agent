@@ -28,6 +28,19 @@ Input: {query}
 
 Respond with JSON: {{"is_injection": true/false, "confidence": 0.0-1.0, "reason": "..."}}"""
 
+QUERY_CONTEXTUALIZER_PROMPT = """Given a conversation history and a follow-up question, rewrite the follow-up
+as a standalone question that can be understood without the conversation context.
+If the follow-up is already standalone, return it unchanged.
+Resolve pronouns and references (e.g., "what about them?", "and Microsoft?", "how about 2022?")
+using the prior conversation.
+
+Conversation history:
+{history}
+
+Follow-up question: {query}
+
+Return ONLY the rewritten standalone question, nothing else."""
+
 ROUTER_PROMPT = """You are a query router for a financial document Q&A system.
 Classify the user's query intent into one of these categories:
 

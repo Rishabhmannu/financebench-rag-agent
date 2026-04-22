@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 import psycopg
@@ -16,6 +17,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
+    # Set env-specific LangSmith project name before any LLM calls
+    os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project_name
+
     # Startup validation
     if not settings.OPENAI_API_KEY:
         logger.error("OPENAI_API_KEY is not set! Embeddings and generation will fail.")
@@ -75,7 +79,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

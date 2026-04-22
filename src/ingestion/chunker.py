@@ -13,7 +13,16 @@ SEPARATORS = ["\n\n", "\n", ". ", " "]
 
 
 def chunk_document(document: dict, metadata: dict) -> list[dict]:
-    """Chunk a document into pieces with metadata attached to each chunk."""
+    """Chunk a document into pieces with metadata attached to each chunk.
+
+    If the document includes a `pages` list (per-page text from the loader), each
+    page is chunked independently and chunks are tagged with `page_number`.
+    Otherwise falls back to chunking the flat `text` field (no page numbers).
+    """
+    pages = document.get("pages")
+    if pages:
+        return _chunk_per_page(pages, metadata)
+
     text = document.get("text", "")
     if not text.strip():
         return []
@@ -30,6 +39,29 @@ def chunk_document(document: dict, metadata: dict) -> list[dict]:
             },
         })
 
+    return result
+
+
+def _chunk_per_page(pages: list[dict], metadata: dict) -> list[dict]:
+    """Chunk each page independently, attaching page_number to every chunk."""
+    result = []
+    chunk_index = 0
+    for page in pages:
+        page_text = (page.get("text") or "").strip()
+        if not page_text:
+            continue
+        page_number = page.get("page_number")
+        page_chunks = _recursive_split(page_text, chunk_size=MAX_CHUNK_CHARS, overlap=OVERLAP_CHARS)
+        for chunk_text in page_chunks:
+            result.append({
+                "content": chunk_text,
+                "metadata": {
+                    **metadata,
+                    "chunk_index": chunk_index,
+                    "page_number": page_number,
+                },
+            })
+            chunk_index += 1
     return result
 
 

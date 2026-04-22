@@ -62,6 +62,48 @@ def test_chunk_document_adds_chunk_index_to_each_chunk():
         assert chunk["metadata"]["chunk_index"] == i
 
 
+def test_chunk_document_per_page_attaches_page_number():
+    """When document has a 'pages' list, each chunk gets its source page_number."""
+    doc = {
+        "pages": [
+            {"page_number": 1, "text": "Page one content about revenue."},
+            {"page_number": 2, "text": "Page two content about expenses."},
+            {"page_number": 3, "text": "Page three content about tax."},
+        ]
+    }
+    result = chunk_document(doc, {"doc_type": "10k"})
+    assert len(result) == 3
+    assert result[0]["metadata"]["page_number"] == 1
+    assert result[1]["metadata"]["page_number"] == 2
+    assert result[2]["metadata"]["page_number"] == 3
+    # chunk_index is sequential across pages
+    assert [c["metadata"]["chunk_index"] for c in result] == [0, 1, 2]
+
+
+def test_chunk_document_per_page_skips_empty_pages():
+    """Empty or whitespace-only pages are skipped when chunking per-page."""
+    doc = {
+        "pages": [
+            {"page_number": 1, "text": "Content here."},
+            {"page_number": 2, "text": ""},
+            {"page_number": 3, "text": "   \n\n  "},
+            {"page_number": 4, "text": "More content."},
+        ]
+    }
+    result = chunk_document(doc, {"doc_type": "10k"})
+    assert len(result) == 2
+    assert result[0]["metadata"]["page_number"] == 1
+    assert result[1]["metadata"]["page_number"] == 4
+
+
+def test_chunk_document_without_pages_field_has_no_page_number():
+    """When document lacks 'pages', chunks do not include page_number (backwards compat)."""
+    doc = {"text": "Plain text with no page info."}
+    result = chunk_document(doc, {"doc_type": "10k"})
+    assert len(result) == 1
+    assert "page_number" not in result[0]["metadata"]
+
+
 def test_chunk_document_does_not_mutate_input_metadata():
     """The original metadata dict passed in is not mutated by chunk_document."""
     metadata = {"doc_type": "10k", "company": "Apple Inc."}

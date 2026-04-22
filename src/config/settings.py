@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -6,9 +7,15 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "dev"
     LOG_LEVEL: str = "INFO"
 
+    # --- CORS ---
+    CORS_ORIGINS: list[str] = ["*"]
+
     # --- LLM Providers ---
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    # Override: force all LLM calls through OpenAI (used to bypass Groq free-tier rate
+    # limits during eval runs). Default false = prod hybrid Groq + OpenAI behavior.
+    FORCE_OPENAI_ONLY: bool = False
 
     # --- LangSmith ---
     LANGCHAIN_TRACING_V2: bool = True
@@ -56,6 +63,26 @@ class Settings(BaseSettings):
     GRADER_MODEL: str = "llama-3.3-70b-versatile"
     GENERATOR_MODEL: str = "gpt-4o-mini"
     HALLUCINATION_MODEL: str = "gpt-4o-mini"
+
+    @property
+    def langchain_project_name(self) -> str:
+        """Return env-specific LangSmith project name."""
+        if self.LANGCHAIN_PROJECT != "rag-agent-dev":
+            return self.LANGCHAIN_PROJECT
+        env_suffix = {"dev": "dev", "staging": "staging", "production": "prod"}
+        return f"rag-agent-{env_suffix.get(self.ENVIRONMENT, self.ENVIRONMENT)}"
+
+    @model_validator(mode="after")
+    def validate_production_settings(self):
+        """Enforce safety checks for production environment."""
+        if self.ENVIRONMENT == "production":
+            if self.JWT_SECRET == "dev-secret-change-in-production":
+                raise ValueError("JWT_SECRET must be changed from default in production!")
+            if self.POSTGRES_PASSWORD == "devpassword":
+                raise ValueError("POSTGRES_PASSWORD must be changed from default in production!")
+            if "*" in self.CORS_ORIGINS:
+                raise ValueError("CORS_ORIGINS must not be wildcard '*' in production!")
+        return self
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

@@ -40,6 +40,9 @@ pg_data/
 
 # Evaluation results (regenerated)
 tests/evaluation/eval_results/*.json
+# ...except committed baselines and final snapshots, kept for historical comparison
+!tests/evaluation/eval_results/baseline_*.json
+!tests/evaluation/eval_results/final_*.json
 
 # Jupyter
 .ipynb_checkpoints/
@@ -51,3 +54,9 @@ tests/evaluation/eval_results/*.json
 htmlcov/
 .coverage
 .coverage.*
+
+# Runtime logs (from restart.sh)
+logs/
+
+# Claude Code local tool state
+.claude/
