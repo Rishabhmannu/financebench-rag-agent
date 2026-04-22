@@ -13,8 +13,9 @@ class Settings(BaseSettings):
     # --- LLM Providers ---
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
     # Override: force all LLM calls through OpenAI (used to bypass Groq free-tier rate
-    # limits during eval runs). Default false = prod hybrid Groq + OpenAI behavior.
+    # limits during eval runs). Default false = prod hybrid Groq + OpenAI + Anthropic.
     FORCE_OPENAI_ONLY: bool = False
 
     # --- LangSmith ---
@@ -63,10 +64,18 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSIONS: int = 1536
 
     # --- LLM Models ---
+    # Kept on Groq for latency-critical classification / routing
     ROUTER_MODEL: str = "llama-3.3-70b-versatile"
     GRADER_MODEL: str = "llama-3.3-70b-versatile"
-    GENERATOR_MODEL: str = "gpt-4o-mini"
-    HALLUCINATION_MODEL: str = "gpt-4o-mini"
+    # Generator + hallucination upgraded to Claude Sonnet 4.6 in Sprint 7b for
+    # stronger instruction-following + grounding. OpenAI remains the fallback.
+    GENERATOR_MODEL: str = "claude-sonnet-4-6"
+    HALLUCINATION_MODEL: str = "claude-sonnet-4-6"
+    # Opus 4.7 reserved for high-stakes hallucination verification when HITL fires
+    # (amounts above threshold). Higher cost but strongest grounding judgment.
+    HIGH_STAKES_HALLUCINATION_MODEL: str = "claude-opus-4-7"
+    # Legacy OpenAI fallback model — used when Anthropic fails or FORCE_OPENAI_ONLY is on
+    OPENAI_FALLBACK_MODEL: str = "gpt-4o-mini"
 
     @property
     def langchain_project_name(self) -> str:

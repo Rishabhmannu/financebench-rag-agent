@@ -1,0 +1,17 @@
+{
+  "scores": {
+    "faithfulness": 0.6557377049180327,
+    "answer_relevancy": 0.7074963195374934,
+    "context_precision": 0.62679872491318,
+    "context_recall": 0.633879781420765
+  },
+  "thresholds": {
+    "faithfulness": 0.6,
+    "answer_relevancy": 0.66,
+    "context_precision": 0.58
+  },
+  "num_samples": 61,
+  "pipeline_time_seconds": 1043.3,
+  "eval_time_seconds": 81.6,
+  "evaluator_model": "gpt-4o-mini"
+}

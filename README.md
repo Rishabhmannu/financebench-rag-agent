@@ -54,16 +54,20 @@ START → rbac_gate → guardrails → router ─→ retrieval → grader → ge
 
 ## Evaluation Results
 
-### Baseline (2026-04-22, pre-optimization, real SEC FY2023 10-Ks)
+Evaluated on 61 Q&A pairs against real SEC 10-K filings for AAPL / MSFT / TSLA fiscal year 2023 (249 chunks in Qdrant). Evaluator model: `gpt-4o-mini`.
 
-| Metric | Baseline | CI Gate | Sprint 7 Target |
-|--------|----------|---------|-----------------|
-| Faithfulness | 0.586 | >= 0.60 | >= 0.80 |
-| Answer Relevancy | 0.645 | >= 0.66 | >= 0.75 |
-| Context Precision | 0.568 | >= 0.58 | >= 0.70 |
-| Context Recall | 0.555 | (informational) | — |
+### Sprint-by-sprint progress
 
-Evaluated on 61 Q&A pairs against real SEC 10-K filings for AAPL / MSFT / TSLA fiscal year 2023 (249 chunks in Qdrant). Evaluator model: `gpt-4o-mini`. The CI gate tracks regression from baseline; the Sprint 7 targets will be restored after hybrid search + reranker + Claude Sonnet 4.6 upgrade land. Raw scores: [`baseline_real_sec_fy2023.json`](tests/evaluation/eval_results/baseline_real_sec_fy2023.json).
+| Metric | Baseline (Sprint 6) | After 7a.v2 (entity-aware retrieval) | **After 7b (+ Claude Sonnet 4.6)** | CI Gate | Final Target |
+|--------|:---:|:---:|:---:|:---:|:---:|
+| Faithfulness | 0.586 | 0.598 | **0.656** | >= 0.62 | 0.80 |
+| Answer Relevancy | 0.645 | 0.662 | **0.707** | >= 0.68 | 0.75 |
+| Context Precision | 0.568 | 0.586 | **0.627** | >= 0.60 | 0.70 |
+| Context Recall | 0.555 | 0.607 | **0.634** | — | — |
+
+Current pipeline clears all CI thresholds. Remaining gap to the aspirational targets comes from source data (MD&A + Financial Statements only — expanding to include Risk Factors + Notes would raise the faithfulness ceiling) and retrieval (smaller chunks or a managed reranker). LLM-shaped gains were captured in Sprint 7b.
+
+Raw scores: [`baseline_real_sec_fy2023.json`](tests/evaluation/eval_results/baseline_real_sec_fy2023.json), [`after_sprint7a_v2_entity_aware.json`](tests/evaluation/eval_results/after_sprint7a_v2_entity_aware.json), [`after_sprint7b_claude_sonnet.json`](tests/evaluation/eval_results/after_sprint7b_claude_sonnet.json).
 
 An earlier baseline on synthetic PDFs ([`baseline_pre_optimization.json`](tests/evaluation/eval_results/baseline_pre_optimization.json)) is preserved for historical comparison — it was replaced because the synthetic corpus was too small (36 chunks) to exercise the retrieval stack realistically.
 
