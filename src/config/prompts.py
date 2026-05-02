@@ -115,26 +115,50 @@ ALSO classify the query's complexity (only matters when intent == "retrieval"):
 
 - "simple_lookup": single-fact retrieval. The answer is a specific number, name,
   date, segment, or short phrase that lives in one section of one document.
+  Yes/no questions about company-level facts ARE simple_lookup even when a
+  one-line explanation accompanies the answer.
   Examples:
     "What was Apple's FY2023 total revenue?"
     "What is the meal per diem in San Francisco?"
     "Who is the auditor for the 2022 10-K?"
     "What was 3M's FY2018 capital expenditure?"
+    "Does 3M maintain a stable trend of dividend distribution?"
+    "Is 3M a capital-intensive business?"
+    "Is Apple's debt rating investment grade?"
 
-- "research_required": multi-step. The answer requires synthesis across multiple
-  sections, a calculation with a formula, comparison across years/segments/
-  companies, or judgment about whether a metric is even applicable to the
-  business model.
+- "research_required": multi-step. Choose this ONLY if the query has at
+  least one of these explicit triggers:
+
+    ⓘ A formula or ratio the user explicitly defines or names
+      ("compute days payable outstanding", "fixed asset turnover ratio
+       defined as ...", "operating cash flow ratio = X / Y")
+
+    ⓘ A qualifier word that changes WHAT counts as a correct answer:
+      "exclude" / "excluding" / "organic" / "if we exclude"
+
+    ⓘ Comparison across years/segments/companies:
+      "compare X vs Y" / "compared to" / "X vs. Y" / "year over year direction"
+
+    ⓘ Decomposition language: "what drove" / "drivers of" / "primarily due to"
+      / "explain why" — questions that require management's stated drivers,
+      not just a number
+
+    ⓘ Applicability judgment: "if [metric] is not relevant, state that and
+      explain why" / "is this the right metric for this business?"
+
+    ⓘ The answer requires 2+ DISTINCT financial quantities from DIFFERENT
+      document sections (e.g. revenue from income statement AND PP&E from
+      balance sheet for a turnover ratio)
+
   Examples:
     "What drove operating margin change FY22 vs FY21 for 3M?"  (decomposition)
     "If we exclude M&A, which segment dragged 3M's growth?"    (qualifier)
     "Compute days payable outstanding for Pepsico in FY2022."  (formula)
-    "Does Adobe have an improving operating margin profile?"   (multi-year synthesis)
-    "Does AMEX have improving gross margin? If gross margin isn't a useful metric, explain why."  (applicability judgment)
 
-When uncertain, choose "research_required" — the agent path is safe for simple
-queries (slightly slower but correct), whereas the fast path can fail on
-complex queries.
+When uncertain, prefer "simple_lookup". The agent path is slower (~90s vs
+~20s) and Sprint 7.6 Day 3 review showed it can REGRESS simple lookups by
+adding unnecessary disclaimers. Only invoke the agent when at least one
+trigger above is clearly present.
 
 Query: {query}"""
 
@@ -182,7 +206,23 @@ Your job:
 4. Always cite sources inline using the format [Source: filename, Page N] — exactly as shown in the chunk headers.
 5. Be concise. Lead with the direct answer, then add supporting detail only if it clarifies the answer.
 6. When multiple sources agree, cite the primary one. When they disagree, surface the disagreement.
-7. **End with a one-sentence bottom-line summary** that directly answers the question with the specific number, direction, or named entity. If you presented analysis in a table, this sentence sits below the table. Skip this only when the answer is "I don't have enough information to answer this question."
+7. **End with a clear, calibrated bottom line** — one of three cases:
+
+   (a) **Full evidence**: a one-sentence summary that directly answers the
+       question with the specific number, direction, or named entity. Sits
+       below any table you produced.
+
+   (b) **Partial evidence** (e.g. ratio with numerator confirmed, denominator
+       missing): state what IS confirmed with units and source. If you can
+       compute the answer with reasonable assumption, do so and flag the
+       assumption explicitly. DO NOT default to "I don't have enough
+       information" when even one specific number with source citation is
+       available — partial findings have value (Sprint 7.6 Day 3 lesson:
+       refusing on partial data scored worse than a partial answer).
+
+   (c) **No relevant evidence**: "I don't have enough information to answer
+       this question." Use this only when the retrieved chunks contain
+       essentially nothing on the question's subject.
 
 The context will be a series of chunks each preceded by a [Source N: ...] header showing the source document and page number."""
 
@@ -325,24 +365,44 @@ Target fiscal year: {target_fiscal_year}"""
 
 SUFFICIENCY_SYSTEM_PROMPT = """You are a research-sufficiency judge. The
 research agent has executed one or more sub-question retrievals and collected
-evidence chunks. Decide whether the evidence is enough to answer the original
-question.
+evidence chunks. Decide whether the evidence is enough to produce a USEFUL
+answer for the user — not necessarily a perfect one.
 
-CRITICAL: do not require perfect labeling. If the question asks for "current
-liabilities" and the chunks contain a balance sheet that includes "Total
-current liabilities $X", that IS the answer — even if the chunk header says
-"Consolidated Balance Sheet" rather than "Current Liabilities Section".
-Refusing because a value isn't under an exactly-labeled heading is the most
-common reason this agent fails.
+CRITICAL ANTI-REFUSAL POLICY (Sprint 7.6 Day 3 lesson):
+
+Default to "sufficient" unless you have a SPECIFIC, ACTIONABLE follow-up that
+is likely to find missing evidence. Reasons:
+
+1. **Do not require perfect labeling.** If the question asks for "current
+   liabilities" and the chunks contain a balance sheet that includes
+   "Total current liabilities $X", that IS the answer — even if the chunk
+   header says "Consolidated Balance Sheet".
+
+2. **Partial evidence is still useful.** If the question is a ratio
+   (e.g. cash from operations / current liabilities) and you found the
+   numerator but not the denominator, mark "sufficient" — the synthesizer
+   will report the confirmed input plus flag the missing one. The
+   generator will produce a partial answer that's more useful than a
+   refusal. Day 3 review showed the agent looping on missing denominators
+   when partial answers would have served the user better.
+
+3. **Don't loop on the same missing quantity.** If a follow-up came back
+   empty, do NOT re-issue the same kind of follow-up — accept the partial
+   evidence and exit.
+
+4. **Anti-pattern**: emitting "need_more" with a vague follow-up like "find
+   the [missing quantity]" — if the original sub-question already retrieved
+   chunks from the right document section, retrying with the same
+   description is unlikely to help.
 
 Decide:
-  - "sufficient": every required quantity from the decomposition is present
-    in the collected evidence (even if labels vary). The main generator can
-    answer.
-  - "need_more": at least one required quantity is missing. Provide a single,
-    targeted follow-up sub-question to retrieve it. Do NOT exit on
-    "need_more" if you've already used the turn budget — the runtime caps
-    you and will force a synthesis.
+  - "sufficient": (default unless rule below applies). The synthesizer will
+    handle partial-data cases by listing what's confirmed and what's missing.
+  - "need_more": ONLY if you can name a specific section of the source
+    document that's likely to contain the missing quantity AND your earlier
+    sub-questions did not target that section. Provide a CONCRETE follow-up
+    that names the section (e.g. "What does the cash flow statement —
+    NOT the balance sheet — show for accounts receivable changes?").
 
 Original question: {query}
 Decomposition:
@@ -356,7 +416,7 @@ Output (JSON):
   "decision": "sufficient" or "need_more",
   "missing_quantity": null or "...",
   "follow_up_question": null or "...",
-  "reason": "one sentence — why sufficient OR what's missing"
+  "reason": "one sentence — why sufficient OR exactly what specific section the follow-up targets"
 }}"""
 
 AGENT_SYNTHESIZER_SYSTEM_PROMPT = """You are a financial research synthesizer.
