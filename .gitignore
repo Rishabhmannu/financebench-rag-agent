@@ -71,3 +71,6 @@ _course_materials/
 
 # Personal scratch
 Untitled.txt
+
+# Cost tracker — append-only log is gitignored; per-run summaries under by_run/ are committed
+cost_logs/cost_log.jsonl

@@ -508,8 +508,9 @@ def score_with_ragas(
     ground_truths: list[str],
     evaluator_model: str = EVALUATOR_MODEL,
 ) -> dict:
+    from langchain_openai import ChatOpenAI
     from ragas import EvaluationDataset, SingleTurnSample, evaluate
-    from ragas.llms import llm_factory
+    from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import (
         AnswerRelevancy,
         ContextPrecision,
@@ -517,7 +518,13 @@ def score_with_ragas(
         Faithfulness,
     )
 
-    evaluator_llm = llm_factory(evaluator_model)
+    from src.services.cost_tracker import get_cost_handler
+
+    # Wrap the judge LLM with our cost-tracking callback so RAGAS judge spend
+    # also lands in cost_log.jsonl alongside generator/hallucination spend.
+    evaluator_llm = LangchainLLMWrapper(
+        ChatOpenAI(model=evaluator_model, callbacks=[get_cost_handler()])
+    )
     metrics = [
         Faithfulness(llm=evaluator_llm),
         AnswerRelevancy(llm=evaluator_llm),
@@ -877,6 +884,31 @@ def main():
             else:
                 print(f"  {k:40s} {v}")
     print(f"\nSaved: {output_path}")
+
+    # Cost summary — only meaningful if RAG_COST_RUN_ID was set for this process.
+    try:
+        from src.services.cost_tracker import CostTracker, _ActiveContext
+
+        run_id, _ = _ActiveContext.get()
+        if run_id:
+            summary_path = CostTracker.write_run_summary(run_id)
+            run_data = CostTracker.summarize(run_id=run_id)["runs"].get(run_id, {})
+            if run_data:
+                print("\n=== Cost summary ===")
+                print(f"  run_id:    {run_id}")
+                print(f"  total:     ${run_data['cost_usd']:.4f}  ({run_data['calls']} LLM calls)")
+                for model, stats in sorted(
+                    run_data["models"].items(), key=lambda kv: -kv[1]["cost_usd"]
+                ):
+                    print(
+                        f"  {model:<32} ${stats['cost_usd']:>9.4f}  "
+                        f"in={int(stats['input_tokens']):>9,}  out={int(stats['output_tokens']):>8,}  "
+                        f"cache_r={int(stats['cache_read_tokens']):>9,}"
+                    )
+                if summary_path:
+                    print(f"\n  Per-run summary written to: {summary_path}")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"cost summary failed (non-fatal): {exc}")
 
 
 if __name__ == "__main__":

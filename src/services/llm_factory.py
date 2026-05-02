@@ -24,12 +24,18 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from src.config.settings import settings
+from src.services.cost_tracker import get_cost_handler
 
 logger = logging.getLogger(__name__)
 
 
 def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatOpenAI:
-    kwargs = {"model": model, "temperature": temperature, "api_key": settings.OPENAI_API_KEY}
+    kwargs = {
+        "model": model,
+        "temperature": temperature,
+        "api_key": settings.OPENAI_API_KEY,
+        "callbacks": [get_cost_handler()],
+    }
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
     return ChatOpenAI(**kwargs)
@@ -44,6 +50,16 @@ def _anthropic(model: str, temperature: float = 0.0, max_tokens: int = 1024) -> 
         temperature=temperature,
         max_tokens=max_tokens,
         api_key=settings.ANTHROPIC_API_KEY,
+        callbacks=[get_cost_handler()],
+    )
+
+
+def _groq(model: str, temperature: float = 0.0) -> ChatGroq:
+    return ChatGroq(
+        model=model,
+        temperature=temperature,
+        api_key=settings.GROQ_API_KEY,
+        callbacks=[get_cost_handler()],
     )
 
 
@@ -60,7 +76,7 @@ class LLMFactory:
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
         if settings.GROQ_API_KEY:
-            return ChatGroq(model=settings.ROUTER_MODEL, temperature=0, api_key=settings.GROQ_API_KEY)
+            return _groq(settings.ROUTER_MODEL, 0.0)
         logger.warning("Groq API key not set for router, falling back to OpenAI")
         return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
 
@@ -70,7 +86,7 @@ class LLMFactory:
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
         if settings.GROQ_API_KEY:
-            return ChatGroq(model=settings.GRADER_MODEL, temperature=0, api_key=settings.GROQ_API_KEY)
+            return _groq(settings.GRADER_MODEL, 0.0)
         logger.warning("Groq API key not set for grader, falling back to OpenAI")
         return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
 
