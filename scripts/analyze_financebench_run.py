@@ -41,12 +41,6 @@ def _safe_load(path: Path) -> dict | None:
         return None
 
 
-def _index_by_fb_id(per_sample: list[dict] | None) -> dict[str, dict]:
-    if not per_sample:
-        return {}
-    return {s["fb_id"]: s for s in per_sample if s.get("fb_id")}
-
-
 def build_review(input_path: Path) -> tuple[Path, Path]:
     aggregate = _safe_load(input_path)
     if aggregate is None:
@@ -60,8 +54,6 @@ def build_review(input_path: Path) -> tuple[Path, Path]:
     deepeval = _safe_load(input_path.with_suffix(".deepeval.json"))
     correctness = _safe_load(input_path.with_suffix(".correctness.json"))
 
-    deepeval_by_id = _index_by_fb_id((deepeval or {}).get("per_sample"))
-    correctness_by_id = _index_by_fb_id((correctness or {}).get("per_sample"))
     ragas_per_sample = (ragas or {}).get("per_sample") or []
 
     questions = pipeline.get("questions", [])
@@ -69,16 +61,9 @@ def build_review(input_path: Path) -> tuple[Path, Path]:
     contexts = pipeline.get("contexts", [])
     n = len(questions)
 
-    # We need fb_id + gold + company per question; the deepeval/correctness
-    # per_sample files carry that, but if neither exists we fall back to the
-    # FinanceBench dataset on disk.
-    fb_id_lookup: dict[int, dict] = {}
-    for src in (deepeval_by_id.values(), correctness_by_id.values()):
-        for s in src:
-            # crude index by question text; deepeval keeps order so we'll trust order if matched
-            pass
-
-    # Easier path: deepeval per_sample preserves question order (one per cached q).
+    # deepeval/correctness per_sample preserve question order (one per cached
+    # question); use positional lookup as the primary path, fall back to fb_id
+    # match only if needed.
     deepeval_ordered = (deepeval or {}).get("per_sample") or []
     correctness_ordered = (correctness or {}).get("per_sample") or []
 
@@ -86,7 +71,12 @@ def build_review(input_path: Path) -> tuple[Path, Path]:
     for i in range(n):
         q = questions[i]
         a = answers[i]
-        ctxs = contexts[i] or []
+        raw_ctxs = contexts[i] or []
+        # The pipeline writes [""] as a placeholder when zero chunks survive
+        # grading (line 419 of run_financebench.py — defensive for RAGAS/DeepEval
+        # compatibility). Normalize that to an empty list so n_chunks reflects
+        # the real retrieval count instead of the placeholder.
+        ctxs = [c for c in raw_ctxs if c and c.strip()]
 
         # Pull metadata from whichever per-sample source has it
         meta = {}

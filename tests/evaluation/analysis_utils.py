@@ -36,7 +36,15 @@ def is_refusal(answer: str | None) -> bool:
 
 
 def classify_question_type(question: str) -> str:
-    """Classify query shape for slice-level metrics."""
+    """Classify query shape for slice-level metrics.
+
+    Multi-hop refers to questions that require synthesis across multiple
+    sections / sources — comparisons, exclusions of components, "what drove X"
+    decompositions. The bare "if " marker was previously too greedy: it
+    swept up conditional-format calc questions ("Does X have improving Y? If
+    Y is not relevant, explain why...") into multi-hop, conflating two
+    distinct failure shapes. Tightened to specific multi-hop phrasings.
+    """
     q = question.lower()
     calc_markers = (
         "ratio",
@@ -51,7 +59,17 @@ def classify_question_type(question: str) -> str:
         "as a %",
         "in units of percents",
     )
-    multihop_markers = ("exclude", "compare", "driven by", "which segment", "if ")
+    multihop_markers = (
+        "exclude",          # "If we exclude the impact of M&A..."
+        "compare",          # "How does X compare to Y"
+        "compared to",
+        "driven by",        # "decline driven by..."
+        "what drove",       # "What drove operating margin change"
+        "which segment",
+        " vs ",             # "FY2022 vs FY2021"
+        " vs.",
+        "year over year",
+    )
 
     if any(m in q for m in calc_markers):
         return "calc"

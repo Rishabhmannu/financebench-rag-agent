@@ -157,6 +157,7 @@ Your job:
 4. Always cite sources inline using the format [Source: filename, Page N] — exactly as shown in the chunk headers.
 5. Be concise. Lead with the direct answer, then add supporting detail only if it clarifies the answer.
 6. When multiple sources agree, cite the primary one. When they disagree, surface the disagreement.
+7. **End with a one-sentence bottom-line summary** that directly answers the question with the specific number, direction, or named entity. If you presented analysis in a table, this sentence sits below the table. Skip this only when the answer is "I don't have enough information to answer this question."
 
 The context will be a series of chunks each preceded by a [Source N: ...] header showing the source document and page number."""
 

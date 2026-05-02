@@ -19,6 +19,45 @@ DEFAULT_ALIASES: dict[str, set[str]] = {
     "meta": {"meta", "meta platforms", "facebook", "fb"},
 }
 
+# FinanceBench-corpus companies often appear in queries by ticker or common
+# abbreviation ("AMEX", "JPM", "JnJ"). The base FB metadata loader doesn't
+# encode these — it only knows the company's full name. Without these, the
+# entity extractor's dictionary tier returns None for the query, the LLM
+# fallback isn't triggered (no "ambiguous" signal), and retrieval pulls
+# cross-company chunks. Sprint 7.6 Day 1 review surfaced this as Mode 1
+# (cross-entity contamination) on AMEX/JPM cases.
+FINANCEBENCH_TICKER_ALIASES: dict[str, set[str]] = {
+    "3m": {"mmm"},
+    "activision_blizzard": {"atvi"},
+    "amazon": {"amzn"},
+    "american_express": {"amex"},
+    "american_water_works": {"awk"},
+    "boeing": {"ba"},
+    "best_buy": {"bby"},
+    "block": {"sq"},  # Square renamed to Block
+    "coca_cola": {"ko"},
+    "costco": {"cost"},
+    "cvs_health": {"cvs"},
+    "fedex": {"fdx"},
+    "intel": {"intc"},
+    "johnson_johnson": {"jnj", "j&j", "j and j"},
+    "jpmorgan": {"jpm", "jpmorgan chase"},
+    "kraft_heinz": {"khc"},
+    "lockheed_martin": {"lmt"},
+    "mcdonalds": {"mcd"},
+    "mgm_resorts": {"mgm"},
+    "netflix": {"nflx"},
+    "nike": {"nke"},
+    "oracle": {"orcl"},
+    "paypal": {"pypl"},
+    "pepsico": {"pep"},
+    "pfizer": {"pfe"},
+    "salesforce": {"crm"},
+    "ulta_beauty": {"ulta"},
+    "verizon": {"vz"},
+    "walmart": {"wmt"},
+}
+
 
 def _normalize(value: str) -> str:
     text = (value or "").strip().lower()
@@ -49,8 +88,12 @@ def canonical_company_slug(company_name: str | None) -> str | None:
 
 @lru_cache(maxsize=1)
 def build_company_alias_map() -> dict[str, set[str]]:
-    """Load alias map from defaults + FinanceBench metadata if available."""
+    """Load alias map from defaults + FinanceBench tickers + FB metadata if available."""
     aliases = {slug: set(vals) for slug, vals in DEFAULT_ALIASES.items()}
+
+    # Merge in FinanceBench ticker / common-abbreviation overrides
+    for slug, ticker_set in FINANCEBENCH_TICKER_ALIASES.items():
+        aliases.setdefault(slug, set()).update(ticker_set)
 
     fb_path = Path("data/raw/financebench/financebench_document_information.jsonl")
     if fb_path.exists():

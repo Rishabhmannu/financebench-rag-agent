@@ -141,7 +141,7 @@ def test_extract_metadata_returns_complete_dict():
     doc = {"text": "Apple Inc. annual report for fiscal year.", "num_pages": 42}
     result = extract_metadata(Path("apple_10k_2024.pdf"), doc)
 
-    required_keys = {"doc_type", "company", "company_name", "confidentiality", "source_file", "num_pages"}
+    required_keys = {"doc_type", "company", "company_name", "confidentiality", "source_file", "num_pages", "fiscal_year"}
     assert required_keys == set(result.keys()), (
         f"Missing keys: {required_keys - set(result.keys())}"
     )
