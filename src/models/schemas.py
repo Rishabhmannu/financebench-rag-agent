@@ -33,6 +33,14 @@ class InjectionCheck(BaseModel):
     reason: str
 
 
+class RetrievalEvalDecision(BaseModel):
+    """Structured output for selective retrieval evaluator."""
+
+    decision: Literal["accept", "retry"] = "accept"
+    confidence: float = Field(ge=0.0, le=1.0, default=0.5)
+    reason: str = ""
+
+
 class EntityExtraction(BaseModel):
     """Structured output for entity extraction (Sprint 7a.v2).
 
@@ -41,7 +49,7 @@ class EntityExtraction(BaseModel):
     the query is comparative (multiple companies), generic, or doesn't specify.
     """
 
-    company: Literal["apple", "microsoft", "tesla"] | None = None
+    company: str | None = None
     fiscal_year: int | None = None
 
 

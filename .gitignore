@@ -65,3 +65,9 @@ logs/
 
 # Claude Code local tool state
 .claude/
+
+# CampusX course materials (reference only, not part of project — see CLAUDE.md)
+_course_materials/
+
+# Personal scratch
+Untitled.txt

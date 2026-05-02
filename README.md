@@ -71,6 +71,81 @@ Evaluated on 61 Q&A pairs against real SEC 10-K filings for AAPL / MSFT / TSLA f
 
 Raw scores: [`baseline_real_sec_fy2023.json`](tests/evaluation/eval_results/baseline_real_sec_fy2023.json), [`after_sprint7a_v2_entity_aware.json`](tests/evaluation/eval_results/after_sprint7a_v2_entity_aware.json), [`after_sprint7b_claude_sonnet.json`](tests/evaluation/eval_results/after_sprint7b_claude_sonnet.json), [`after_sprint7_5_router_fix.json`](tests/evaluation/eval_results/after_sprint7_5_router_fix.json), [`after_sprint7_5_router_fix_claude.json`](tests/evaluation/eval_results/after_sprint7_5_router_fix_claude.json).
 
+### Co-primary benchmark governance
+
+- SEC 61-Q evaluation remains the primary regression gate for graph + prompt changes.
+- FinanceBench (150 Q across 32 companies) is tracked as a co-primary external benchmark for generalization.
+- Evaluation outputs include diagnostics slices (`refusal_rate`, question-type slices `lookup`/`multi_hop`/`calc`, and contamination buckets) in addition to aggregate metrics.
+- Baseline artifacts are checksum-frozen in [`baseline_manifest.json`](tests/evaluation/eval_results/baseline_manifest.json).
+- Pipeline caches embed full reproducibility metadata (git SHA, settings snapshot, Qdrant collection state, judge model) so two runs can be **proven** to share identical config post-hoc.
+
+### FinanceBench external benchmark — pypdf vs docling A/B (Sprint 7.5 Step 4)
+
+Final clean run, both tracks under identical code (git `144ac41f` + reliability patches), identical settings, `FORCE_OPENAI_ONLY=true` (GPT-4o-mini for generator + judge), `RERANKER_DEVICE=cpu`, LLM Guard runtime disabled. Patronus skipped (free-tier credits exhausted); DeepEval used as second-judge framework.
+
+| Metric | pypdf RAGAS | docling RAGAS | pypdf DeepEval | docling DeepEval |
+|---|:---:|:---:|:---:|:---:|
+| Faithfulness | **0.532** | 0.417 | **0.854** | 0.842 |
+| Answer Relevancy | **0.384** | 0.301 | **0.735** | 0.714 |
+| Context Precision | 0.529 | 0.521 | **0.591** | 0.552 |
+| Context Recall | **0.248** | 0.242 | 0.488 | **0.492** |
+| Refusal rate | **22.0%** (33/150) | 29.3% (44/150) | — | — |
+| Empty-context rate | **26.0%** (39/150) | 31.3% (47/150) | — | — |
+| Pipeline runtime | **43 min** | 92 min | — | — |
+
+**Decision: pypdf is the canonical FinanceBench parser.** Wins on every aggregate metric, has a 7.3 pp lower refusal rate, 5.3 pp lower empty-context rate, and runs 2.1× faster.
+
+**Nuance worth knowing**: when both systems do produce an answer, docling is essentially equivalent on per-attempt quality (within 0.04 on every DeepEval dimension) and slightly better on contextual recall (+5.5 pp on the answered subset). Docling's table-aware chunks really do contain more per chunk — but its 1500-char chunk size gives the retriever fewer "shots on goal" than pypdf's 800-char chunks, and that recall difference dominates the aggregate result.
+
+**Estimated pass rate** (1 − refusal_rate × answered-recall): pypdf ≈ 51%, docling ≈ 50%. Both land comfortably in the published RAG-baseline range (38–55% per FinanceBench paper [Islam et al, Patronus 2023] and FinGEAR [EMNLP 2025]), above the GPT-4-Turbo baseline RAG (38–43%), below FinGEAR graph-augmented SOTA (~55%).
+
+Raw scores: [`financebench_pypdf_clean.json`](tests/evaluation/eval_results/financebench_pypdf_clean.json), [`financebench_docling_clean.json`](tests/evaluation/eval_results/financebench_docling_clean.json), DeepEval per-sample at [`financebench_pypdf_clean.deepeval.json`](tests/evaluation/eval_results/financebench_pypdf_clean.deepeval.json) and [`financebench_docling_clean.deepeval.json`](tests/evaluation/eval_results/financebench_docling_clean.deepeval.json).
+
+Reproduce a clean run end-to-end:
+
+```bash
+# pypdf track (~75 min pipeline + 4 min RAGAS + 12 min DeepEval)
+python tests/evaluation/run_financebench.py \
+  --output tests/evaluation/eval_results/financebench_pypdf_clean.json \
+  --collection financebench_corpus_pypdf_clean \
+  --ragas-judge-model gpt-4o-mini \
+  --deepeval-concurrency 6 \
+  --flush-every 5
+
+# docling track (same command; swap output + collection name)
+python tests/evaluation/run_financebench.py \
+  --output tests/evaluation/eval_results/financebench_docling_clean.json \
+  --collection financebench_corpus_docling_clean \
+  --ragas-judge-model gpt-4o-mini \
+  --deepeval-concurrency 6 \
+  --flush-every 5
+
+# If interrupted, append --resume-pipeline to the same command — partial cache
+# is flushed every 5 questions and resumes at the last checkpoint.
+```
+
+Optional: re-enable Patronus as a third judge (requires funded `PATRONUS_API_KEY`):
+
+```bash
+python tests/evaluation/run_financebench.py ... --enable-patronus
+```
+
+### Dual-judge reliability check
+
+Run a sampled re-score with two different judge families and generate an agreement report:
+
+```bash
+python scripts/dual_judge_check.py \
+  --pipeline-cache tests/evaluation/eval_results/financebench_pypdf_clean.pipeline.json \
+  --dataset financebench \
+  --primary-judge openai:gpt-4o-mini \
+  --secondary-judge anthropic:claude-sonnet-4-5 \
+  --sample-size 30 \
+  --output tests/evaluation/eval_results/financebench_dual_judge_report.json
+```
+
+The report includes per-metric mean deltas, mean absolute differences, agreement rates under a configurable threshold, and per-sample score diffs for manual audit.
+
 An earlier baseline on synthetic PDFs ([`baseline_pre_optimization.json`](tests/evaluation/eval_results/baseline_pre_optimization.json)) is preserved for historical comparison — it was replaced because the synthetic corpus was too small (36 chunks) to exercise the retrieval stack realistically.
 
 ## Quick Start

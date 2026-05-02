@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+
+    # --- External eval services ---
+    # Patronus AI hosted fuzzy-match judge for FinanceBench external comparability.
+    # Free tier covers 150 samples per month (sufficient for one FinanceBench run).
+    PATRONUS_API_KEY: str = ""
     # Override: force all LLM calls through OpenAI (used to bypass Groq free-tier rate
     # limits during eval runs). Default false = prod hybrid Groq + OpenAI + Anthropic.
     FORCE_OPENAI_ONLY: bool = False
@@ -58,6 +63,17 @@ class Settings(BaseSettings):
     RETRIEVAL_TOP_K: int = 50
     # Reranker: cross-encoder narrows to the final set that feeds the grader + generator.
     RERANKER_TOP_K: int = 8
+    # Non-LLM post-reranker validation
+    ENABLE_DETERMINISTIC_VALIDATOR: bool = True
+    VALIDATOR_MIN_KEEP: int = 3
+    # Learned LTR gate (Phase 2)
+    ENABLE_LTR_GATE: bool = False
+    LTR_GATE_MODEL_PATH: str = "data/models/ltr_gate.json"
+    LTR_GATE_HIGH_CONFIDENCE: float = 0.9
+    LTR_GATE_LOW_CONFIDENCE: float = 0.1
+    # Optional selective retrieval evaluator (Phase 4)
+    ENABLE_SELECTIVE_RETRIEVAL_EVALUATOR: bool = False
+    RETRIEVAL_EVALUATOR_MIN_CONFIDENCE: float = 0.55
 
     # --- Embedding ---
     EMBEDDING_MODEL: str = "text-embedding-3-small"

@@ -24,24 +24,15 @@ import re
 from langchain_core.messages import AIMessage, HumanMessage
 
 from src.config.prompts import ENTITY_EXTRACTOR_PROMPT
-from src.ingestion.metadata_extractor import KNOWN_COMPANIES
 from src.models.schemas import EntityExtraction
 from src.models.state import RAGState
+from src.services.company_registry import all_company_slugs, build_company_alias_map, canonical_company_slug
 from src.services.llm_factory import LLMFactory
 
 logger = logging.getLogger(__name__)
 
-# Ticker / alias dictionary — slug → list of surface forms. Case-insensitive
-# matching via word boundaries so "tsla" matches but "tslasomething" doesn't.
-COMPANY_ALIASES: dict[str, list[str]] = {
-    "apple": ["apple", "aapl", "apple inc"],
-    "microsoft": ["microsoft", "msft", "microsoft corp", "microsoft corporation"],
-    "tesla": ["tesla", "tsla", "tesla inc", "tesla motors"],
-}
-# Validate at import time that every slug has at least one alias
-for slug in KNOWN_COMPANIES:
-    if slug in COMPANY_ALIASES:
-        assert COMPANY_ALIASES[slug], f"Empty alias list for {slug}"
+# Runtime-loaded alias map supports the base corpus + FinanceBench.
+COMPANY_ALIASES = build_company_alias_map()
 
 # Year pattern: 2020-2029 (bounds the plausible fiscal years for current filings)
 YEAR_PATTERN = re.compile(r"\b(20[2-9]\d)\b")
@@ -57,7 +48,7 @@ def _dictionary_match(query: str) -> tuple[str | None, bool]:
     """
     q = query.lower()
     matches: set[str] = set()
-    for slug, aliases in COMPANY_ALIASES.items():
+    for slug, aliases in build_company_alias_map().items():
         for alias in aliases:
             # Word-boundary match — avoids "appleseed" matching "apple"
             if re.search(rf"\b{re.escape(alias)}\b", q):
@@ -110,6 +101,8 @@ def _llm_fallback(query: str, messages: list) -> EntityExtraction:
             query=query,
         )
         result: EntityExtraction = structured.invoke([HumanMessage(content=prompt)])
+        if result.company:
+            result.company = canonical_company_slug(result.company)
         return result
     except Exception as e:
         logger.warning(f"Entity LLM fallback failed, returning empty extraction: {e}")
@@ -146,6 +139,12 @@ def entity_extractor_node(state: RAGState) -> dict:
         # No company and no pronouns — generic query. Skip filter (retrieval
         # will search across all companies, which is the intended behavior).
         logger.info(f"No target entity extracted for query: {query[:60]}...")
+
+    if slug and slug not in all_company_slugs():
+        # Accept unknown slug shape if it is normalized (future corpora), but
+        # prevent accidental long-text outputs from structured parser failures.
+        normalized = canonical_company_slug(slug)
+        slug = normalized
 
     return {
         "target_company": slug,

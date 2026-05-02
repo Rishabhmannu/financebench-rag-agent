@@ -7,6 +7,7 @@ from src.graph.edges import (
     route_after_guardrails,
     route_after_hallucination,
     route_after_hitl,
+    route_after_retrieval_evaluator,
     route_after_router,
 )
 from src.graph.nodes.entity_extractor import entity_extractor_node
@@ -17,6 +18,7 @@ from src.graph.nodes.hallucination import hallucination_checker_node
 from src.graph.nodes.hitl_gate import hitl_gate_node
 from src.graph.nodes.query_rewriter import query_rewriter_node
 from src.graph.nodes.rbac_gate import rbac_gate
+from src.graph.nodes.retrieval_evaluator import retrieval_evaluator_node
 from src.graph.nodes.reranker import reranker_node
 from src.graph.nodes.response_formatter import response_formatter_node
 from src.graph.nodes.retrieval import retrieval_node
@@ -41,6 +43,7 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_node("retrieval", retrieval_node)
     graph.add_node("reranker", reranker_node)
     graph.add_node("grader", grader_node)
+    graph.add_node("retrieval_evaluator", retrieval_evaluator_node)
     graph.add_node("query_rewriter", query_rewriter_node)
     graph.add_node("no_info_response", no_info_node)
     graph.add_node("generator", generator_node)
@@ -69,7 +72,12 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_edge("clarification_response", END)
 
     graph.add_edge("retrieval", "reranker")
-    graph.add_edge("reranker", "grader")
+    graph.add_edge("reranker", "retrieval_evaluator")
+    graph.add_conditional_edges(
+        "retrieval_evaluator",
+        route_after_retrieval_evaluator,
+        {"accept": "grader", "retry": "query_rewriter"},
+    )
 
     graph.add_conditional_edges(
         "grader",

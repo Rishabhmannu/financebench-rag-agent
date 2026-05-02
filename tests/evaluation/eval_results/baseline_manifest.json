@@ -1,0 +1,31 @@
+{
+  "created_at": "2026-04-25",
+  "purpose": "frozen baselines for dual benchmark gates",
+  "artifacts": [
+    {
+      "path": "tests/evaluation/eval_results/baseline_real_sec_fy2023.json",
+      "sha256": "4c1403011f43b4e902c0c14dd5228f3f5efe1eed63495e2cd7b570adf30b5a18",
+      "size_bytes": 417
+    },
+    {
+      "path": "tests/evaluation/eval_results/baseline_real_sec_fy2023.pipeline.json",
+      "sha256": "9b1ba9ac1cf96d4b46df6d1cd0d3b729608d3302e7f258f825ccb06d998347ce",
+      "size_bytes": 110637
+    },
+    {
+      "path": "tests/evaluation/eval_results/financebench_baseline.json",
+      "sha256": "00e1733520db37dbf8a17c19f6187786ab3cf0d693bcad28212a2515c7282b1c",
+      "size_bytes": 384
+    },
+    {
+      "path": "tests/evaluation/eval_results/financebench_baseline.pipeline.json",
+      "sha256": "2277f0991e563f3ee1b5c97e2c72540cff362dc0665e1a5beb1c3911beae185a",
+      "size_bytes": 354936
+    },
+    {
+      "path": "tests/evaluation/eval_results/financebench_baseline.patronus.json",
+      "sha256": "8b7142b29bb289e55e69fba3ed60c9f2f8ebcc5ebab6494a821b7a884118be31",
+      "size_bytes": 465666
+    }
+  ]
+}

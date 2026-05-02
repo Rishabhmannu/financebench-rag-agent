@@ -45,12 +45,12 @@ ENTITY_EXTRACTOR_PROMPT = """You extract structured entities from a financial Q&
 
 Given the query (and optionally the last turn of the conversation for context),
 return JSON with exactly these keys:
-  - "company": one of ["apple", "microsoft", "tesla", null]
+  - "company": lowercase slug string (e.g. "apple", "microsoft", "johnson_johnson") or null
        null if the query mentions multiple companies (comparative) or none at all.
   - "fiscal_year": integer year (e.g. 2023, 2024, 2025) or null if no year is specified.
 
 Rules:
-  - Use "apple"/"microsoft"/"tesla" lowercase slugs only — no display names.
+  - Use lowercase slug format only (letters/numbers/underscore), no display names.
   - If the query is about "both Apple and Microsoft" or "all three companies", return null for company.
   - Resolve common aliases: MSFT → microsoft, AAPL → apple, TSLA → tesla.
   - If a pronoun refers to a company mentioned earlier in the conversation, resolve it using the conversation history.
@@ -195,6 +195,22 @@ Generated answer:
 {answer}
 
 Check if the answer is fully grounded in the source documents."""
+
+RETRIEVAL_EVALUATOR_PROMPT = """You are a retrieval-quality evaluator.
+Given a user question and a shortlist of retrieved chunks, assess if the shortlist
+is likely sufficient for a faithful answer.
+
+Return JSON with:
+- "decision": "accept" or "retry"
+- "confidence": float between 0 and 1
+- "reason": short explanation
+
+Question:
+{query}
+
+Top chunks:
+{chunks}
+"""
 
 CLARIFICATION_RESPONSE = """I'm a financial document assistant. I can help you with:
 - Querying company financial reports (10-K filings)

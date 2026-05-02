@@ -61,19 +61,23 @@ def compute_sparse_vectors(texts: list[str]) -> list[SparseVector]:
     ]
 
 
-def ensure_collection(client: QdrantClient) -> None:
+def ensure_collection(client: QdrantClient, collection_name: str | None = None) -> None:
     """Create the collection and payload indexes if they don't exist.
 
     Schema: named dense vector + named sparse vector. If an older single-vector
     collection exists, callers should drop it first — this function will not
     migrate an existing collection's schema.
+
+    `collection_name` override lets callers target non-default collections
+    (e.g. FinanceBench corpus isolated from the production collection).
     """
+    target = collection_name or settings.QDRANT_COLLECTION
     collections = [c.name for c in client.get_collections().collections]
-    if settings.QDRANT_COLLECTION in collections:
+    if target in collections:
         return
 
     client.create_collection(
-        collection_name=settings.QDRANT_COLLECTION,
+        collection_name=target,
         vectors_config={
             DENSE_VECTOR_NAME: VectorParams(
                 size=settings.EMBEDDING_DIMENSIONS, distance=Distance.COSINE
@@ -86,11 +90,20 @@ def ensure_collection(client: QdrantClient) -> None:
     # Payload indexes for fast RBAC filtering
     for field in ("doc_type", "confidentiality", "company"):
         client.create_payload_index(
-            collection_name=settings.QDRANT_COLLECTION,
+            collection_name=target,
             field_name=field,
             field_schema=PayloadSchemaType.KEYWORD,
         )
-    logger.info(f"Created hybrid collection '{settings.QDRANT_COLLECTION}' with dense + sparse vectors")
+    # Optional year filter index. Backward compatible with existing collections.
+    try:
+        client.create_payload_index(
+            collection_name=target,
+            field_name="fiscal_year",
+            field_schema=PayloadSchemaType.INTEGER,
+        )
+    except Exception:
+        pass
+    logger.info(f"Created hybrid collection '{target}' with dense + sparse vectors")
 
 
 def build_rbac_filter(allowed_doc_types: list[str], allowed_confidentiality: list[str]) -> Filter | None:
@@ -110,6 +123,7 @@ def build_retrieval_filter(
     allowed_doc_types: list[str],
     allowed_confidentiality: list[str],
     target_company: str | None = None,
+    target_fiscal_year: int | None = None,
 ) -> Filter | None:
     """Build a combined retrieval filter: RBAC + entity (Sprint 7a.v2).
 
@@ -128,6 +142,8 @@ def build_retrieval_filter(
 
     if target_company:
         conditions.append(FieldCondition(key="company", match=MatchAny(any=[target_company])))
+    if target_fiscal_year:
+        conditions.append(FieldCondition(key="fiscal_year", match=MatchAny(any=[target_fiscal_year])))
 
     return Filter(must=conditions) if conditions else None
 

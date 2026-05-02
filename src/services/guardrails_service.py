@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 logger = logging.getLogger(__name__)
@@ -30,17 +31,36 @@ _llm_guard_available = None
 
 
 def _get_injection_scanner():
-    """Lazy-initialize LLM Guard PromptInjection scanner."""
+    """Lazy-initialize LLM Guard PromptInjection scanner.
+
+    Backend selection (in priority order):
+      1. `RAG_DISABLE_LLM_GUARD=1`  → skip entirely. Use during long eval runs
+         where MPS pressure causes OOM and the scanner adds no signal anyway
+         (FinanceBench questions aren't adversarial; Layers 1 + 3 cover real
+         attacks at lower cost).
+      2. `LLM_GUARD_USE_ONNX=1` (default) → ONNX runtime on CPU. Same model
+         weights, drastically lower memory than the PyTorch/MPS backend, and
+         the latency hit is negligible (~50-100ms per scan).
+      3. Otherwise → PyTorch backend (auto-picks MPS on Apple Silicon, which
+         is fast but tends to OOM after ~50 scans on M-series hardware due to
+         unified memory pressure).
+    """
     global _injection_scanner, _llm_guard_available
+    if os.environ.get("RAG_DISABLE_LLM_GUARD") == "1":
+        if _llm_guard_available is None:
+            logger.info("LLM Guard explicitly disabled via RAG_DISABLE_LLM_GUARD=1; Layer 2 skipped")
+        _llm_guard_available = False
+        return None
     if _llm_guard_available is False:
         return None
     if _injection_scanner is None:
         try:
             from llm_guard.input_scanners import PromptInjection
 
-            _injection_scanner = PromptInjection(threshold=0.9)
+            use_onnx = os.environ.get("LLM_GUARD_USE_ONNX", "1") == "1"
+            _injection_scanner = PromptInjection(threshold=0.9, use_onnx=use_onnx)
             _llm_guard_available = True
-            logger.info("LLM Guard PromptInjection scanner initialized")
+            logger.info(f"LLM Guard PromptInjection scanner initialized (use_onnx={use_onnx})")
         except Exception as e:
             logger.warning(f"LLM Guard not available, Layer 2 disabled: {e}")
             _llm_guard_available = False

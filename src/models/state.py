@@ -35,6 +35,11 @@ class RAGState(TypedDict):
 
     # --- Reranking ---
     reranked_chunks: list[dict]  # Cross-encoder top-K selected from retrieved_chunks
+    candidate_diagnostics: list[dict]  # Optional per-candidate validation/LTR diagnostics
+
+    # --- Optional selective retrieval evaluator ---
+    retrieval_evaluator_confidence: float | None
+    retrieval_evaluator_decision: str | None  # "accept", "retry"
 
     # --- Grading ---
     relevant_chunks: list[dict]

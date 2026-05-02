@@ -9,6 +9,8 @@ import logging
 import re
 from pathlib import Path
 
+from src.services.company_registry import build_company_alias_map, canonical_company_slug
+
 logger = logging.getLogger(__name__)
 
 # Heuristic patterns for document type detection
@@ -33,6 +35,12 @@ UNKNOWN_COMPANY_SLUG = "unknown"
 UNKNOWN_COMPANY_NAME = "Unknown"
 
 
+def _extract_fiscal_year(filename: str, text_preview: str) -> int | None:
+    combined = f"{filename} {text_preview}"
+    m = re.search(r"\b(20[0-3]\d)\b", combined)
+    return int(m.group(1)) if m else None
+
+
 def extract_metadata(file_path: Path, document: dict, doc_type_override: str | None = None) -> dict:
     """Extract metadata from a document file."""
     filename = file_path.stem.lower()
@@ -52,11 +60,13 @@ def extract_metadata(file_path: Path, document: dict, doc_type_override: str | N
     # Extract company as a lowercase slug for filtering; name for display
     company_slug = _extract_company_slug(filename, text_preview)
     company_name = KNOWN_COMPANIES.get(company_slug, UNKNOWN_COMPANY_NAME)
+    fiscal_year = _extract_fiscal_year(filename, text_preview)
 
     return {
         "doc_type": doc_type,
         "company": company_slug,
         "company_name": company_name,
+        "fiscal_year": fiscal_year,
         "confidentiality": confidentiality,
         "source_file": file_path.name,
         "num_pages": document.get("num_pages", 0),
@@ -76,6 +86,14 @@ def _detect_doc_type(filename: str, text_preview: str) -> str:
 def _extract_company_slug(filename: str, text_preview: str) -> str:
     """Return a lowercase slug for the company, or UNKNOWN_COMPANY_SLUG if not found."""
     combined = filename + " " + text_preview
+    normalized = combined.lower()
+    for slug, aliases in build_company_alias_map().items():
+        for alias in aliases:
+            if alias and alias in normalized:
+                return slug
+    inferred = canonical_company_slug(filename)
+    if inferred:
+        return inferred
     for slug in KNOWN_COMPANIES:
         if slug in combined:
             return slug

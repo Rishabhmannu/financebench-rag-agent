@@ -11,14 +11,22 @@ The model is cached in ~/.cache/huggingface after the first run.
 
 The reranker is loaded lazily on first use so importing this module has zero
 startup cost for code paths that never touch retrieval.
+
+Device selection: defaults to CPU for stability (Apple Silicon's MPS pool is
+shared with the OS unified memory and tends to OOM after ~50 inferences during
+long FinanceBench eval runs). Override with `RERANKER_DEVICE=mps|cuda|cpu` env
+var. CPU latency is ~100-200ms for 8-chunk batches, well within budget; MPS is
+~3x faster but unstable for our long-running eval workload.
 """
 
 import logging
+import os
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
 RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
+DEFAULT_DEVICE = "cpu"
 
 
 @lru_cache(maxsize=1)
@@ -26,8 +34,9 @@ def get_reranker():
     """Load the cross-encoder once and cache it. First call downloads the model."""
     from sentence_transformers import CrossEncoder
 
-    logger.info(f"Loading reranker: {RERANKER_MODEL} (first run downloads ~568MB)")
-    return CrossEncoder(RERANKER_MODEL)
+    device = os.environ.get("RERANKER_DEVICE", DEFAULT_DEVICE)
+    logger.info(f"Loading reranker: {RERANKER_MODEL} on device={device} (first run downloads ~568MB)")
+    return CrossEncoder(RERANKER_MODEL, device=device)
 
 
 def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:

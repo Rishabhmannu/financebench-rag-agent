@@ -56,6 +56,11 @@ jobs:
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
 
+      - name: Co-primary gate (SEC + FinanceBench baseline)
+        run: python tests/evaluation/check_dual_thresholds.py --sec eval_results.json --financebench tests/evaluation/eval_results/financebench_baseline.json
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
       - name: Upload evaluation results
         uses: actions/upload-artifact@v4
         with:

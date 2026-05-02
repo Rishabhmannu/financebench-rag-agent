@@ -19,6 +19,7 @@ def retrieval_node(state: RAGState) -> dict:
     allowed_doc_types = state.get("allowed_doc_types", ["10k"])
     user_role = state.get("user_role", "analyst")
     target_company = state.get("target_company")
+    target_fiscal_year = state.get("target_fiscal_year")
 
     permissions = get_permissions(user_role)
     allowed_confidentiality = permissions["allowed_confidentiality"]
@@ -29,6 +30,7 @@ def retrieval_node(state: RAGState) -> dict:
             allowed_doc_types=allowed_doc_types,
             allowed_confidentiality=allowed_confidentiality,
             target_company=target_company,
+            target_fiscal_year=target_fiscal_year,
         )
         client = get_qdrant_client()
 
@@ -40,7 +42,43 @@ def retrieval_node(state: RAGState) -> dict:
             top_k=settings.RETRIEVAL_TOP_K,
         )
 
-        filter_info = f"company={target_company}" if target_company else "no-company-filter"
+        # Progressive filter relaxation: if strict entity+year filtering yields
+        # too few candidates, drop year first, then company.
+        if len(chunks) < settings.GRADING_MIN_RELEVANT_CHUNKS:
+            if target_company and target_fiscal_year:
+                relaxed_filter = build_retrieval_filter(
+                    allowed_doc_types=allowed_doc_types,
+                    allowed_confidentiality=allowed_confidentiality,
+                    target_company=target_company,
+                    target_fiscal_year=None,
+                )
+                relaxed = hybrid_search(
+                    client=client,
+                    query_text=query,
+                    query_dense_vector=query_vector,
+                    rbac_filter=relaxed_filter,
+                    top_k=settings.RETRIEVAL_TOP_K,
+                )
+                if len(relaxed) > len(chunks):
+                    chunks = relaxed
+            if len(chunks) < settings.GRADING_MIN_RELEVANT_CHUNKS and target_company:
+                relaxed_filter = build_retrieval_filter(
+                    allowed_doc_types=allowed_doc_types,
+                    allowed_confidentiality=allowed_confidentiality,
+                    target_company=None,
+                    target_fiscal_year=None,
+                )
+                relaxed = hybrid_search(
+                    client=client,
+                    query_text=query,
+                    query_dense_vector=query_vector,
+                    rbac_filter=relaxed_filter,
+                    top_k=settings.RETRIEVAL_TOP_K,
+                )
+                if len(relaxed) > len(chunks):
+                    chunks = relaxed
+
+        filter_info = f"company={target_company},year={target_fiscal_year}" if target_company else "no-company-filter"
         logger.info(f"Retrieved {len(chunks)} hybrid candidates ({filter_info}) for: {query[:60]}...")
         return {"retrieved_chunks": chunks}
 

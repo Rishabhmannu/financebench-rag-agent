@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from langchain_core.messages import HumanMessage
 
@@ -6,9 +7,19 @@ from src.config.prompts import GRADER_PROMPT
 from src.config.settings import settings
 from src.models.schemas import GradeResult
 from src.models.state import RAGState
+from src.services.candidate_validator import validate_candidates
 from src.services.llm_factory import LLMFactory
+from src.services.llm_retry import retry_llm_call
+from src.services.ltr_gate_service import build_features, dump_feature_log, score_candidates
 
 logger = logging.getLogger(__name__)
+
+# Parallelism for the per-chunk LLM grading stage. Each chunk's grader call is
+# an independent OpenAI request, so an 8-wide ThreadPoolExecutor lets all 8
+# (or however many survived stages 1+2) overlap. OpenAI tier-1 in-flight cap
+# comfortably absorbs this for our eval workload (one query at a time, 8
+# in-flight grader calls = well under tier limits).
+_GRADER_PARALLELISM = 8
 
 
 def _entity_match(chunk: dict, target_company: str | None) -> bool:
@@ -45,6 +56,7 @@ def grader_node(state: RAGState) -> dict:
     query = state.get("sanitized_query", "")
     chunks = state.get("reranked_chunks") or state.get("retrieved_chunks", [])
     target_company = state.get("target_company")
+    target_fiscal_year = state.get("target_fiscal_year")
 
     if not chunks:
         return {
@@ -52,11 +64,36 @@ def grader_node(state: RAGState) -> dict:
             "grading_results": [],
         }
 
+    candidate_diagnostics: list[dict] = []
+    if settings.ENABLE_DETERMINISTIC_VALIDATOR:
+        chunks, validator_diag = validate_candidates(
+            query=query,
+            candidates=chunks,
+            target_company=target_company,
+            target_fiscal_year=target_fiscal_year,
+            min_keep=settings.VALIDATOR_MIN_KEEP,
+        )
+        candidate_diagnostics.extend(validator_diag)
+
+    ltr_scores = None
+    if settings.ENABLE_LTR_GATE:
+        feats = build_features(query=query, candidates=chunks, target_company=target_company, target_fiscal_year=target_fiscal_year)
+        ltr_scores = score_candidates(feats, settings.LTR_GATE_MODEL_PATH)
+        dump_feature_log("data/diagnostics/ltr_features.jsonl", query, feats, ltr_scores)
+        if ltr_scores:
+            candidate_diagnostics.extend(
+                {"candidate_id": i, "ltr_score": s} for i, s in enumerate(ltr_scores)
+            )
+
     llm = LLMFactory.get_grader_llm()
     structured_llm = llm.with_structured_output(GradeResult)
 
-    grading_results = []
-    relevant_chunks = []
+    # Pre-pass (sequential, no LLM): apply stages 1 and 2 to partition chunks
+    # into auto-decided (entity-reject / LTR-keep / LTR-drop) vs needs-LLM-grading.
+    # Index each chunk's outcome into a dict so we can rejoin in original order
+    # after the parallel LLM stage completes.
+    pending_indices: list[int] = []
+    decisions: dict[int, dict] = {}  # chunk_id -> {relevant, reason}
     rejected_by_entity = 0
 
     for i, chunk in enumerate(chunks):
@@ -64,31 +101,70 @@ def grader_node(state: RAGState) -> dict:
         if not _entity_match(chunk, target_company):
             rejected_by_entity += 1
             chunk_co = (chunk.get("metadata") or {}).get("company", "?")
-            grading_results.append({
-                "chunk_id": i,
+            decisions[i] = {
                 "relevant": False,
                 "reason": f"Entity mismatch: chunk is from '{chunk_co}', query targets '{target_company}'",
-            })
+            }
             continue
 
-        # Stage 2: LLM topic-relevance grading
+        # Stage 2: LTR high-confidence keep/drop (optional)
+        if ltr_scores is not None and i < len(ltr_scores):
+            s = ltr_scores[i]
+            if s <= settings.LTR_GATE_LOW_CONFIDENCE:
+                decisions[i] = {"relevant": False, "reason": f"LTR gate low-confidence drop ({s:.3f})"}
+                continue
+            if s >= settings.LTR_GATE_HIGH_CONFIDENCE:
+                decisions[i] = {"relevant": True, "reason": f"LTR gate high-confidence keep ({s:.3f})"}
+                continue
+
+        # Stage 3 candidate — needs an LLM call
+        pending_indices.append(i)
+
+    # Stage 3 (parallel): LLM topic-relevance grading on the survivors.
+    # Each call wrapped in retry_llm_call so transient OpenAI hiccups
+    # (connection resets, rate-limit bursts, momentary 5xx) don't silently
+    # turn into false-irrelevant verdicts — which previously corrupted ~1
+    # FinanceBench question per run as a refusal in the cache.
+    def _grade_one(idx: int) -> tuple[int, dict]:
+        chunk = chunks[idx]
+        prompt = GRADER_PROMPT.format(query=query, chunk=chunk["content"])
+
+        def _invoke() -> GradeResult:
+            return structured_llm.invoke([HumanMessage(content=prompt)])
+
         try:
-            prompt = GRADER_PROMPT.format(query=query, chunk=chunk["content"])
-            result: GradeResult = structured_llm.invoke([HumanMessage(content=prompt)])
-            grading_results.append({"chunk_id": i, "relevant": result.relevant, "reason": result.reason})
-            if result.relevant:
-                relevant_chunks.append(chunk)
+            result: GradeResult = retry_llm_call(_invoke, label=f"grader chunk {idx}")
+            return idx, {"relevant": result.relevant, "reason": result.reason}
         except Exception as e:
-            logger.warning(f"Grading failed for chunk {i}, marking as irrelevant: {e}")
-            grading_results.append({"chunk_id": i, "relevant": False, "reason": f"Grading error: {e}"})
+            logger.warning(f"Grading failed for chunk {idx} after retries, marking as irrelevant: {e}")
+            return idx, {"relevant": False, "reason": f"Grading error: {type(e).__name__}: {str(e)[:200]}"}
+
+    if pending_indices:
+        # Cap parallelism at the smaller of (chunks needing LLM grading, configured limit)
+        # so we never spawn more workers than necessary.
+        max_workers = min(_GRADER_PARALLELISM, len(pending_indices))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            for idx, decision in pool.map(_grade_one, pending_indices):
+                decisions[idx] = decision
+
+    # Reassemble in original chunk order (preserves reranker ordering downstream).
+    grading_results = []
+    relevant_chunks = []
+    for i, chunk in enumerate(chunks):
+        d = decisions.get(i, {"relevant": False, "reason": "missing decision (defensive)"})
+        grading_results.append({"chunk_id": i, "relevant": d["relevant"], "reason": d["reason"]})
+        if d["relevant"]:
+            relevant_chunks.append(chunk)
 
     entity_msg = f", {rejected_by_entity} rejected by entity mismatch" if rejected_by_entity else ""
     logger.info(
         f"Grading: {len(relevant_chunks)}/{len(chunks)} chunks relevant "
-        f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg})"
+        f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}, "
+        f"{len(pending_indices)} sent to LLM in parallel)"
     )
 
     return {
         "relevant_chunks": relevant_chunks,
         "grading_results": grading_results,
+        "candidate_diagnostics": candidate_diagnostics,
     }

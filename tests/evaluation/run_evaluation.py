@@ -23,6 +23,7 @@ from tqdm import tqdm
 
 from src.config.settings import settings
 from src.graph.builder import build_graph
+from tests.evaluation.analysis_utils import build_slice_summary, extract_contamination_buckets, is_refusal
 from tests.evaluation.eval_config import (
     EVAL_USER_ID,
     EVAL_USER_ROLE,
@@ -146,6 +147,34 @@ def run_rag_pipeline(graph, samples: list[dict]) -> tuple[list[str], list[list[s
     if failures:
         logger.warning(f"{failures}/{len(samples)} questions failed during pipeline run")
     return answers, contexts
+
+
+def build_diagnostics(samples: list[dict], answers: list[str], contexts: list[list[str]]) -> dict:
+    """Build phase-0 instrumentation diagnostics."""
+    n = len(samples)
+    refusals = sum(1 for a in answers if is_refusal(a))
+    refusal_rate = refusals / n if n else 0.0
+
+    # For SEC 61-Q dataset we don't have pass labels here; this still gives
+    # useful per-slice refusal behavior and contamination trends.
+    slice_summary = build_slice_summary(
+        questions=[s["question"] for s in samples],
+        answers=answers,
+        pass_labels=None,
+    )
+    contamination = extract_contamination_buckets(
+        queries=[s["question"] for s in samples],
+        contexts=contexts,
+        target_companies=[None] * n,
+        target_years=[None] * n,
+    )
+    return {
+        "refusal_rate": refusal_rate,
+        "refusal_count": refusals,
+        "pass_when_answered": None,
+        "slice_summary": slice_summary,
+        "contamination": contamination,
+    }
 
 
 def run_ragas_evaluation(
@@ -285,6 +314,7 @@ def main():
     logger.info(f"RAGAS evaluation completed in {eval_time:.1f}s")
 
     # Build output
+    diagnostics = build_diagnostics(samples=samples, answers=answers, contexts=contexts)
     output = {
         "scores": scores,
         "thresholds": THRESHOLDS,
@@ -292,6 +322,7 @@ def main():
         "pipeline_time_seconds": round(pipeline_time, 1),
         "eval_time_seconds": round(eval_time, 1),
         "evaluator_model": EVALUATOR_MODEL,
+        "diagnostics": diagnostics,
     }
 
     # Print summary

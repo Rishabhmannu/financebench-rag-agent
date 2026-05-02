@@ -34,6 +34,16 @@ def route_after_grading(state: RAGState) -> str:
     return "no_info"
 
 
+def route_after_retrieval_evaluator(state: RAGState) -> str:
+    """Route after optional selective retrieval evaluation."""
+    decision = state.get("retrieval_evaluator_decision", "accept")
+    if decision == "retry":
+        retry_count = state.get("retrieval_retry_count", 0)
+        if retry_count < settings.MAX_RETRIEVAL_RETRIES:
+            return "retry"
+    return "accept"
+
+
 def route_after_hallucination(state: RAGState) -> str:
     """Route based on hallucination check results."""
     status = state.get("hallucination_status", "grounded")
