@@ -111,6 +111,31 @@ Classify the query into exactly one of these categories:
 Be LIBERAL with "retrieval". Any question that could plausibly be answered by a
 10-K, invoice, or expense policy belongs there. When in doubt, choose "retrieval".
 
+ALSO classify the query's complexity (only matters when intent == "retrieval"):
+
+- "simple_lookup": single-fact retrieval. The answer is a specific number, name,
+  date, segment, or short phrase that lives in one section of one document.
+  Examples:
+    "What was Apple's FY2023 total revenue?"
+    "What is the meal per diem in San Francisco?"
+    "Who is the auditor for the 2022 10-K?"
+    "What was 3M's FY2018 capital expenditure?"
+
+- "research_required": multi-step. The answer requires synthesis across multiple
+  sections, a calculation with a formula, comparison across years/segments/
+  companies, or judgment about whether a metric is even applicable to the
+  business model.
+  Examples:
+    "What drove operating margin change FY22 vs FY21 for 3M?"  (decomposition)
+    "If we exclude M&A, which segment dragged 3M's growth?"    (qualifier)
+    "Compute days payable outstanding for Pepsico in FY2022."  (formula)
+    "Does Adobe have an improving operating margin profile?"   (multi-year synthesis)
+    "Does AMEX have improving gross margin? If gross margin isn't a useful metric, explain why."  (applicability judgment)
+
+When uncertain, choose "research_required" — the agent path is safe for simple
+queries (slightly slower but correct), whereas the fast path can fail on
+complex queries.
+
 Query: {query}"""
 
 GRADER_PROMPT = """You are a relevance grader for a financial document Q&A system.
@@ -233,3 +258,142 @@ BLOCKED_RESPONSE = """I'm unable to process this request. This could be due to:
 - Content that was flagged by our safety systems
 
 Please try again with a different query or contact your administrator."""
+
+
+# ────────────────────────────────────────────────────────────
+# Sprint 7.6 — Research Agent prompts
+# ────────────────────────────────────────────────────────────
+#
+# The research agent runs ONLY for queries the router classifies as
+# "research_required" (calc, multi-hop, comparative, applicability-judgment).
+# It decomposes the query into sub-questions, retrieves evidence per sub-
+# question, decides if it has enough, and synthesizes a structured context
+# block for the main generator. Designed around two failure modes from the
+# Sprint 7.6 Day 1 multi-hop review:
+#
+#   Mode 3 (computation-refusal): Claude refuses balance-sheet math when one
+#     input "isn't clearly labeled" but the gold proves both inputs ARE in
+#     the chunks. The decompose + sufficiency prompts explicitly require the
+#     agent to verify each required quantity is present BEFORE refusing.
+#
+#   Mode 4 (missing question qualifier): "exclude M&A", "organic", "year over
+#     year direction", parentheses-as-negative — Claude misses the modifier
+#     and answers a slightly different question. The decompose prompt names
+#     this out and forces the agent to extract qualifiers as first-class.
+
+DECOMPOSE_SYSTEM_PROMPT = """You are a financial research planner. Break down a complex
+question into 2–4 atomic sub-questions, each answerable from a single 10-K /
+10-Q / 8-K section.
+
+Your output drives a retrieval system that pulls evidence per sub-question.
+Bad decomposition → wrong retrieval → wrong final answer. Take this seriously.
+
+REQUIRED steps before emitting sub-questions:
+
+1. **Identify the question's qualifiers.** A qualifier is a word or phrase
+   that changes WHAT counts as a correct answer. Examples:
+     - "exclude M&A" / "organic" → exclude acquisitions / divestitures
+     - "year over year" → compare period-over-period, report direction
+     - "as a % of" → compute a ratio, not just the absolute number
+     - "if [the metric] is not relevant" → judge whether the metric applies
+     - parentheses (X) → negative number convention; "(0.6)%" means -0.6%
+   List every qualifier in the question. If the question has no qualifier,
+   say "no qualifiers".
+
+2. **Identify the required quantities.** Every formula / comparison / ratio
+   has 2+ inputs. List each input separately. Examples:
+     - "What's working capital?"          → [current assets, current liabilities]
+     - "What drove operating margin Δ?"   → [operating income FY-1, operating income FY, key drivers cited]
+     - "Days payable outstanding"          → [accounts payable, COGS or purchases, days in period]
+     - "If we exclude M&A, which segment?" → [reported growth per segment, organic growth per segment]
+
+3. **Emit sub-questions.** One per required quantity, plus one for any
+   qualifier-related context (e.g. "what does management cite as the drivers
+   of operating margin change?"). Each sub-question should be specific enough
+   to retrieve a single chunk's worth of evidence.
+
+Output format (JSON):
+{{
+  "qualifiers": ["..."] or ["no qualifiers"],
+  "required_quantities": ["..."],
+  "sub_questions": ["...", "...", ...]
+}}
+
+Original question: {query}
+Target company: {target_company}
+Target fiscal year: {target_fiscal_year}"""
+
+SUFFICIENCY_SYSTEM_PROMPT = """You are a research-sufficiency judge. The
+research agent has executed one or more sub-question retrievals and collected
+evidence chunks. Decide whether the evidence is enough to answer the original
+question.
+
+CRITICAL: do not require perfect labeling. If the question asks for "current
+liabilities" and the chunks contain a balance sheet that includes "Total
+current liabilities $X", that IS the answer — even if the chunk header says
+"Consolidated Balance Sheet" rather than "Current Liabilities Section".
+Refusing because a value isn't under an exactly-labeled heading is the most
+common reason this agent fails.
+
+Decide:
+  - "sufficient": every required quantity from the decomposition is present
+    in the collected evidence (even if labels vary). The main generator can
+    answer.
+  - "need_more": at least one required quantity is missing. Provide a single,
+    targeted follow-up sub-question to retrieve it. Do NOT exit on
+    "need_more" if you've already used the turn budget — the runtime caps
+    you and will force a synthesis.
+
+Original question: {query}
+Decomposition:
+{decomposition}
+
+Collected evidence ({n_chunks} chunks total, summarized inline):
+{evidence_summary}
+
+Output (JSON):
+{{
+  "decision": "sufficient" or "need_more",
+  "missing_quantity": null or "...",
+  "follow_up_question": null or "...",
+  "reason": "one sentence — why sufficient OR what's missing"
+}}"""
+
+AGENT_SYNTHESIZER_SYSTEM_PROMPT = """You are a financial research synthesizer.
+You've gathered evidence across multiple sub-questions. Produce a STRUCTURED
+context block that the main generator will use to write the final answer.
+
+Your output is NOT the final answer. It is a curated context that:
+  - Lists each required quantity with its value, unit, and source
+  - Calls out qualifiers explicitly so the generator doesn't miss them
+  - Notes any quantity that wasn't found (don't fabricate)
+  - Preserves negative-number conventions: "(X)" or "-X" means negative
+  - Quotes management's language verbatim when the question asks about
+    drivers / explanations (e.g. "What drove operating margin change?")
+
+Output format (markdown):
+
+```
+## Research findings — [original question paraphrased in one line]
+
+**Qualifiers detected**: [list, or "none"]
+
+**Required quantities**:
+- [quantity 1]: value [unit] — [source: filename, page]
+- [quantity 2]: value [unit] — [source: filename, page]
+- [quantity 3]: NOT FOUND in retrieved chunks
+
+**Quoted context** (for "what drove" / "why" questions only):
+> "..." — [source: filename, page]
+
+**Computation** (for ratio / formula / comparison questions only):
+[show the arithmetic explicitly so the generator doesn't have to redo it]
+```
+
+Original question: {query}
+Decomposition:
+{decomposition}
+
+Collected evidence ({n_chunks} chunks, with [Source: filename, page] headers):
+{evidence}"""
+

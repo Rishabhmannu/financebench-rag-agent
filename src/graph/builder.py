@@ -18,6 +18,7 @@ from src.graph.nodes.hallucination import hallucination_checker_node
 from src.graph.nodes.hitl_gate import hitl_gate_node
 from src.graph.nodes.query_rewriter import query_rewriter_node
 from src.graph.nodes.rbac_gate import rbac_gate
+from src.graph.nodes.research_agent import research_agent_node
 from src.graph.nodes.retrieval_evaluator import retrieval_evaluator_node
 from src.graph.nodes.reranker import reranker_node
 from src.graph.nodes.response_formatter import response_formatter_node
@@ -45,6 +46,7 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_node("grader", grader_node)
     graph.add_node("retrieval_evaluator", retrieval_evaluator_node)
     graph.add_node("query_rewriter", query_rewriter_node)
+    graph.add_node("research_agent", research_agent_node)
     graph.add_node("no_info_response", no_info_node)
     graph.add_node("generator", generator_node)
     graph.add_node("hallucination_checker", hallucination_checker_node)
@@ -66,10 +68,20 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_conditional_edges(
         "router",
         route_after_router,
-        {"retrieval": "retrieval", "clarification": "clarification_response", "out_of_scope": "out_of_scope_response"},
+        {
+            "retrieval": "retrieval",
+            "research_required": "research_agent",
+            "clarification": "clarification_response",
+            "out_of_scope": "out_of_scope_response",
+        },
     )
     graph.add_edge("out_of_scope_response", END)
     graph.add_edge("clarification_response", END)
+
+    # Research agent path: agent populates relevant_chunks + agent_synthesis,
+    # bypassing reranker/grader (it does its own internal retrieve+rerank+grade
+    # per sub-question). Goes straight to the generator.
+    graph.add_edge("research_agent", "generator")
 
     graph.add_edge("retrieval", "reranker")
     graph.add_edge("reranker", "retrieval_evaluator")

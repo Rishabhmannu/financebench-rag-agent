@@ -4,10 +4,20 @@ from pydantic import BaseModel, Field
 
 
 class RouterDecision(BaseModel):
-    """Structured output for query router."""
+    """Structured output for query router.
+
+    `complexity` (Sprint 7.6): added alongside `intent` so the router emits both
+    in a single LLM call. Only meaningful when intent == "retrieval".
+      - simple_lookup: single fact, single 10-K section, no formula computation
+      - research_required: multi-section synthesis, calc with formula, comparative
+    """
 
     intent: Literal["retrieval", "clarification", "out_of_scope"]
     reason: str = Field(description="Brief reason for the classification")
+    complexity: Literal["simple_lookup", "research_required"] = Field(
+        default="simple_lookup",
+        description="Query complexity tier — drives whether to use the research agent.",
+    )
 
 
 class GradeResult(BaseModel):

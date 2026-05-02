@@ -22,6 +22,11 @@ class RAGState(TypedDict):
 
     # --- Routing ---
     query_intent: str  # "retrieval", "clarification", "out_of_scope"
+    # Complexity classification (Sprint 7.6): "simple_lookup" (single-fact retrieval,
+    # fast path) vs "research_required" (multi-section synthesis, calc with formula,
+    # comparative — routed to the research agent subgraph). None means classifier
+    # didn't set it (treat as simple_lookup downstream).
+    query_complexity: str | None
 
     # --- Entity extraction (Sprint 7a.v2) ---
     # Lowercase slug matching a `company` payload value in Qdrant, or None if the
@@ -44,6 +49,15 @@ class RAGState(TypedDict):
     # --- Grading ---
     relevant_chunks: list[dict]
     grading_results: list[dict]
+
+    # --- Research agent (Sprint 7.6) ---
+    # Set when the research agent runs (query_complexity == "research_required").
+    # `agent_synthesis` is a structured-text reasoning block the agent produces
+    # to guide the main generator; raw `relevant_chunks` are still populated and
+    # remain the substrate the hallucination checker grounds against.
+    agent_synthesis: str | None
+    agent_turns_used: int | None
+    agent_sub_questions: list[str] | None
 
     # --- Generation ---
     generated_answer: str

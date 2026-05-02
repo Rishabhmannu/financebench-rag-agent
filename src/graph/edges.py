@@ -13,12 +13,30 @@ def route_after_guardrails(state: RAGState) -> str:
 
 
 def route_after_router(state: RAGState) -> str:
-    """Route based on query intent classification."""
+    """Route based on query intent + complexity (Sprint 7.6).
+
+    intent="retrieval" splits further on `query_complexity`:
+      - simple_lookup → existing fast path (retrieval → reranker → grader → ...)
+      - research_required → research agent subgraph
+
+    The agent path delegates to the same retrieval node internally (RBAC and
+    entity filter inherited), then bypasses the post-retrieval grader since
+    the agent has already curated chunks per sub-question.
+
+    Unknown / malformed intent values fall through to "clarification"
+    (defensive — matches the prior contract).
+    """
     intent = state.get("query_intent", "retrieval")
-    if intent == "retrieval":
-        return "retrieval"
-    elif intent == "out_of_scope":
+    if intent == "out_of_scope":
         return "out_of_scope"
+    if intent == "clarification":
+        return "clarification"
+    if intent == "retrieval":
+        complexity = state.get("query_complexity") or "simple_lookup"
+        if complexity == "research_required":
+            return "research_required"
+        return "retrieval"
+    # Unknown intent → defensive fallback
     return "clarification"
 
 

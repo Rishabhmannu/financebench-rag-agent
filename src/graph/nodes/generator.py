@@ -89,11 +89,28 @@ def _log_cache_stats(response) -> None:
 
 
 def generator_node(state: RAGState) -> dict:
-    """Generate an answer from relevant chunks. Claude Sonnet 4.6 with prompt caching."""
+    """Generate an answer from relevant chunks. Claude Sonnet 4.6 with prompt caching.
+
+    Sprint 7.6: when the research agent ran (agent_synthesis is set), prepend
+    its structured findings block above the raw chunks. The generator now
+    sees both the agent's curated synthesis AND the raw chunks the
+    hallucination checker will ground against — best of both worlds.
+    """
     query = state.get("sanitized_query", "")
     chunks = state.get("relevant_chunks", [])
+    agent_synthesis = state.get("agent_synthesis")
 
-    context = _format_context(chunks)
+    raw_context = _format_context(chunks)
+    if agent_synthesis:
+        context = (
+            f"## Research-agent synthesis (structured findings):\n\n"
+            f"{agent_synthesis}\n\n"
+            f"---\n\n"
+            f"## Raw retrieved chunks (for verification):\n\n"
+            f"{raw_context}"
+        )
+    else:
+        context = raw_context
     user_prompt = GENERATOR_USER_TEMPLATE.format(context=context, query=query)
 
     try:
