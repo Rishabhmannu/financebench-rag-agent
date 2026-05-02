@@ -115,11 +115,16 @@ class LLMFactory:
         faithfulness metric; (2) prompt caching on the system prompt + doc
         context, which we configure at the message level in the generator node
         to cut 60-70% of input-token cost on repeated queries.
+
+        max_tokens=2048 for Claude (Sprint 7.6 Day 4 fix): the research-agent
+        synthesizer also calls this LLM and emits structured-markdown findings
+        that can run 800-1200 tokens. 1024 was tight for agent-augmented
+        answers (Day 4 partial run hit max_tokens stops on long syntheses).
         """
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1)
         if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.GENERATOR_MODEL, temperature=0.1, max_tokens=1024)
+            return _anthropic(settings.GENERATOR_MODEL, temperature=0.1, max_tokens=2048)
         logger.warning("Anthropic API key not set for generator, falling back to OpenAI")
         return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1)
 
@@ -127,16 +132,22 @@ class LLMFactory:
     def get_hallucination_llm():
         """Standard grounding verification. Claude Sonnet 4.6 primary.
 
-        max_tokens raised to 1024 for Claude — its tool-call output for the
-        HallucinationCheck schema (grounded + score + explanation) was
-        truncating mid-explanation at 512, causing Pydantic validation to fail
-        and the parser to return an empty 'grounded=True' fallback. OpenAI
-        emits a more compact tool call so 512 was sufficient there.
+        max_tokens history:
+          - 512: original; failed on every Sprint 7.5 Claude run (truncated
+            mid-explanation, Pydantic validation failed → fallback to grounded)
+          - 1024: Sprint 7.6 Day 1 fix; sufficient for fast-path answers
+            (~325 output tokens avg in smoke).
+          - 2048: Sprint 7.6 Day 4 fix; agent-augmented answers feed the
+            checker 8-15 chunks plus a long structured answer, so the
+            HallucinationCheck explanation field needs more room. Day 4
+            partial run hit max_tokens stops at 1024.
+        OpenAI fallback stays at 512 — its tool-call output is more compact
+        and 512 was sufficient on prior Sprint 7.5 runs.
         """
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
         if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.HALLUCINATION_MODEL, temperature=0.0, max_tokens=1024)
+            return _anthropic(settings.HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
         _warn_once(
             "hallucination_no_anthropic",
             "Anthropic API key not set for hallucination checker, falling back to OpenAI",
@@ -152,7 +163,7 @@ class LLMFactory:
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
         if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=1024)
+            return _anthropic(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
         _warn_once(
             "high_stakes_no_opus",
             "Falling back from Opus 4.7 to Sonnet 4.6 for high-stakes check",
