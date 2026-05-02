@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     # Override: force all LLM calls through OpenAI (used to bypass Groq free-tier rate
     # limits during eval runs). Default false = prod hybrid Groq + OpenAI + Anthropic.
     FORCE_OPENAI_ONLY: bool = False
+    # Use Groq for the high-volume "fast path" nodes (router, grader, query rewriter).
+    # Set false to send those to OpenAI even when GROQ_API_KEY is set — required for
+    # FinanceBench eval runs where 1200+ grader calls easily blow through the free-tier
+    # 100k tokens-per-day cap. Default true preserves the production latency profile.
+    USE_GROQ_FAST_PATH: bool = True
 
     # --- LangSmith ---
     LANGCHAIN_TRACING_V2: bool = True

@@ -63,6 +63,16 @@ def _groq(model: str, temperature: float = 0.0) -> ChatGroq:
     )
 
 
+_warned_keys: set[str] = set()
+
+
+def _warn_once(key: str, msg: str) -> None:
+    """Emit each warning once per process — fast-path nodes are called per-question."""
+    if key not in _warned_keys:
+        _warned_keys.add(key)
+        logger.warning(msg)
+
+
 class LLMFactory:
     """Creates LLM instances with automatic fallback between providers.
 
@@ -72,22 +82,28 @@ class LLMFactory:
 
     @staticmethod
     def get_router_llm():
-        """Classification-tier model. Groq for latency; OpenAI fallback."""
-        if settings.FORCE_OPENAI_ONLY:
+        """Classification-tier model. Groq for latency; OpenAI fallback.
+
+        Groq is skipped if FORCE_OPENAI_ONLY is true OR USE_GROQ_FAST_PATH is false.
+        The latter is the right knob during long evals — it preserves Claude on the
+        generator/hallucination path while pushing the high-volume router/grader
+        traffic to OpenAI, avoiding the Groq free-tier 100k tokens-per-day cap.
+        """
+        if settings.FORCE_OPENAI_ONLY or not settings.USE_GROQ_FAST_PATH:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
         if settings.GROQ_API_KEY:
             return _groq(settings.ROUTER_MODEL, 0.0)
-        logger.warning("Groq API key not set for router, falling back to OpenAI")
+        _warn_once("router_no_groq", "Groq API key not set for router, falling back to OpenAI")
         return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
 
     @staticmethod
     def get_grader_llm():
         """Binary classification LLM — called once per chunk. Groq for throughput."""
-        if settings.FORCE_OPENAI_ONLY:
+        if settings.FORCE_OPENAI_ONLY or not settings.USE_GROQ_FAST_PATH:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
         if settings.GROQ_API_KEY:
             return _groq(settings.GRADER_MODEL, 0.0)
-        logger.warning("Groq API key not set for grader, falling back to OpenAI")
+        _warn_once("grader_no_groq", "Groq API key not set for grader, falling back to OpenAI")
         return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
 
     @staticmethod
@@ -109,13 +125,23 @@ class LLMFactory:
 
     @staticmethod
     def get_hallucination_llm():
-        """Standard grounding verification. Claude Sonnet 4.6 primary."""
+        """Standard grounding verification. Claude Sonnet 4.6 primary.
+
+        max_tokens raised to 1024 for Claude — its tool-call output for the
+        HallucinationCheck schema (grounded + score + explanation) was
+        truncating mid-explanation at 512, causing Pydantic validation to fail
+        and the parser to return an empty 'grounded=True' fallback. OpenAI
+        emits a more compact tool call so 512 was sufficient there.
+        """
         if settings.FORCE_OPENAI_ONLY:
-            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
         if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.HALLUCINATION_MODEL, temperature=0.0, max_tokens=512)
-        logger.warning("Anthropic API key not set for hallucination checker, falling back to OpenAI")
-        return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
+            return _anthropic(settings.HALLUCINATION_MODEL, temperature=0.0, max_tokens=1024)
+        _warn_once(
+            "hallucination_no_anthropic",
+            "Anthropic API key not set for hallucination checker, falling back to OpenAI",
+        )
+        return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
 
     @staticmethod
     def get_high_stakes_hallucination_llm():
@@ -124,9 +150,11 @@ class LLMFactory:
         to HITL-path answers, which are already the most expensive per-query
         (an interrupt + human review round-trip)."""
         if settings.FORCE_OPENAI_ONLY:
-            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
         if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=512)
-        # Sonnet is a reasonable fallback if Opus is unavailable for any reason
-        logger.warning("Falling back from Opus 4.7 to Sonnet 4.6 for high-stakes check")
+            return _anthropic(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=1024)
+        _warn_once(
+            "high_stakes_no_opus",
+            "Falling back from Opus 4.7 to Sonnet 4.6 for high-stakes check",
+        )
         return LLMFactory.get_hallucination_llm()

@@ -14,6 +14,7 @@ env/
 
 # Environment variables
 .env
+.env.bak
 .env.local
 .env.production
 
