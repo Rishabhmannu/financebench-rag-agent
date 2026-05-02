@@ -48,6 +48,16 @@ def _build_system_message(llm) -> SystemMessage:
     For ChatAnthropic, we emit a structured block with `cache_control=ephemeral`
     so the stable system prompt is cached across requests (5-min TTL).
     For OpenAI and others, plain string content (no caching).
+
+    NOTE on effective caching: Anthropic requires a minimum cacheable block size
+    of ~1024 tokens for Sonnet/Opus (~2048 for Haiku). The current
+    GENERATOR_SYSTEM_PROMPT is ~215 tokens, so this marker is a no-op for the
+    stand-alone graph today — Anthropic silently skips creating a cache entry
+    below threshold, hence cost_log shows cache_read_input_tokens=0.
+    The marker stays correct and future-proof: it will start firing as soon as
+    a caller (e.g. the Sprint 7.6 research agent) issues multiple LLM calls
+    with the same system prompt within a single FinanceBench question, where
+    the agent system prompt + accumulated reasoning easily clear 1024 tokens.
     """
     if isinstance(llm, ChatAnthropic):
         return SystemMessage(content=[

@@ -507,6 +507,7 @@ def score_with_ragas(
     contexts: list[list[str]],
     ground_truths: list[str],
     evaluator_model: str = EVALUATOR_MODEL,
+    per_sample_output_path: Path | None = None,
 ) -> dict:
     from langchain_openai import ChatOpenAI
     from ragas import EvaluationDataset, SingleTurnSample, evaluate
@@ -539,6 +540,22 @@ def score_with_ragas(
     logger.info(f"RAGAS scoring {len(samples)} samples ({evaluator_model} judge)...")
     results = evaluate(dataset=dataset, metrics=metrics, show_progress=True)
     df = results.to_pandas()
+
+    if per_sample_output_path is not None:
+        # Save per-sample scores so the post-processor can join them into the
+        # review artifact. Pandas .to_dict('records') gives a list of dicts.
+        per_sample_records = df[
+            ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
+        ].to_dict("records")
+        per_sample_payload = {
+            "judge_model": evaluator_model,
+            "n_samples": len(per_sample_records),
+            "per_sample": per_sample_records,
+        }
+        per_sample_output_path.parent.mkdir(parents=True, exist_ok=True)
+        per_sample_output_path.write_text(json.dumps(per_sample_payload, indent=2))
+        logger.info(f"RAGAS per-sample scores saved to {per_sample_output_path}")
+
     return {
         "faithfulness": float(df["faithfulness"].mean()),
         "answer_relevancy": float(df["answer_relevancy"].mean()),
@@ -653,6 +670,115 @@ def score_with_patronus(
         return {"patronus_error": str(e), "n_samples": 0}
 
 
+def score_correctness(
+    dataset: list[dict],
+    answers: list[str],
+    output_path: Path,
+    judge_model: str = EVALUATOR_MODEL,
+    concurrency: int = 6,
+) -> dict:
+    """Local LLM-judge correctness scorer — replaces Patronus fuzzy-match.
+
+    For each (question, generated_answer, gold_answer), asks the judge whether
+    the generated answer conveys the same factual content as the gold. Strict:
+    wrong numbers / wrong units / refusals all count as FAIL.
+
+    Returns aggregate stats + writes per-sample data (fb_id, gold, generated,
+    pass, reason) to `output_path`. The per-sample shape mirrors Patronus so
+    downstream tooling can swap.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from langchain_openai import ChatOpenAI
+    from pydantic import BaseModel, Field
+
+    from src.services.cost_tracker import get_cost_handler
+
+    class _Verdict(BaseModel):
+        passed: bool = Field(description="True iff the generated answer conveys the same factual content as the gold.")
+        reason: str = Field(description="One sentence: what matched or what was wrong.")
+
+    judge_prompt = (
+        "You are evaluating whether a generated answer correctly answers a financial question, "
+        "given a gold reference answer extracted from the source document.\n\n"
+        "Be strict. Mark PASS only if the generated answer conveys the same factual content as the gold. Mark FAIL for:\n"
+        "- Wrong numbers (e.g. gold says $1577, generated says $1500)\n"
+        "- Wrong units (millions vs billions, % vs decimal)\n"
+        "- Wrong direction (increase vs decrease, gain vs loss)\n"
+        "- Refusal to answer or 'insufficient information' when gold has a clear answer\n"
+        "- Vague/non-specific response when gold is specific\n\n"
+        "Allow minor formatting differences ('$1,577' vs '1577 million USD' is OK if both clearly mean the same).\n\n"
+        "Question: {question}\nGold answer: {gold}\nGenerated answer: {generated}"
+    )
+
+    judge = ChatOpenAI(model=judge_model, temperature=0.0, callbacks=[get_cost_handler()])
+    structured = judge.with_structured_output(_Verdict)
+
+    def _judge_one(rec: dict, generated: str) -> dict:
+        prompt = judge_prompt.format(
+            question=rec.get("question", ""),
+            gold=rec.get("answer", ""),
+            generated=generated or "",
+        )
+        try:
+            v: _Verdict = structured.invoke(prompt)
+            return {
+                "fb_id": rec.get("financebench_id"),
+                "company": rec.get("company"),
+                "question": rec.get("question"),
+                "answer": generated,
+                "gold": rec.get("answer"),
+                "pass": bool(v.passed),
+                "reason": v.reason,
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "fb_id": rec.get("financebench_id"),
+                "company": rec.get("company"),
+                "question": rec.get("question"),
+                "answer": generated,
+                "gold": rec.get("answer"),
+                "pass": False,
+                "reason": f"judge_error: {type(exc).__name__}: {str(exc)[:200]}",
+                "error": True,
+            }
+
+    logger.info(f"Correctness scoring {len(dataset)} samples ({judge_model} judge)...")
+    pairs = list(zip(dataset, answers))
+    per_sample: list[dict] = [None] * len(pairs)  # type: ignore[list-item]
+    with ThreadPoolExecutor(max_workers=concurrency) as pool, tqdm(
+        total=len(pairs), desc="Correctness", unit="q"
+    ) as bar:
+        futures = {pool.submit(_judge_one, rec, ans): i for i, (rec, ans) in enumerate(pairs)}
+        for fut in futures:
+            pass  # future submission completes synchronously above
+        for fut in list(futures.keys()):
+            i = futures[fut]
+            per_sample[i] = fut.result()
+            bar.update(1)
+
+    n = len(per_sample)
+    n_pass = sum(1 for s in per_sample if s.get("pass"))
+    n_err = sum(1 for s in per_sample if s.get("error"))
+    pass_rate = n_pass / n if n else 0.0
+    aggregate = {
+        "judge_model": judge_model,
+        "n_samples": n,
+        "n_pass": n_pass,
+        "n_errors": n_err,
+        "pass_rate": pass_rate,
+    }
+    output_path.write_text(json.dumps({"aggregate": aggregate, "per_sample": per_sample}, indent=2))
+    return {
+        "pass_rate": pass_rate,
+        "n_samples": n,
+        "n_pass": n_pass,
+        "n_errors": n_err,
+        "judge_model": judge_model,
+        "output_file": str(output_path),
+        "_pass_labels": [bool(s.get("pass")) for s in per_sample],  # consumed by build_diagnostics, stripped before write
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="FinanceBench full 150-Q evaluation")
     parser.add_argument("--output", "-o", type=str, required=True, help="Output JSON path")
@@ -687,6 +813,16 @@ def main():
         dest="skip_patronus",
         action="store_false",
         help="Enable Patronus fuzzy-match scoring (requires PATRONUS_API_KEY + credits)",
+    )
+    parser.add_argument(
+        "--skip-correctness",
+        action="store_true",
+        help="Skip the local correctness LLM-judge (default: run; cheap drop-in for Patronus pass labels)",
+    )
+    parser.add_argument(
+        "--correctness-judge-model",
+        default=EVALUATOR_MODEL,
+        help=f"Correctness judge model (default: {EVALUATOR_MODEL})",
     )
     parser.add_argument("--limit", type=int, default=None, help="Only run first N questions")
     parser.add_argument(
@@ -810,15 +946,18 @@ def main():
     scores: dict = {"pipeline_time_seconds": round(pipeline_time, 1), "num_samples": len(dataset)}
     if not args.skip_ragas:
         start = time.time()
+        ragas_per_sample_path = output_path.with_suffix(".ragas.json")
         scores["ragas"] = score_with_ragas(
             questions,
             answers,
             contexts,
             ground_truths,
             evaluator_model=args.ragas_judge_model,
+            per_sample_output_path=ragas_per_sample_path,
         )
         scores["ragas_time_seconds"] = round(time.time() - start, 1)
         scores["ragas_judge_model"] = args.ragas_judge_model
+        scores["ragas_per_sample_file"] = str(ragas_per_sample_path)
     if not args.skip_deepeval:
         start = time.time()
         deepeval_output_path = output_path.with_suffix(".deepeval.json")
@@ -852,12 +991,29 @@ def main():
             # tracked separately by scripts/score_patronus.py.
             patronus_pass_labels = None
 
+    # --- Local correctness LLM judge (replaces Patronus for pass labels) ---
+    correctness_pass_labels: list[bool] | None = None
+    if not args.skip_correctness:
+        start = time.time()
+        correctness_output_path = output_path.with_suffix(".correctness.json")
+        correctness_result = score_correctness(
+            dataset=dataset,
+            answers=answers,
+            output_path=correctness_output_path,
+            judge_model=args.correctness_judge_model,
+        )
+        correctness_pass_labels = correctness_result.pop("_pass_labels", None)
+        scores["correctness"] = correctness_result
+        scores["correctness_time_seconds"] = round(time.time() - start, 1)
+
+    pass_labels = patronus_pass_labels or correctness_pass_labels
+
     # --- Summary + persist ---
     scores["diagnostics"] = build_diagnostics(
         dataset=dataset,
         answers=answers,
         contexts=contexts,
-        pass_labels=patronus_pass_labels,
+        pass_labels=pass_labels,
     )
     output_path.write_text(json.dumps(scores, indent=2))
     print()
@@ -879,6 +1035,13 @@ def main():
     if "patronus" in scores:
         print("Patronus:")
         for k, v in scores["patronus"].items():
+            if isinstance(v, float):
+                print(f"  {k:40s} {v:.4f}")
+            else:
+                print(f"  {k:40s} {v}")
+    if "correctness" in scores:
+        print("Correctness (local LLM judge):")
+        for k, v in scores["correctness"].items():
             if isinstance(v, float):
                 print(f"  {k:40s} {v:.4f}")
             else:

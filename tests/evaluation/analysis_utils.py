@@ -14,6 +14,15 @@ REFUSAL_MARKERS = [
     "not enough information",
     "unable to answer",
     "no relevant information",
+    # Claude's refusal templates (added 2026-05 after Sprint 7.6 Day 1 inspection)
+    "couldn't find relevant information",
+    "could not find relevant information",
+    "couldn't find any relevant",
+    "could not find any relevant",
+    "this could mean the information isn't in",
+    # OpenAI's refusal templates
+    "i'm sorry, but i can't",
+    "i cannot provide",
 ]
 
 

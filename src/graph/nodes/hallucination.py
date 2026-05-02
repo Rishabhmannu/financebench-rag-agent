@@ -40,7 +40,12 @@ def _is_high_stakes(answer: str, user_role: str) -> bool:
 
 
 def _build_system_message(llm) -> SystemMessage:
-    """SystemMessage with Anthropic cache_control when applicable."""
+    """SystemMessage with Anthropic cache_control when applicable.
+
+    See generator.py for the same NOTE: the HALLUCINATION_CHECK_SYSTEM_PROMPT
+    is ~217 tokens, below Anthropic's 1024-token minimum cacheable block size.
+    Marker is correct and future-proof but no-op for stand-alone graph runs.
+    """
     if isinstance(llm, ChatAnthropic):
         return SystemMessage(content=[
             {
