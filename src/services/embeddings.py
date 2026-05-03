@@ -1,15 +1,18 @@
 """Dense-embedding service. Dispatches to the configured provider.
 
-Provider is selected via `settings.EMBEDDING_PROVIDER` ("openai" or "voyage").
+Provider is selected via `settings.EMBEDDING_PROVIDER`:
+  - "openai" (default): text-embedding-3-{small,large}
+  - "voyage": voyage-finance-2 (uses voyageai SDK, input_type for query/doc)
+  - "abaci":  AbaciNLP-hosted Fin-E5 (OpenAI-compatible API at
+              https://abacinlp.com/v1, queries get an "Instruct: ...\\nQuery:"
+              prefix, documents are embedded as-is)
 
-Voyage exposes an `input_type` parameter that materially changes the produced
-vector — "query" prepends a different instruction prefix than "document". The
-defaults here match the call-site convention: `embed_text` is used for query
-embedding at retrieval time, `embed_texts` is used for corpus indexing. For
-OpenAI the parameter is silently ignored.
+The defaults match the call-site convention: `embed_text` is used for query
+embedding at retrieval time, `embed_texts` is used for corpus indexing.
 
 Voyage's SDK does not auto-retry transient errors, so we wrap calls with
 exponential backoff for rate limits, 5xx, timeouts, and network drops.
+AbaciNLP uses OpenAI's SDK which has built-in retries.
 """
 from __future__ import annotations
 
@@ -24,9 +27,15 @@ logger = logging.getLogger(__name__)
 
 _openai_client: OpenAI | None = None
 _voyage_client = None  # voyageai.Client, lazy-imported
+_abaci_client: OpenAI | None = None
 
 VOYAGE_MAX_RETRIES = 5
 VOYAGE_INITIAL_BACKOFF_S = 2.0
+
+ABACI_BASE_URL = "https://abacinlp.com/v1"
+ABACI_QUERY_INSTRUCTION = (
+    "Given a financial question, retrieve relevant passages that answer the query."
+)
 
 
 def _get_openai_client() -> OpenAI:
@@ -43,6 +52,37 @@ def _get_voyage_client():
 
         _voyage_client = voyageai.Client(api_key=settings.VOYAGE_API_KEY)
     return _voyage_client
+
+
+def _get_abaci_client() -> OpenAI:
+    global _abaci_client
+    if _abaci_client is None:
+        _abaci_client = OpenAI(
+            api_key=settings.ABACI_NLP_API_KEY,
+            base_url=ABACI_BASE_URL,
+        )
+    return _abaci_client
+
+
+def _abaci_format_query(text: str) -> str:
+    """AbaciNLP retrieval pattern: queries get the Instruct prefix; docs don't."""
+    return f"Instruct: {ABACI_QUERY_INSTRUCTION}\nQuery: {text}"
+
+
+def _abaci_embed(texts: list[str], input_type: str) -> list[list[float]]:
+    """Call AbaciNLP via the OpenAI-compatible client.
+
+    For input_type="query" each text is wrapped with the Instruct prefix.
+    For input_type="document" texts are passed as-is.
+    """
+    if input_type == "query":
+        formatted = [_abaci_format_query(t) for t in texts]
+    else:
+        formatted = texts
+    response = _get_abaci_client().embeddings.create(
+        input=formatted, model=settings.EMBEDDING_MODEL
+    )
+    return [item.embedding for item in response.data]
 
 
 def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
@@ -89,6 +129,8 @@ def embed_text(text: str, input_type: str = "query") -> list[float]:
     """Embed a single text string. Returns a vector of floats."""
     if settings.EMBEDDING_PROVIDER == "voyage":
         return _voyage_embed([text], input_type=input_type)[0]
+    if settings.EMBEDDING_PROVIDER == "abaci":
+        return _abaci_embed([text], input_type=input_type)[0]
     response = _get_openai_client().embeddings.create(
         input=text, model=settings.EMBEDDING_MODEL
     )
@@ -99,6 +141,8 @@ def embed_texts(texts: list[str], input_type: str = "document") -> list[list[flo
     """Embed multiple texts in a single API call."""
     if settings.EMBEDDING_PROVIDER == "voyage":
         return _voyage_embed(texts, input_type=input_type)
+    if settings.EMBEDDING_PROVIDER == "abaci":
+        return _abaci_embed(texts, input_type=input_type)
     response = _get_openai_client().embeddings.create(
         input=texts, model=settings.EMBEDDING_MODEL
     )

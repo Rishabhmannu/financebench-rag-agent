@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     VOYAGE_API_KEY: str = ""
+    ABACI_NLP_API_KEY: str = ""
 
     # --- External eval services ---
     # Patronus AI hosted fuzzy-match judge for FinanceBench external comparability.
