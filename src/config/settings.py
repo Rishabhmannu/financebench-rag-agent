@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    VOYAGE_API_KEY: str = ""
 
     # --- External eval services ---
     # Patronus AI hosted fuzzy-match judge for FinanceBench external comparability.
@@ -88,6 +89,10 @@ class Settings(BaseSettings):
     RETRIEVAL_EVALUATOR_MIN_CONFIDENCE: float = 0.55
 
     # --- Embedding ---
+    # Provider dispatch: "openai" (default) or "voyage". When "voyage", embeddings
+    # go through voyage-finance-2 (Sprint 7.8 Week 1) — set EMBEDDING_MODEL to
+    # "voyage-finance-2" and EMBEDDING_DIMENSIONS to 1024 alongside this flag.
+    EMBEDDING_PROVIDER: str = "openai"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
 
