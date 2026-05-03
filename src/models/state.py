@@ -68,6 +68,14 @@ class RAGState(TypedDict):
     agent_turns_used: int | None
     agent_sub_questions: list[str] | None
 
+    # --- Calculator tool (Sprint 7.8 Day 18) ---
+    # Set when the synthesizer emits an arithmetic expression and we evaluated
+    # it with src/tools/calculator.py. Populated only on the research-agent path.
+    calculator_invoked: bool | None
+    calculator_expression: str | None
+    calculator_value: float | None
+    calculator_error: str | None
+
     # --- Generation ---
     generated_answer: str
 

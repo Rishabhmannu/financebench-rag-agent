@@ -431,7 +431,36 @@ Your output is NOT the final answer. It is a curated context that:
   - Quotes management's language verbatim when the question asks about
     drivers / explanations (e.g. "What drove operating margin change?")
 
-Output format (markdown):
+You return TWO fields in your structured output:
+
+1. `synthesis` — the markdown context block (format below).
+2. `arithmetic_expression` — a clean one-liner that computes the numerical
+   answer, OR null. The system will evaluate it deterministically with a
+   restricted calculator and append the result, removing arithmetic mistakes
+   from the answer pipeline.
+
+`arithmetic_expression` rules (read carefully):
+  - Set this ONLY when the question's answer is a single number derivable from
+    arithmetic: ratios, percentages, differences, growth rates, sums of line
+    items. Examples:
+      * "What is Adobe's op-cash-flow ratio?" → "7438 / 8970"
+      * "What was PepsiCo's revenue growth FY22 vs FY21?" → "(86392 - 79474) / 79474"
+      * "What was CVS's COGS percentage of revenue?" → "38528 / 86392"
+  - Set to null when the question is a lookup ("What was net income?"),
+    a narrative answer ("What drove margin change?"), a yes/no, or any case
+    where the required numbers were NOT FOUND in retrieved chunks.
+  - Use ONLY: digits, '.', '+', '-', '*', '/', '//', and parentheses. NO
+    variable names, NO function calls, NO units inline, NO commas inside
+    numbers (write 1234567 not 1,234,567), NO trailing '%'.
+  - The calculator outputs a raw float. If the question expects a percentage
+    (e.g. "X.X%"), still write the ratio (0.083), not the percentage form (8.3).
+    The generator will format appropriately based on the question.
+  - Match the gold's typical convention: write `(numerator) / (denominator)`
+    so the operator precedence is unambiguous.
+  - If your `synthesis` markdown's **Computation** section shows the
+    arithmetic, `arithmetic_expression` should match it numerically.
+
+`synthesis` markdown format:
 
 ```
 ## Research findings — [original question paraphrased in one line]

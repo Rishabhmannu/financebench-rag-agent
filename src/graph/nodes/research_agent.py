@@ -52,6 +52,7 @@ from src.graph.nodes.reranker import reranker_node
 from src.graph.nodes.retrieval import retrieval_node
 from src.models.state import RAGState
 from src.services.llm_factory import LLMFactory
+from src.tools.calculator import CalculatorError, compute
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,23 @@ class _SufficiencyVerdict(BaseModel):
     missing_quantity: str | None = Field(default=None)
     follow_up_question: str | None = Field(default=None)
     reason: str = Field(description="One sentence explaining the verdict.")
+
+
+class _AgentSynthesis(BaseModel):
+    """Output of the synthesize step (Sprint 7.8 Day 18 — added calculator field)."""
+
+    synthesis: str = Field(
+        description="Structured-markdown context block for the generator."
+    )
+    arithmetic_expression: str | None = Field(
+        default=None,
+        description=(
+            "Pure arithmetic expression to compute the numerical answer, OR null "
+            "for non-numeric / lookup / not-found cases. Allowed: digits, '.', "
+            "'+', '-', '*', '/', '//', '()'. No variables, functions, commas, "
+            "units, or trailing '%'."
+        ),
+    )
 
 
 # ────────────────────────────────────────────────────────────
@@ -257,8 +275,26 @@ def _synthesize(
     query: str,
     decomposition: _Decomposition,
     chunks: list[dict],
-) -> str:
-    """Final turn — Claude writes the structured context block for the generator."""
+) -> tuple[str, dict]:
+    """Final turn — Claude writes the structured context block for the generator.
+
+    Returns:
+        (synthesis_markdown, calc_diagnostics)
+        where calc_diagnostics is a dict with the keys:
+            calculator_invoked: bool
+            calculator_expression: str | None
+            calculator_value: float | None
+            calculator_error: str | None
+
+    The synthesis_markdown string is what the generator consumes via
+    `agent_synthesis` in RAGState. When the synthesizer emits an arithmetic
+    expression and the calculator accepts it, a "Verified arithmetic" line is
+    appended to the markdown so the generator sees the canonical numeric
+    answer alongside the reasoning. If the calculator rejects the expression,
+    we silently fall back to the LLM's own narrative (Option X from Day 17
+    handoff): no disclaimer, since Day 13/15 analysis showed disclaimers flip
+    the judge label.
+    """
     llm = _claude_with_caching()
     decomp_text = (
         f"Qualifiers: {decomposition.qualifiers}\n"
@@ -271,15 +307,51 @@ def _synthesize(
         n_chunks=len(chunks),
         evidence=_full_evidence(chunks),
     )
+
+    diagnostics: dict = {
+        "calculator_invoked": False,
+        "calculator_expression": None,
+        "calculator_value": None,
+        "calculator_error": None,
+    }
+
+    structured = llm.with_structured_output(_AgentSynthesis)
     try:
-        result = llm.invoke([
+        result: _AgentSynthesis = structured.invoke([
             _system_block(prompt, llm),
             HumanMessage(content="Synthesize now."),
         ])
-        return result.content if isinstance(result.content, str) else str(result.content)
     except Exception as exc:  # noqa: BLE001
         logger.warning(f"Synthesizer failed, falling back to chunk concatenation: {exc}")
-        return "## Research findings\n\n(synthesizer error — main generator will use raw chunks)"
+        return (
+            "## Research findings\n\n(synthesizer error — main generator will use raw chunks)",
+            diagnostics,
+        )
+
+    synthesis = result.synthesis or ""
+    expr = (result.arithmetic_expression or "").strip()
+    if expr:
+        diagnostics["calculator_expression"] = expr
+        try:
+            value = compute(expr)
+            diagnostics["calculator_invoked"] = True
+            diagnostics["calculator_value"] = value
+            # Append the verified arithmetic line so the generator picks up the
+            # canonical numeric answer. `:.6g` keeps significant digits without
+            # excess precision (e.g. 0.829430323... → 0.829430).
+            synthesis = (
+                synthesis.rstrip()
+                + f"\n\n**Verified arithmetic** (calculator-evaluated): "
+                f"`{expr}` = **{value:.6g}**"
+            )
+            logger.info(f"Calculator: '{expr}' = {value:.6g}")
+        except CalculatorError as exc:
+            diagnostics["calculator_error"] = f"{type(exc).__name__}: {exc}"
+            # Silent fallback per Option X — keep the LLM's own synthesis as-is.
+            # No disclaimer added (would flip the hallucination-checker judge).
+            logger.warning(f"Calculator rejected '{expr}': {exc}")
+
+    return synthesis, diagnostics
 
 
 # ────────────────────────────────────────────────────────────
@@ -345,9 +417,10 @@ def research_agent_node(state: RAGState) -> dict:
             if cid not in chunks_by_id:
                 chunks_by_id[cid] = c
 
-    # Final turn: synthesize
+    # Final turn: synthesize (Sprint 7.8 Day 18 — also computes arithmetic
+    # via the calculator tool when the synthesizer emits an expression).
     relevant_chunks = list(chunks_by_id.values())
-    synthesis = _synthesize(query, decomp, relevant_chunks)
+    synthesis, calc_diagnostics = _synthesize(query, decomp, relevant_chunks)
 
     # Compute total LLM turns: 1 decompose + len(sufficiency_history) + 1 synthesize
     # (sub-question retrievals don't count Claude calls; only grader calls, which
@@ -356,7 +429,8 @@ def research_agent_node(state: RAGState) -> dict:
 
     logger.info(
         f"Agent done: {len(relevant_chunks)} chunks, {turns_used} Claude turns, "
-        f"sub_questions={sub_questions}"
+        f"sub_questions={sub_questions}, "
+        f"calc_invoked={calc_diagnostics['calculator_invoked']}"
     )
 
     # Mark grading_results so the main grader path doesn't re-grade.
@@ -368,4 +442,5 @@ def research_agent_node(state: RAGState) -> dict:
         "agent_synthesis": synthesis,
         "agent_turns_used": turns_used,
         "agent_sub_questions": sub_questions,
+        **calc_diagnostics,
     }
