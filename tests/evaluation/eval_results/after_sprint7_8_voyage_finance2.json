@@ -1,0 +1,81 @@
+{
+  "pipeline_time_seconds": 9513.2,
+  "num_samples": 150,
+  "ragas": {
+    "faithfulness": 0.6660035636410523,
+    "answer_relevancy": 0.6113316620897937,
+    "context_precision": 0.6832096709135901,
+    "context_recall": 0.34277777777777774
+  },
+  "ragas_time_seconds": 426.0,
+  "ragas_judge_model": "gpt-4o-mini",
+  "ragas_per_sample_file": "tests/evaluation/eval_results/financebench_pypdf_voyage_finance2.ragas.json",
+  "deepeval": {
+    "faithfulness": 0.8477,
+    "answer_relevancy": 0.8024,
+    "contextual_precision": 0.7508,
+    "contextual_recall": 0.7256,
+    "n_samples": 150,
+    "n_samples_with_metric_errors": 0,
+    "judge_model": "gpt-4o-mini",
+    "output_file": "tests/evaluation/eval_results/financebench_pypdf_voyage_finance2.deepeval.json"
+  },
+  "deepeval_time_seconds": 424.4,
+  "deepeval_judge_model": "gpt-4o-mini",
+  "correctness": {
+    "pass_rate": 0.44666666666666666,
+    "n_samples": 150,
+    "n_pass": 67,
+    "n_errors": 0,
+    "judge_model": "gpt-4o-mini",
+    "output_file": "tests/evaluation/eval_results/financebench_pypdf_voyage_finance2.correctness.json"
+  },
+  "correctness_time_seconds": 45.5,
+  "diagnostics": {
+    "refusal_rate": 0.09333333333333334,
+    "refusal_count": 14,
+    "pass_when_answered": 0.49264705882352944,
+    "slice_summary": {
+      "lookup": {
+        "n": 86,
+        "refusals": 12,
+        "passes": 39,
+        "answered": 74,
+        "answered_passes": 39,
+        "refusal_rate": 0.13953488372093023,
+        "pass_rate": 0.45348837209302323,
+        "pass_when_answered": 0.527027027027027
+      },
+      "multi_hop": {
+        "n": 13,
+        "refusals": 0,
+        "passes": 4,
+        "answered": 13,
+        "answered_passes": 4,
+        "refusal_rate": 0.0,
+        "pass_rate": 0.3076923076923077,
+        "pass_when_answered": 0.3076923076923077
+      },
+      "calc": {
+        "n": 51,
+        "refusals": 2,
+        "passes": 24,
+        "answered": 49,
+        "answered_passes": 24,
+        "refusal_rate": 0.0392156862745098,
+        "pass_rate": 0.47058823529411764,
+        "pass_when_answered": 0.4897959183673469
+      }
+    },
+    "contamination": {
+      "counts": {
+        "empty_context": 14,
+        "wrong_entity": 2
+      },
+      "rates": {
+        "empty_context": 0.09333333333333334,
+        "wrong_entity": 0.013333333333333334
+      }
+    }
+  }
+}
