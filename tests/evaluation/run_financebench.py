@@ -385,9 +385,28 @@ def run_pipeline_phase(
     original_collection = settings.QDRANT_COLLECTION
     settings.QDRANT_COLLECTION = collection
     session_start = time.time()
+
+    # When Anthropic quota / auth fails mid-run, generator_node and
+    # hallucination_checker_node catch the exception internally and return a
+    # canned "I encountered an error..." string. graph.invoke succeeds but the
+    # answer is bogus — and if we cached it, --resume-pipeline would skip the
+    # question on retry. Detect by string match; on 3 consecutive bogus
+    # answers, abort the run cleanly with complete=False so the user can
+    # recharge and resume only the un-evaluated questions.
+    QUOTA_ERROR_MARKERS = (
+        "I encountered an error generating a response",
+        # Other LLM-fallback strings produced by node-level exception handlers
+        # belong here too if they ever surface as the final answer.
+    )
+    QUOTA_ABORT_THRESHOLD = 3
+
+    def _looks_like_quota_failure(answer: str) -> bool:
+        return any(marker in (answer or "") for marker in QUOTA_ERROR_MARKERS)
+
     try:
         graph = build_graph(checkpointer=None)
         failures = 0
+        consecutive_quota_failures = 0
         remaining = dataset[start_idx:]
         pbar = tqdm(
             remaining,
@@ -415,6 +434,47 @@ def run_pipeline_phase(
                 tqdm.write(f"  [FAIL {failures}] Q{i + 1} {rec['financebench_id']}: {type(e).__name__}: {str(e)[:100]}")
                 ans = ""
                 chunks = []
+
+            # Quota-failure detection: catches the LLM-node-level fallback that
+            # would otherwise silently corrupt the cache for resume.
+            if _looks_like_quota_failure(ans):
+                consecutive_quota_failures += 1
+                tqdm.write(
+                    f"  ⚠ Q{i + 1} {rec['financebench_id']}: looks like LLM quota/auth failure "
+                    f"(consecutive: {consecutive_quota_failures}/{QUOTA_ABORT_THRESHOLD}). "
+                    f"NOT caching — resume will retry this question."
+                )
+                if consecutive_quota_failures >= QUOTA_ABORT_THRESHOLD:
+                    if cache_path is not None:
+                        _write_cache_atomic(
+                            cache_path,
+                            questions=questions,
+                            answers=answers,
+                            contexts=contexts,
+                            pipeline_time_seconds=seed_elapsed_seconds + (time.time() - session_start),
+                            complete=False,
+                            run_metadata=run_metadata,
+                        )
+                    # Derive the parent --output JSON path from the .pipeline.json cache path
+                    output_hint = (
+                        str(cache_path).replace(".pipeline.json", ".json")
+                        if cache_path else "<your output.json>"
+                    )
+                    raise SystemExit(
+                        f"\n❌ ABORT: {QUOTA_ABORT_THRESHOLD} consecutive answers look like LLM "
+                        f"quota/auth failures.\n"
+                        f"   Most likely cause: Anthropic credit balance exhausted or API key invalid.\n"
+                        f"   Cache flushed at q{len(answers)}/{len(dataset)} with complete=false.\n"
+                        f"   After fixing the issue (e.g. recharge Anthropic credits), resume with:\n"
+                        f"     python tests/evaluation/run_financebench.py --resume-pipeline \\\n"
+                        f"       --output {output_hint} \\\n"
+                        f"       --collection <same-collection> ...\n"
+                    )
+                # Don't append the bogus answer; resume will retry this question
+                continue
+            else:
+                consecutive_quota_failures = 0
+
             answers.append(ans)
             contexts.append(chunks if chunks else [""])
 
