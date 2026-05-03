@@ -62,6 +62,7 @@ def grader_node(state: RAGState) -> dict:
         return {
             "relevant_chunks": [],
             "grading_results": [],
+            "grader_fallback_used": False,
         }
 
     candidate_diagnostics: list[dict] = []
@@ -156,15 +157,59 @@ def grader_node(state: RAGState) -> dict:
         if d["relevant"]:
             relevant_chunks.append(chunk)
 
+    # Sprint 7.7 Day 7: empty-context fallback at the grader level.
+    # When the grader rejects ALL chunks (LLM strictness, LTR overconfidence),
+    # downstream gets [] and refuses. Hypothesis: pass through top-K reranker
+    # chunks instead.
+    #
+    # EXPERIMENTAL — Day 7 dev-set test on FinanceBench (commit will follow):
+    #   - 0/14 baseline empty-context cases rescued
+    #   - 1 regression on a previously-passing question (added noise hurt synthesis)
+    #   - Conclusion: rejected chunks really aren't relevant; forcing them
+    #     through doesn't help. Same lesson as Sprint 7a's hybrid+rerank.
+    #
+    # Code retained behind ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK feature flag
+    # (default False) so future deployments with more lenient downstream
+    # generators can opt-in without regressing FinanceBench.
+    grader_fallback_used = False
+    if (
+        settings.ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK
+        and not relevant_chunks
+        and chunks
+    ):
+        # Skip chunks the entity-match stage rejected — those are RBAC-adjacent
+        # cross-company chunks we never want to leak through the pipeline.
+        salvageable = [
+            (i, chunk) for i, chunk in enumerate(chunks)
+            if _entity_match(chunk, target_company)
+        ]
+        if salvageable:
+            fallback_n = min(settings.GRADING_MIN_RELEVANT_CHUNKS, len(salvageable))
+            relevant_chunks = [chunk for _, chunk in salvageable[:fallback_n]]
+            for i, _ in salvageable[:fallback_n]:
+                # Update grading_results so diagnostics see this was a fallback
+                grading_results[i] = {
+                    "chunk_id": i,
+                    "relevant": True,
+                    "reason": "GRADER FALLBACK: all chunks failed grading; passing through top reranked (best-effort)",
+                }
+            grader_fallback_used = True
+            logger.warning(
+                f"Grader fallback: 0/{len(chunks)} relevant after grading; passing through "
+                f"top {fallback_n} reranked entity-matched chunks (best-effort)"
+            )
+
     entity_msg = f", {rejected_by_entity} rejected by entity mismatch" if rejected_by_entity else ""
+    fallback_msg = " [GRADER FALLBACK]" if grader_fallback_used else ""
     logger.info(
         f"Grading: {len(relevant_chunks)}/{len(chunks)} chunks relevant "
         f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}, "
-        f"{len(pending_indices)} sent to LLM in parallel)"
+        f"{len(pending_indices)} sent to LLM in parallel){fallback_msg}"
     )
 
     return {
         "relevant_chunks": relevant_chunks,
         "grading_results": grading_results,
         "candidate_diagnostics": candidate_diagnostics,
+        "grader_fallback_used": grader_fallback_used,
     }

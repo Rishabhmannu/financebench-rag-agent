@@ -50,6 +50,15 @@ class RAGState(TypedDict):
     relevant_chunks: list[dict]
     grading_results: list[dict]
 
+    # --- Empty-context fallback diagnostics (Sprint 7.7 Day 7) ---
+    # Set to True when the retrieval node had to drop its entity filter to find
+    # any chunks at all (retrieval-side fallback), or when the grader had to
+    # pass through top-K reranked chunks because all chunks failed grading
+    # (grader-side fallback). Either signal indicates a "best-effort" answer
+    # rather than a confidently-grounded one — useful for failure analysis.
+    retrieval_fallback_used: bool | None
+    grader_fallback_used: bool | None
+
     # --- Research agent (Sprint 7.6) ---
     # Set when the research agent runs (query_complexity == "research_required").
     # `agent_synthesis` is a structured-text reasoning block the agent produces

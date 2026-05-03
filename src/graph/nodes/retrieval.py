@@ -41,9 +41,14 @@ def retrieval_node(state: RAGState) -> dict:
             rbac_filter=retrieval_filter,
             top_k=settings.RETRIEVAL_TOP_K,
         )
+        initial_count = len(chunks)
+        retrieval_fallback_used = False
 
         # Progressive filter relaxation: if strict entity+year filtering yields
-        # too few candidates, drop year first, then company.
+        # too few candidates, drop year first, then company. Sprint 7.7 Day 7:
+        # set `retrieval_fallback_used` when ANY relaxation kicks in so
+        # diagnostics can distinguish "filter-relaxed" answers from
+        # confidently-filtered ones.
         if len(chunks) < settings.GRADING_MIN_RELEVANT_CHUNKS:
             if target_company and target_fiscal_year:
                 relaxed_filter = build_retrieval_filter(
@@ -61,6 +66,7 @@ def retrieval_node(state: RAGState) -> dict:
                 )
                 if len(relaxed) > len(chunks):
                     chunks = relaxed
+                    retrieval_fallback_used = True
             if len(chunks) < settings.GRADING_MIN_RELEVANT_CHUNKS and target_company:
                 relaxed_filter = build_retrieval_filter(
                     allowed_doc_types=allowed_doc_types,
@@ -77,11 +83,16 @@ def retrieval_node(state: RAGState) -> dict:
                 )
                 if len(relaxed) > len(chunks):
                     chunks = relaxed
+                    retrieval_fallback_used = True
 
         filter_info = f"company={target_company},year={target_fiscal_year}" if target_company else "no-company-filter"
-        logger.info(f"Retrieved {len(chunks)} hybrid candidates ({filter_info}) for: {query[:60]}...")
-        return {"retrieved_chunks": chunks}
+        fallback_info = f" [FALLBACK from {initial_count}]" if retrieval_fallback_used else ""
+        logger.info(f"Retrieved {len(chunks)} hybrid candidates ({filter_info}){fallback_info} for: {query[:60]}...")
+        return {
+            "retrieved_chunks": chunks,
+            "retrieval_fallback_used": retrieval_fallback_used,
+        }
 
     except Exception as e:
         logger.error(f"Retrieval failed: {e}", exc_info=True)
-        return {"retrieved_chunks": []}
+        return {"retrieved_chunks": [], "retrieval_fallback_used": False}

@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     # Non-LLM post-reranker validation
     ENABLE_DETERMINISTIC_VALIDATOR: bool = True
     VALIDATOR_MIN_KEEP: int = 3
+    # Grader empty-context fallback (Sprint 7.7 Day 7): when grader yields 0
+    # relevant chunks, pass through top-K reranker chunks (best-effort) instead
+    # of refusing. EXPERIMENTAL — Day 7 dev-set test on FinanceBench showed
+    # this didn't rescue any cases (0 rescues / 1 regression) because the
+    # rejected chunks really weren't relevant. Default OFF; can be re-enabled
+    # per-deployment if downstream is more tolerant of low-confidence chunks.
+    ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK: bool = False
     # Learned LTR gate (Phase 2)
     ENABLE_LTR_GATE: bool = False
     LTR_GATE_MODEL_PATH: str = "data/models/ltr_gate.json"
