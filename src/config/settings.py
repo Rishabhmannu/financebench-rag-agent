@@ -111,20 +111,26 @@ class Settings(BaseSettings):
     # Generator + hallucination upgraded to Claude Sonnet 4.6 in Sprint 7b for
     # stronger instruction-following + grounding. OpenAI remains the fallback.
     GENERATOR_MODEL: str = "claude-sonnet-4-6"
-    HALLUCINATION_MODEL: str = "claude-sonnet-4-6"
-    # Opus 4.7 historical default; Sprint 7.9 Day 3 will rotate this to
-    # `claude-sonnet-4-6` per Vectara hallucination benchmarks (Sonnet 4.6 has
-    # *lower* hallucination rate than Opus 4.6 on verification tasks). The
-    # `_anthropic_safe` factory helper handles the Opus 4.7 `temperature`
-    # deprecation either way.
-    HIGH_STAKES_HALLUCINATION_MODEL: str = "claude-opus-4-7"
+    # --- Sprint 7.9 Day 3 rollout: per-task model tiering ---
+    # Rationale: Day 2 dev-sets (n=30 each) tested 4 candidate downgrades from
+    # Sonnet 4.6 to cheaper models. Day 2.5 baseline-noise-floor measurement
+    # showed the dev-set itself drifts -3 net under identical settings (4 noisy
+    # lookup questions: 00735, 00685, 03029, 00215). Three downgrades matched
+    # the noise floor exactly (drop-in safe); the fourth (synthesize → Haiku
+    # 4.5) was -1 below noise (real damage) so synthesize stays on Sonnet 4.6.
+    HALLUCINATION_MODEL: str = "claude-haiku-4-5"  # ↓ from sonnet-4-6 (saves ~$1.35/eval)
+    # HITL high-stakes: dropped from Opus 4.7 per Vectara hallucination
+    # leaderboard (Sonnet 4.6 has LOWER hallucination rate than Opus 4.6 on
+    # verification tasks). Bonus: avoids Opus 4.7's `temperature`-deprecation
+    # bug. See SESSION_HANDOFF.md §8d for the full citation chain.
+    HIGH_STAKES_HALLUCINATION_MODEL: str = "claude-sonnet-4-6"  # ↓ from opus-4-7 (saves ~$0.30/eval avg)
     # --- Research-agent sub-models (Sprint 7.9 Workstream A) ---
-    # Default to the same model as the generator so existing behavior is
-    # preserved; per-task downgrades are rolled out in Day 3 after dev-set
-    # validation. Override per-run via env var for Day 1 / Day 2 smokes.
-    RESEARCH_AGENT_DECOMPOSE_MODEL: str = "claude-sonnet-4-6"
-    RESEARCH_AGENT_SUFFICIENCY_MODEL: str = "claude-sonnet-4-6"
-    RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"
+    # decompose + sufficiency: structured-output classifier tasks; gpt-4o-mini
+    # handles them at 20× lower cost. synthesize stays on Sonnet 4.6 because
+    # Haiku 4.5 showed real damage at dev-set (+1 below noise floor).
+    RESEARCH_AGENT_DECOMPOSE_MODEL: str = "gpt-4o-mini"        # ↓ from sonnet-4-6 (saves ~$0.55/eval)
+    RESEARCH_AGENT_SUFFICIENCY_MODEL: str = "gpt-4o-mini"      # ↓ from sonnet-4-6 (saves ~$0.55/eval)
+    RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"  # KEPT (Haiku regression)
     # Legacy OpenAI fallback model — used when Anthropic fails or FORCE_OPENAI_ONLY is on
     OPENAI_FALLBACK_MODEL: str = "gpt-4o-mini"
 

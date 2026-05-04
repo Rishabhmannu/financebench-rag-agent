@@ -1,16 +1,26 @@
 """LLM factory with provider selection and fallback chains.
 
-Per-task provider strategy (Sprint 7b):
+Per-task provider strategy (Sprint 7.9 Day 3 — heterogeneous model tiering):
 
-| Task                    | Primary                  | Fallback       | Why |
-|-------------------------|--------------------------|----------------|-----|
+| Task                    | Primary                  | Fallback       | Tier rationale |
+|-------------------------|--------------------------|----------------|----------------|
 | Router                  | Groq Llama 3.3 70B       | OpenAI 4o-mini | Latency-critical classification |
 | Grader                  | Groq Llama 3.3 70B       | OpenAI 4o-mini | High-volume binary classification (8 calls/query) |
-| Entity extractor LLM    | Groq Llama 3.3 70B       | OpenAI 4o-mini | Ambiguous-query fallback only; latency-sensitive |
+| Entity extractor LLM    | Groq Llama 3.3 70B       | OpenAI 4o-mini | Ambiguous-query fallback only |
 | Query contextualizer    | (uses router LLM)        | —              | Same budget / latency profile |
-| Generator               | **Claude Sonnet 4.6**    | OpenAI 4o-mini | User-facing quality; prompt-caching-friendly |
-| Hallucination checker   | **Claude Sonnet 4.6**    | OpenAI 4o-mini | Nuanced grounding assessment |
-| High-stakes hallucination (HITL-triggered) | **Claude Opus 4.7** | Sonnet 4.6 | Top-quality verification for dollar amounts ≥ HITL threshold |
+| **Generator**           | **Claude Sonnet 4.6**    | OpenAI 4o-mini | User-facing quality; prompt-caching-friendly |
+| **Hallucination checker**       | **Claude Haiku 4.5**     | OpenAI 4o-mini | Sprint 7.9 downgrade — verification fits Haiku's range; -$1.35/eval |
+| **High-stakes hallucination (HITL)** | **Claude Sonnet 4.6** | Sonnet 4.6 | Sprint 7.9 — dropped Opus 4.7 per Vectara: Sonnet has *lower* hallucination than Opus on verification |
+| **Research-agent: decompose**   | **gpt-4o-mini**          | OpenAI 4o-mini | Sprint 7.9 downgrade — 3-field structured classifier; -$0.55/eval |
+| **Research-agent: sufficiency** | **gpt-4o-mini**          | OpenAI 4o-mini | Sprint 7.9 downgrade — 4-field judge; -$0.55/eval |
+| **Research-agent: synthesize**  | **Claude Sonnet 4.6**    | OpenAI 4o-mini | Sprint 7.9 KEPT — Haiku 4.5 caused -1pp regression below dev-set noise floor |
+
+Sprint 7.9 Day 2.5 finding (worth carrying forward): the n=30 dev-set has a
+noise floor of roughly ±3 net pass-count delta even on identical settings. Day 3
+shipped the 3 downgrades that matched the noise floor (drop-in safe) and dropped
+the 1 that fell -1 below it. Net per-eval cost projection: $9.89 → ~$7.14 (~28%
+reduction). Going forward, dev-set deltas in [-3, +1] should be treated as
+within noise; only ≤ -4 with new regression patterns or ≥ +2 are decisive.
 
 The `FORCE_OPENAI_ONLY=true` env override bypasses Groq and Anthropic, routing
 every call through OpenAI. Used during eval runs to control Anthropic spend and
