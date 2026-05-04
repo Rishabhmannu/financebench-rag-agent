@@ -41,16 +41,47 @@ def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None)
     return ChatOpenAI(**kwargs)
 
 
+# Models that have deprecated the `temperature` parameter — passing it raises
+# 400 Bad Request. Confirmed via Sprint 7.9 Day 1 API key swap smoke.
+# Forward-safe: extend this set as Anthropic deprecates `temperature` on more
+# models; the factory will silently omit the param.
+_ANTHROPIC_NO_TEMPERATURE_MODELS: set[str] = {"claude-opus-4-7"}
+
+
 def _anthropic(model: str, temperature: float = 0.0, max_tokens: int = 1024) -> ChatAnthropic:
     """Anthropic chat model. Prompt caching is applied at the message level by
     callers that want it — see `src.graph.nodes.generator` and
-    `src.graph.nodes.hallucination`."""
-    return ChatAnthropic(
-        model_name=model,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        api_key=settings.ANTHROPIC_API_KEY,
-        callbacks=[get_cost_handler()],
+    `src.graph.nodes.hallucination`.
+
+    `temperature` is silently omitted for models in `_ANTHROPIC_NO_TEMPERATURE_MODELS`
+    (e.g. Opus 4.7, which deprecated the parameter). This keeps the factory
+    forward-safe even when Sprint 7.9 rotates HITL off Opus 4.7 to Sonnet 4.6.
+    """
+    kwargs = {
+        "model_name": model,
+        "max_tokens": max_tokens,
+        "api_key": settings.ANTHROPIC_API_KEY,
+        "callbacks": [get_cost_handler()],
+    }
+    if model not in _ANTHROPIC_NO_TEMPERATURE_MODELS:
+        kwargs["temperature"] = temperature
+    return ChatAnthropic(**kwargs)
+
+
+def _llm_for_task(model_name: str, temperature: float = 0.0, max_tokens: int = 2048):
+    """Dispatch to the right provider based on the model-name prefix.
+
+    Used by Sprint 7.9 per-task model settings (decompose, sufficiency,
+    synthesize) so each can be configured independently to claude-* or gpt-*
+    without changing call sites.
+    """
+    if model_name.startswith("claude-"):
+        return _anthropic(model_name, temperature=temperature, max_tokens=max_tokens)
+    if model_name.startswith("gpt-"):
+        return _openai(model_name, temperature=temperature, max_tokens=max_tokens)
+    raise ValueError(
+        f"Unknown model provider for {model_name!r}. "
+        f"Expected prefix 'claude-' or 'gpt-'."
     )
 
 
@@ -156,16 +187,69 @@ class LLMFactory:
 
     @staticmethod
     def get_high_stakes_hallucination_llm():
-        """Claude Opus 4.7 — used only when HITL threshold is triggered (dollar
-        amounts above the role's requires_hitl_above). The extra cost is bounded
-        to HITL-path answers, which are already the most expensive per-query
-        (an interrupt + human review round-trip)."""
+        """High-stakes hallucination check — fires when HITL threshold is triggered
+        (dollar amounts above role's `requires_hitl_above`).
+
+        Default model is `claude-opus-4-7` for backward compatibility. Sprint 7.9
+        recommends rotating to `claude-sonnet-4-6` per Vectara hallucination
+        benchmarks (Sonnet 4.6 has *lower* hallucination rate than Opus 4.6 on
+        verification tasks; Opus 4.7 is positioned for complex agentic / coding
+        work, not verification). Override via `HIGH_STAKES_HALLUCINATION_MODEL=claude-sonnet-4-6`.
+        The `_anthropic` helper handles the Opus 4.7 `temperature`-deprecation
+        edge case, so either model works without code changes.
+        """
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
         if settings.ANTHROPIC_API_KEY:
             return _anthropic(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
         _warn_once(
-            "high_stakes_no_opus",
-            "Falling back from Opus 4.7 to Sonnet 4.6 for high-stakes check",
+            "high_stakes_no_anthropic",
+            "Anthropic API key not set for high-stakes check, falling back to OpenAI",
         )
         return LLMFactory.get_hallucination_llm()
+
+    @staticmethod
+    def get_research_decompose_llm():
+        """Research-agent decompose step — Sprint 7.9 candidate downgrade.
+
+        Pure structured-output classification (3 fields: qualifiers,
+        required_quantities, sub_questions). Default `claude-sonnet-4-6`;
+        Sprint 7.9 Workstream A tests `gpt-4o-mini` (~20× cheaper, fits
+        the task complexity).
+        """
+        if settings.FORCE_OPENAI_ONLY:
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=2048)
+        if not settings.ANTHROPIC_API_KEY and settings.RESEARCH_AGENT_DECOMPOSE_MODEL.startswith("claude-"):
+            _warn_once("decompose_no_anthropic", "Anthropic key missing, falling back to OpenAI for decompose")
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=2048)
+        return _llm_for_task(settings.RESEARCH_AGENT_DECOMPOSE_MODEL, temperature=0.0, max_tokens=2048)
+
+    @staticmethod
+    def get_research_sufficiency_llm():
+        """Research-agent sufficiency-judge step — Sprint 7.9 candidate downgrade.
+
+        4-field structured judge (decision, missing_quantity, follow_up_question,
+        reason). Default `claude-sonnet-4-6`; Sprint 7.9 tests `gpt-4o-mini`.
+        """
+        if settings.FORCE_OPENAI_ONLY:
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=2048)
+        if not settings.ANTHROPIC_API_KEY and settings.RESEARCH_AGENT_SUFFICIENCY_MODEL.startswith("claude-"):
+            _warn_once("sufficiency_no_anthropic", "Anthropic key missing, falling back to OpenAI for sufficiency")
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=2048)
+        return _llm_for_task(settings.RESEARCH_AGENT_SUFFICIENCY_MODEL, temperature=0.0, max_tokens=2048)
+
+    @staticmethod
+    def get_research_synthesize_llm():
+        """Research-agent synthesize step — Sprint 7.9 candidate downgrade.
+
+        Generates the structured-markdown context block for the main generator.
+        Default `claude-sonnet-4-6`; Sprint 7.9 tests `claude-haiku-4-5` (riskier
+        — Haiku may not adhere to structured-markdown format as cleanly as
+        Sonnet; A/B-test required at dev-set level).
+        """
+        if settings.FORCE_OPENAI_ONLY:
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1, max_tokens=2048)
+        if not settings.ANTHROPIC_API_KEY and settings.RESEARCH_AGENT_SYNTHESIZE_MODEL.startswith("claude-"):
+            _warn_once("synthesize_no_anthropic", "Anthropic key missing, falling back to OpenAI for synthesize")
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1, max_tokens=2048)
+        return _llm_for_task(settings.RESEARCH_AGENT_SYNTHESIZE_MODEL, temperature=0.1, max_tokens=2048)

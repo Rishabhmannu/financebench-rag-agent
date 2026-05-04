@@ -118,7 +118,17 @@ class _AgentSynthesis(BaseModel):
 
 
 def _claude_with_caching() -> ChatAnthropic:
-    """Generator-tier Claude (Sonnet 4.6) — same model the agent's calls expect.
+    """Generator-tier Claude (Sonnet 4.6) — kept for back-compat.
+
+    Sprint 7.9 split this into three task-specific factory calls so each
+    sub-step (decompose, sufficiency, synthesize) can be configured to a
+    different model independently. New call sites should use:
+
+        LLMFactory.get_research_decompose_llm()
+        LLMFactory.get_research_sufficiency_llm()
+        LLMFactory.get_research_synthesize_llm()
+
+    Defaults preserve the pre-Sprint-7.9 behavior (claude-sonnet-4-6 everywhere).
 
     Note: cache_control on agent system prompts will start firing here once
     accumulated agent context exceeds 1024 tokens (per generator.py NOTE).
@@ -215,8 +225,13 @@ def _retrieve_and_grade_for_subq(state: RAGState, sub_question: str) -> list[dic
 
 
 def _decompose(query: str, target_company: str | None, target_fiscal_year: int | None) -> _Decomposition:
-    """Turn 1 — Claude decomposes the query."""
-    llm = _claude_with_caching()
+    """Turn 1 — decompose the query.
+
+    Sprint 7.9: uses the dedicated decompose-task LLM (configurable via
+    `RESEARCH_AGENT_DECOMPOSE_MODEL`). Default `claude-sonnet-4-6`; Sprint 7.9
+    Workstream A tests `gpt-4o-mini` (~20× cheaper).
+    """
+    llm = LLMFactory.get_research_decompose_llm()
     structured = llm.with_structured_output(_Decomposition)
     prompt = DECOMPOSE_SYSTEM_PROMPT.format(
         query=query,
@@ -245,8 +260,13 @@ def _judge_sufficiency(
     decomposition: _Decomposition,
     chunks: list[dict],
 ) -> _SufficiencyVerdict:
-    """Sufficiency check — does the evidence cover every required quantity?"""
-    llm = _claude_with_caching()
+    """Sufficiency check — does the evidence cover every required quantity?
+
+    Sprint 7.9: uses the dedicated sufficiency-task LLM (configurable via
+    `RESEARCH_AGENT_SUFFICIENCY_MODEL`). Default `claude-sonnet-4-6`;
+    Sprint 7.9 Workstream A tests `gpt-4o-mini`.
+    """
+    llm = LLMFactory.get_research_sufficiency_llm()
     structured = llm.with_structured_output(_SufficiencyVerdict)
     decomp_text = (
         f"Qualifiers: {decomposition.qualifiers}\n"
@@ -313,8 +333,13 @@ def _synthesize_legacy(
     decomposition: _Decomposition,
     chunks: list[dict],
 ) -> tuple[str, dict]:
-    """Pre-Day-18 synthesizer: plain-text return, no calculator. Canonical."""
-    llm = _claude_with_caching()
+    """Pre-Day-18 synthesizer: plain-text return, no calculator. Canonical.
+
+    Sprint 7.9: uses the dedicated synthesize-task LLM (configurable via
+    `RESEARCH_AGENT_SYNTHESIZE_MODEL`). Default `claude-sonnet-4-6`;
+    Sprint 7.9 Workstream A tests `claude-haiku-4-5` (riskier — A/B-test).
+    """
+    llm = LLMFactory.get_research_synthesize_llm()
     decomp_text = (
         f"Qualifiers: {decomposition.qualifiers}\n"
         f"Required quantities: {decomposition.required_quantities}\n"
@@ -349,8 +374,10 @@ def _synthesize_with_calculator(
     rationale on why this is off by default. Silent fallback per Option X —
     no disclaimer added on calculator rejection, since Day 13/15 analysis
     showed disclaimers flip the judge label.
+
+    Sprint 7.9: uses `RESEARCH_AGENT_SYNTHESIZE_MODEL` (same as legacy path).
     """
-    llm = _claude_with_caching()
+    llm = LLMFactory.get_research_synthesize_llm()
     decomp_text = (
         f"Qualifiers: {decomposition.qualifiers}\n"
         f"Required quantities: {decomposition.required_quantities}\n"

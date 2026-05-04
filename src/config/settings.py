@@ -112,9 +112,19 @@ class Settings(BaseSettings):
     # stronger instruction-following + grounding. OpenAI remains the fallback.
     GENERATOR_MODEL: str = "claude-sonnet-4-6"
     HALLUCINATION_MODEL: str = "claude-sonnet-4-6"
-    # Opus 4.7 reserved for high-stakes hallucination verification when HITL fires
-    # (amounts above threshold). Higher cost but strongest grounding judgment.
+    # Opus 4.7 historical default; Sprint 7.9 Day 3 will rotate this to
+    # `claude-sonnet-4-6` per Vectara hallucination benchmarks (Sonnet 4.6 has
+    # *lower* hallucination rate than Opus 4.6 on verification tasks). The
+    # `_anthropic_safe` factory helper handles the Opus 4.7 `temperature`
+    # deprecation either way.
     HIGH_STAKES_HALLUCINATION_MODEL: str = "claude-opus-4-7"
+    # --- Research-agent sub-models (Sprint 7.9 Workstream A) ---
+    # Default to the same model as the generator so existing behavior is
+    # preserved; per-task downgrades are rolled out in Day 3 after dev-set
+    # validation. Override per-run via env var for Day 1 / Day 2 smokes.
+    RESEARCH_AGENT_DECOMPOSE_MODEL: str = "claude-sonnet-4-6"
+    RESEARCH_AGENT_SUFFICIENCY_MODEL: str = "claude-sonnet-4-6"
+    RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"
     # Legacy OpenAI fallback model — used when Anthropic fails or FORCE_OPENAI_ONLY is on
     OPENAI_FALLBACK_MODEL: str = "gpt-4o-mini"
 
