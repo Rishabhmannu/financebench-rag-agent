@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     # rejected chunks really weren't relevant. Default OFF; can be re-enabled
     # per-deployment if downstream is more tolerant of low-confidence chunks.
     ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK: bool = False
+    # Calculator tool in research-agent synthesizer (Sprint 7.8 Day 18 experiment).
+    # Day 19 full eval regressed canonical pass rate by -4pp (44.7% → 40.7%):
+    # calculator's "Verified arithmetic = X" line in synthesis triggered +6
+    # hallucination-checker disclaimers, exactly matching the -6 net regression.
+    # Calc slice itself was unchanged. Code preserved behind this flag for
+    # future iteration; default False keeps the canonical Sprint 7.8 voyage path.
+    ENABLE_CALCULATOR_TOOL: bool = False
     # Learned LTR gate (Phase 2)
     ENABLE_LTR_GATE: bool = False
     LTR_GATE_MODEL_PATH: str = "data/models/ltr_gate.json"

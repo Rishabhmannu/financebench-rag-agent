@@ -431,6 +431,56 @@ Your output is NOT the final answer. It is a curated context that:
   - Quotes management's language verbatim when the question asks about
     drivers / explanations (e.g. "What drove operating margin change?")
 
+Output format (markdown):
+
+```
+## Research findings — [original question paraphrased in one line]
+
+**Qualifiers detected**: [list, or "none"]
+
+**Required quantities**:
+- [quantity 1]: value [unit] — [source: filename, page]
+- [quantity 2]: value [unit] — [source: filename, page]
+- [quantity 3]: NOT FOUND in retrieved chunks
+
+**Quoted context** (for "what drove" / "why" questions only):
+> "..." — [source: filename, page]
+
+**Computation** (for ratio / formula / comparison questions only):
+[show the arithmetic explicitly so the generator doesn't have to redo it]
+```
+
+Original question: {query}
+Decomposition:
+{decomposition}
+
+Collected evidence ({n_chunks} chunks, with [Source: filename, page] headers):
+{evidence}"""
+
+
+# ─── Sprint 7.8 Day 18 calculator-tool variant (gated by ENABLE_CALCULATOR_TOOL) ───
+# Day 19 full eval showed this prompt + calculator integration regressed the
+# canonical pass rate by 4pp (44.7% → 40.7%). The +6 hallucination-checker
+# disclaimers in D19 vs D16 exactly matched the -6 net regression: the
+# calculator-verified arithmetic line in synthesis was triggering more
+# disclaimers downstream, flipping passing answers to fail. Calc slice itself
+# was unchanged (24/51 → 24/51).
+#
+# Code preserved here behind a feature flag (`settings.ENABLE_CALCULATOR_TOOL`,
+# default False) for future iteration. Same pattern as Day 7's grader empty-
+# context fallback (`ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK`).
+AGENT_SYNTHESIZER_SYSTEM_PROMPT_CALC = """You are a financial research synthesizer.
+You've gathered evidence across multiple sub-questions. Produce a STRUCTURED
+context block that the main generator will use to write the final answer.
+
+Your output is NOT the final answer. It is a curated context that:
+  - Lists each required quantity with its value, unit, and source
+  - Calls out qualifiers explicitly so the generator doesn't miss them
+  - Notes any quantity that wasn't found (don't fabricate)
+  - Preserves negative-number conventions: "(X)" or "-X" means negative
+  - Quotes management's language verbatim when the question asks about
+    drivers / explanations (e.g. "What drove operating margin change?")
+
 You return TWO fields in your structured output:
 
 1. `synthesis` — the markdown context block (format below).

@@ -44,9 +44,11 @@ from pydantic import BaseModel, Field
 
 from src.config.prompts import (
     AGENT_SYNTHESIZER_SYSTEM_PROMPT,
+    AGENT_SYNTHESIZER_SYSTEM_PROMPT_CALC,
     DECOMPOSE_SYSTEM_PROMPT,
     SUFFICIENCY_SYSTEM_PROMPT,
 )
+from src.config.settings import settings
 from src.graph.nodes.grader import grader_node
 from src.graph.nodes.reranker import reranker_node
 from src.graph.nodes.retrieval import retrieval_node
@@ -271,6 +273,15 @@ def _judge_sufficiency(
         )
 
 
+def _empty_calc_diagnostics() -> dict:
+    return {
+        "calculator_invoked": False,
+        "calculator_expression": None,
+        "calculator_value": None,
+        "calculator_error": None,
+    }
+
+
 def _synthesize(
     query: str,
     decomposition: _Decomposition,
@@ -278,23 +289,31 @@ def _synthesize(
 ) -> tuple[str, dict]:
     """Final turn — Claude writes the structured context block for the generator.
 
-    Returns:
-        (synthesis_markdown, calc_diagnostics)
-        where calc_diagnostics is a dict with the keys:
-            calculator_invoked: bool
-            calculator_expression: str | None
-            calculator_value: float | None
-            calculator_error: str | None
+    Dispatches on `settings.ENABLE_CALCULATOR_TOOL`:
+      - False (default, Sprint 7.8 canonical): legacy plain-text path. The
+        synthesizer returns a markdown string, no calculator involved. This is
+        the configuration that delivered the 44.7% Day 16 voyage baseline.
+      - True (Sprint 7.8 Day 18 experiment): structured-output path, calls the
+        calculator on the LLM-emitted expression, appends a "Verified
+        arithmetic" line to the synthesis. Day 19 full eval showed this path
+        regresses pass rate by -4pp via downstream hallucination-checker
+        disclaimer cascade. Preserved for future iteration.
 
-    The synthesis_markdown string is what the generator consumes via
-    `agent_synthesis` in RAGState. When the synthesizer emits an arithmetic
-    expression and the calculator accepts it, a "Verified arithmetic" line is
-    appended to the markdown so the generator sees the canonical numeric
-    answer alongside the reasoning. If the calculator rejects the expression,
-    we silently fall back to the LLM's own narrative (Option X from Day 17
-    handoff): no disclaimer, since Day 13/15 analysis showed disclaimers flip
-    the judge label.
+    Returns:
+        (synthesis_markdown, calc_diagnostics) — same shape on both paths so
+        the caller doesn't branch on the flag.
     """
+    if settings.ENABLE_CALCULATOR_TOOL:
+        return _synthesize_with_calculator(query, decomposition, chunks)
+    return _synthesize_legacy(query, decomposition, chunks)
+
+
+def _synthesize_legacy(
+    query: str,
+    decomposition: _Decomposition,
+    chunks: list[dict],
+) -> tuple[str, dict]:
+    """Pre-Day-18 synthesizer: plain-text return, no calculator. Canonical."""
     llm = _claude_with_caching()
     decomp_text = (
         f"Qualifiers: {decomposition.qualifiers}\n"
@@ -307,13 +326,43 @@ def _synthesize(
         n_chunks=len(chunks),
         evidence=_full_evidence(chunks),
     )
+    try:
+        result = llm.invoke([
+            _system_block(prompt, llm),
+            HumanMessage(content="Synthesize now."),
+        ])
+        synthesis = result.content if isinstance(result.content, str) else str(result.content)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Synthesizer failed, falling back to chunk concatenation: {exc}")
+        synthesis = "## Research findings\n\n(synthesizer error — main generator will use raw chunks)"
+    return synthesis, _empty_calc_diagnostics()
 
-    diagnostics: dict = {
-        "calculator_invoked": False,
-        "calculator_expression": None,
-        "calculator_value": None,
-        "calculator_error": None,
-    }
+
+def _synthesize_with_calculator(
+    query: str,
+    decomposition: _Decomposition,
+    chunks: list[dict],
+) -> tuple[str, dict]:
+    """Day-18 calculator-aware synthesizer (gated behind ENABLE_CALCULATOR_TOOL).
+
+    See AGENT_SYNTHESIZER_SYSTEM_PROMPT_CALC docstring + Day 19 retro for the
+    rationale on why this is off by default. Silent fallback per Option X —
+    no disclaimer added on calculator rejection, since Day 13/15 analysis
+    showed disclaimers flip the judge label.
+    """
+    llm = _claude_with_caching()
+    decomp_text = (
+        f"Qualifiers: {decomposition.qualifiers}\n"
+        f"Required quantities: {decomposition.required_quantities}\n"
+        f"Sub-questions executed: {decomposition.sub_questions}"
+    )
+    prompt = AGENT_SYNTHESIZER_SYSTEM_PROMPT_CALC.format(
+        query=query,
+        decomposition=decomp_text,
+        n_chunks=len(chunks),
+        evidence=_full_evidence(chunks),
+    )
+    diagnostics = _empty_calc_diagnostics()
 
     structured = llm.with_structured_output(_AgentSynthesis)
     try:
@@ -336,9 +385,6 @@ def _synthesize(
             value = compute(expr)
             diagnostics["calculator_invoked"] = True
             diagnostics["calculator_value"] = value
-            # Append the verified arithmetic line so the generator picks up the
-            # canonical numeric answer. `:.6g` keeps significant digits without
-            # excess precision (e.g. 0.829430323... → 0.829430).
             synthesis = (
                 synthesis.rstrip()
                 + f"\n\n**Verified arithmetic** (calculator-evaluated): "
@@ -347,8 +393,6 @@ def _synthesize(
             logger.info(f"Calculator: '{expr}' = {value:.6g}")
         except CalculatorError as exc:
             diagnostics["calculator_error"] = f"{type(exc).__name__}: {exc}"
-            # Silent fallback per Option X — keep the LLM's own synthesis as-is.
-            # No disclaimer added (would flip the hallucination-checker judge).
             logger.warning(f"Calculator rejected '{expr}': {exc}")
 
     return synthesis, diagnostics
