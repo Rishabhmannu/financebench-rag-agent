@@ -373,13 +373,28 @@ The Sprint 8 stack adds end-to-end observability without behavior change at defa
 
 ## Documentation
 
+- [docs/engineering-log.md](docs/engineering-log.md) — Condensed narrative behind the 30.7% → 47.3% campaign: the noise-floor finding, the calculator regression, the LoRA reranker, and the things that aren't obvious from the code
 - [docs/architecture.md](docs/architecture.md) — Graph topology, node responsibilities, state management, LLM strategy
 - [docs/rbac-matrix.md](docs/rbac-matrix.md) — Role permissions, confidentiality levels, HITL thresholds
 - [docs/api-reference.md](docs/api-reference.md) — All endpoints with request/response examples
-- [docs/research/](docs/research/) — Feasibility research: eval frameworks, LLM providers, production roadmap, UI framework comparison
-- [SESSION_HANDOFF.md](SESSION_HANDOFF.md) — Detailed sprint-by-sprint engineering log
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) — Forward-looking plan
-- [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md) — Eval-quality improvement roadmap
+- [docs/research/](docs/research/) — Feasibility research notes: eval frameworks, LLM providers, retrieval-filter research, failure analysis, chunker experiments
+
+## Known Limitations
+
+Things this project is NOT, said out loud so a reader doesn't have to guess.
+
+1. **Never deployed to production.** The full stack runs locally via `docker compose up -d`. No public URL, no real user traffic. The `.github/workflows/deploy.yml` exists but has not been used to deploy.
+2. **47.3% is below SOTA.** [FinGEAR (EMNLP 2025)](https://arxiv.org/abs/2410.18141) achieved ~55% on FinanceBench with GraphRAG. Patronus's original FinanceBench paper baselines were 38–43%. The project sits credibly in the published-baseline range but well below state-of-the-art.
+3. **Frontend (Sprint 9) is partial.** The Next.js vertical slice (login + streaming chat + sources + theme + user header) is built and the BFF wiring works against the backend, but Sprint 9.2 (sidebar history, HITL approval UI), 9.3 (citation PDF viewer), 9.4 (admin panel), and 9.5 (file upload, eval dashboard) are unbuilt. The Gradio frontend works as the current usable UI.
+4. **Multi-judge eval uses one model family.** RAGAS + DeepEval + correctness judges all run on gpt-4o-mini. A `scripts/dual_judge_check.py` script exists for sampled re-scoring with a second judge family (Anthropic), but it's a manual cross-check, not a CI gate.
+5. **Feature-flagged experiments preserved in source.** `ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK`, `ENABLE_LTR_GATE`, `ENABLE_CALCULATOR_TOOL` are all `=False`. Code is preserved as research record, but adds surface area to the repo.
+6. **No production ops.** No load testing, no horizontal scaling validation, no incident runbooks.
+
+### What I'd build next, in priority order
+
+1. **Deploy backend + frontend on free-tier infra** (Render + Vercel + Neon Postgres). Closes the biggest credibility gap.
+2. **Finish Sprint 9.2** — thread sidebar + HITL approval UI is the most user-visible feature still missing.
+3. **GraphRAG experiment** — likely the largest single quality lever remaining. FinGEAR's +8pp over baseline RAG suggests this is where the ceiling is.
 
 ## Roadmap
 
