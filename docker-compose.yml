@@ -123,10 +123,18 @@ services:
   # LiteLLM semantic cache. Plain redis:alpine would NOT work — semantic
   # cache requires the RediSearch vector-similarity module. Single-tenant
   # local dev: no auth, no persistence beyond the named volume, no cluster.
+  #
+  # Host-side port is 6380, NOT 6379 — Sprint 8e diagnostic surfaced that
+  # macOS users often have a brew/launchd Redis already on 6379 and the
+  # host loopback wins the race against Docker's wildcard bind, silently
+  # routing host-side cache traffic (e.g. the eval runner's 8e result
+  # cache) to the wrong Redis. Inside the compose network LiteLLM still
+  # talks to `redis:6379` via service-name DNS — only the host-mapped
+  # port changes.
   redis:
     image: redis/redis-stack-server:7.2.0-v11
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
