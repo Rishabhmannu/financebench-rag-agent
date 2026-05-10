@@ -1,0 +1,30 @@
+{
+  "version": "v1",
+  "policy": "outcome-conditioned positives + hard-negative-from-top-K-retrieval",
+  "source": {
+    "pipeline_json": "tests/evaluation/eval_results/financebench_pypdf_voyage_finance2.pipeline.json",
+    "correctness_json": "tests/evaluation/eval_results/financebench_pypdf_voyage_finance2.correctness.json",
+    "qdrant_collection": "financebench_corpus_pypdf_voyage_finance2",
+    "embedding_provider": "voyage",
+    "embedding_model": "voyage-finance-2",
+    "embedding_dim": 1024
+  },
+  "params": {
+    "top_k": 30,
+    "val_frac": 0.15,
+    "seed": 42
+  },
+  "stats": {
+    "n_passing_questions_used": 67,
+    "n_train_questions": 57,
+    "n_val_questions": 10,
+    "n_train_pos": 249,
+    "n_train_neg": 1530,
+    "n_train_total": 1779,
+    "n_val_pos": 46,
+    "n_val_neg": 275,
+    "n_val_total": 321,
+    "skipped_no_negatives": 0,
+    "global_pos_neg_ratio": "1:6.1"
+  }
+}

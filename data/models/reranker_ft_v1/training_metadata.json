@@ -1,0 +1,67 @@
+{
+  "base_model": "BAAI/bge-reranker-v2-m3",
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.1,
+  "target_modules": [
+    "query",
+    "value"
+  ],
+  "epochs_run": 4,
+  "best_epoch": 2,
+  "best_val_loss": 0.29456698727384906,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.33230888185171414,
+      "val_loss": 0.3567339885643338,
+      "val_acc": 0.8785046935081482,
+      "val_mean_pos_prob": 0.25328606367111206,
+      "val_mean_neg_prob": 0.04311825707554817,
+      "elapsed_s": 557.9235799312592,
+      "saved": true
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.2465363065803768,
+      "val_loss": 0.29456698727384906,
+      "val_acc": 0.8785046935081482,
+      "val_mean_pos_prob": 0.5636667013168335,
+      "val_mean_neg_prob": 0.11733873188495636,
+      "elapsed_s": 881.5477187633514,
+      "saved": true
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.18883324030864232,
+      "val_loss": 0.34009654295407354,
+      "val_acc": 0.8722741603851318,
+      "val_mean_pos_prob": 0.5125531554222107,
+      "val_mean_neg_prob": 0.07912053912878036,
+      "elapsed_s": 607.6568307876587,
+      "saved": false
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.15118203236773284,
+      "val_loss": 0.4014816683865039,
+      "val_acc": 0.8847352266311646,
+      "val_mean_pos_prob": 0.35989123582839966,
+      "val_mean_neg_prob": 0.030217323452234268,
+      "elapsed_s": 892.2836148738861,
+      "saved": false
+    }
+  ],
+  "args": {
+    "epochs": 5,
+    "batch_size": 8,
+    "grad_accum": 2,
+    "lr": 0.0002,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.1,
+    "patience": 2,
+    "seed": 42,
+    "device": "mps"
+  }
+}
