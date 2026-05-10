@@ -51,6 +51,17 @@ model_list:
       model: groq/llama-3.3-70b-versatile
       api_key: os.environ/GROQ_API_KEY
 
+  # ─── Embeddings (Sprint 8 8b: backs the redis-semantic cache) ───
+  # The semantic cache hashes incoming queries with this model and looks
+  # them up by cosine similarity in Redis. Same model the rest of the
+  # stack uses for non-finance corpora; voyage-finance-2 sits outside
+  # the proxy because it routes through src/services/embeddings.py
+  # directly via the Voyage SDK.
+  - model_name: text-embedding-3-small
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+
 # ─── Routing strategy ───
 # Sprint 8 Day 1 keeps it minimal: no fallback chains yet. Day 2 will add
 # fallbacks once we verify the basic routing + prompt-caching pass-through
@@ -71,6 +82,27 @@ litellm_settings:
   # tune to per-key budgets after verifying the proxy works
   max_budget: 10.0
   budget_duration: 24h
+  # ── Sprint 8 8b: Redis-backed semantic cache ──
+  # Two questions get the same cached answer when their query embeddings
+  # cosine-match above `similarity_threshold`. We use a high 0.95 threshold
+  # because false-positive cache hits in a financial-Q&A system are
+  # actively harmful (returning the wrong answer is worse than re-running).
+  # Embedding model: `text-embedding-3-small` — same model the rest of the
+  # stack already uses, dispatched via a route entry below.
+  cache: true
+  cache_params:
+    type: redis-semantic
+    similarity_threshold: 0.95
+    # Embedding model name resolves through the proxy's own model_list
+    # (see `text-embedding-3-small` route below), so the cache lookup
+    # itself is also gateway-mediated.
+    redis_semantic_cache_embedding_model: text-embedding-3-small
+    # NOTE on Redis connection: LiteLLM's semantic-cache layer reads the
+    # connection details from the `REDIS_HOST` / `REDIS_PORT` env vars on
+    # the proxy container (set in docker-compose.yml). The `os.environ/*`
+    # template syntax does NOT substitute inside cache_params, so we keep
+    # them as env vars rather than as nested keys here.
+    # Production-grade extension would add a TTL + REDIS_PASSWORD.
 
 general_settings:
   # We don't need master-key auth in Day 1 (single-tenant local dev). Day 2 or
