@@ -1,4 +1,4 @@
-.PHONY: run dev frontend test test-unit test-integration eval lint format ingest seed-db jwt docker-up docker-down docker-all docker-build docker-prod docker-logs docker-ps docker-restart check clean
+.PHONY: run dev frontend test test-unit test-integration eval lint format ingest seed-db jwt docker-up docker-down docker-all docker-build docker-prod docker-logs docker-ps docker-restart check clean migrate migrate-down migrate-create migrate-current
 
 # --- Development ---
 run:
@@ -66,6 +66,20 @@ docker-ps:
 
 docker-restart:
 	docker compose restart api frontend
+
+# --- Migrations (Sprint 9.0: alembic for the roles table; will grow) ---
+migrate:
+	alembic upgrade head
+
+migrate-down:
+	alembic downgrade -1
+
+migrate-current:
+	alembic current
+
+# Usage: make migrate-create m="add foo table"
+migrate-create:
+	alembic revision -m "$(m)"
 
 # --- Checks ---
 check: lint test-unit

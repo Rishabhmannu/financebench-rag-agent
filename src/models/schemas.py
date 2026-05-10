@@ -88,8 +88,75 @@ class LoginRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Response body for login."""
+    """Response body for login.
+
+    Sprint 9 frontend handoff: includes the full identity tuple so the UI
+    header can render `name (role)` and the department subtitle on first
+    paint — saves a separate `/auth/me` round-trip on the login redirect.
+    The contract is additive (no fields removed) so existing Gradio client
+    keeps working.
+    """
 
     access_token: str
     token_type: str = "bearer"
+    user_id: str
+    name: str
     role: str
+    department: str
+
+
+class UserPermissions(BaseModel):
+    """Role-derived RBAC permissions surfaced on `/auth/me`."""
+
+    allowed_doc_types: list[str]
+    allowed_confidentiality: list[str]
+    max_results: int
+    requires_hitl_above: int | None
+
+
+class UserMeResponse(BaseModel):
+    """`GET /auth/me` response. Validates the JWT is still good and lets
+    the frontend re-fetch user state after a refresh.
+    """
+
+    user_id: str
+    name: str
+    role: str
+    department: str
+    permissions: UserPermissions
+
+
+class Role(BaseModel):
+    """A single RBAC role record. Backs `/admin/roles` responses and the
+    `is_system` flag prevents deletion of built-in roles via the API.
+    """
+
+    name: str
+    allowed_doc_types: list[str]
+    allowed_confidentiality: list[str]
+    max_results: int
+    requires_hitl_above: int | None = None
+    is_system: bool = False
+
+
+class RoleCreate(BaseModel):
+    """Body for `POST /admin/roles`. `is_system` is intentionally absent —
+    system roles are only seeded by migrations, never created via the API.
+    """
+
+    name: str
+    allowed_doc_types: list[str]
+    allowed_confidentiality: list[str]
+    max_results: int = 10
+    requires_hitl_above: int | None = None
+
+
+class RoleUpdate(BaseModel):
+    """Body for `PATCH /admin/roles/{name}`. All fields optional — only
+    those present in the payload are updated.
+    """
+
+    allowed_doc_types: list[str] | None = None
+    allowed_confidentiality: list[str] | None = None
+    max_results: int | None = None
+    requires_hitl_above: int | None = None

@@ -5,17 +5,22 @@ Langfuse instance over a configurable time window, broken down by user,
 model, and trace name. Querying Langfuse keeps the rag-agent itself
 stateless on the cost-tracking side — the proxy is the source of truth,
 this endpoint is just a thin reader on top.
+
+Sprint 9.0: extends to `/admin/users` and `/admin/roles` CRUD so the
+frontend admin panel can render the user table and edit RBAC dynamically.
 """
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from src.api.dependencies import get_current_user
 from src.config.settings import settings
 from src.models.auth import User
+from src.models.schemas import Role, RoleCreate, RoleUpdate
+from src.services import roles_service
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +106,31 @@ async def _fetch_trace_user_map(trace_ids: set[str]) -> dict[str, str | None]:
     return out
 
 
+@router.get("/users")
+async def admin_users(user: User = Depends(get_current_user)):
+    """List configured users. Admin only.
+
+    Sprint 9 frontend "Users" tab consumes this alongside `/admin/costs`
+    to render the per-user spend table. Reads from the in-memory DEV_USERS
+    dict for now; swap implementation when a real user store lands. The
+    response shape stays compatible with either backing store.
+    """
+    _require_admin(user)
+    from src.api.routes.auth import DEV_USERS
+
+    return {
+        "users": [
+            {
+                "username": uname,
+                "name": info["name"],
+                "role": info["role"],
+                "department": info["department"],
+            }
+            for uname, info in DEV_USERS.items()
+        ]
+    }
+
+
 @router.get("/costs")
 async def admin_costs(
     days: int = Query(7, ge=1, le=90, description="Days back from now"),
@@ -163,3 +193,49 @@ async def admin_costs(
         "by_model": _to_list(by_model),
         "by_trace_name": _to_list(by_trace_name),
     }
+
+
+# ── /admin/roles — dynamic RBAC role CRUD (Sprint 9.0) ──────────────────
+
+@router.get("/roles")
+async def list_roles_endpoint(user: User = Depends(get_current_user)):
+    _require_admin(user)
+    return {"roles": roles_service.list_roles()}
+
+
+@router.post("/roles", status_code=status.HTTP_201_CREATED, response_model=Role)
+async def create_role_endpoint(role: RoleCreate, user: User = Depends(get_current_user)):
+    _require_admin(user)
+    if roles_service.get_role(role.name) is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Role '{role.name}' already exists")
+    created = roles_service.create_role(role.model_dump())
+    return created
+
+
+@router.patch("/roles/{name}", response_model=Role)
+async def update_role_endpoint(name: str, patch: RoleUpdate, user: User = Depends(get_current_user)):
+    _require_admin(user)
+    existing = roles_service.get_role(name)
+    if existing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Role '{name}' not found")
+    # System roles can have their permissions edited but the slug stays;
+    # blocking patches on them would be too restrictive for operators.
+    patch_dict = {k: v for k, v in patch.model_dump().items() if v is not None}
+    updated = roles_service.update_role(name, patch_dict)
+    if updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Role '{name}' disappeared during update")
+    return updated
+
+
+@router.delete("/roles/{name}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_role_endpoint(name: str, user: User = Depends(get_current_user)):
+    _require_admin(user)
+    outcome = roles_service.delete_role(name)
+    if outcome == "not_found":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Role '{name}' not found")
+    if outcome == "blocked_system":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Role '{name}' is a system role and cannot be deleted (only its permissions can be edited)",
+        )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

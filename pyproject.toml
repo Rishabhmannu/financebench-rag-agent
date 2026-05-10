@@ -69,6 +69,9 @@ dependencies = [
     # --- Result cache (Sprint 8e: per-stage Redis caches for embeddings,
     # reranker pairs, grader verdicts) ---
     "redis>=5.0,<6.0",
+
+    # --- Migrations (Sprint 9.0: DB-backed dynamic roles) ---
+    "alembic>=1.13,<2.0",
 ]
 
 [project.optional-dependencies]

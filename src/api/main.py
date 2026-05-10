@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg_pool import AsyncConnectionPool
 
-from src.api.routes import admin, auth, chat, health, hitl, ingest
+from src.api.routes import admin, auth, chat, documents, health, hitl, ingest, threads
 from src.config.settings import settings
 
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL), format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -27,6 +27,21 @@ async def lifespan(app: FastAPI):
         logger.warning("GROQ_API_KEY is not set. Router/grader will fall back to OpenAI.")
     if not settings.LANGCHAIN_API_KEY:
         logger.warning("LANGCHAIN_API_KEY is not set. LangSmith tracing will be disabled.")
+
+    # Sprint 9.0 — run alembic migrations before anything that reads the DB.
+    # The roles table (and future schema) must exist before roles_service
+    # tries to hydrate its cache. Failures here are logged but non-fatal:
+    # roles_service falls back to the static dict in rbac_config so the
+    # app still boots if alembic can't reach Postgres.
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations: up-to-date")
+    except Exception as e:
+        logger.warning("Alembic upgrade failed (continuing with static RBAC): %s", e)
 
     # Initialize PostgresSaver checkpointer for HITL persistence
     try:
@@ -91,3 +106,5 @@ app.include_router(chat.router)
 app.include_router(ingest.router)
 app.include_router(hitl.router)
 app.include_router(admin.router)
+app.include_router(threads.router)
+app.include_router(documents.router)

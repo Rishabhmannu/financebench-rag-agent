@@ -33,4 +33,16 @@ ROLE_PERMISSIONS: dict[str, dict] = {
 
 
 def get_permissions(role: str) -> dict:
-    return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["analyst"])
+    """Return the RBAC permissions for a role.
+
+    Sprint 9.0: delegates to ``src.services.roles_service.get_permissions``,
+    which is DB-first with a fallback to the static ``ROLE_PERMISSIONS``
+    dict above. Deferred import avoids a circular-dependency cycle
+    (roles_service reads ROLE_PERMISSIONS for its fallback).
+
+    Every existing call site keeps working unchanged — graph nodes
+    (rbac_gate, retrieval, hitl_gate, hallucination) automatically pick
+    up edits made through ``/admin/roles`` without code changes.
+    """
+    from src.services.roles_service import get_permissions as _db_first
+    return _db_first(role)

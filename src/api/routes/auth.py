@@ -1,6 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.models.schemas import LoginRequest, TokenResponse
+from src.api.dependencies import get_current_user
+from src.config.rbac_config import get_permissions
+from src.models.auth import User
+from src.models.schemas import (
+    LoginRequest,
+    TokenResponse,
+    UserMeResponse,
+    UserPermissions,
+)
 from src.services.auth_service import create_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,8 +27,6 @@ DEV_USERS = {
 async def login(request: LoginRequest):
     user = DEV_USERS.get(request.username)
     if not user or user["password"] != request.password:
-        from fastapi import HTTPException, status
-
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_token(
@@ -29,4 +35,35 @@ async def login(request: LoginRequest):
         role=user["role"],
         department=user["department"],
     )
-    return TokenResponse(access_token=token, role=user["role"])
+    return TokenResponse(
+        access_token=token,
+        user_id=request.username,
+        name=user["name"],
+        role=user["role"],
+        department=user["department"],
+    )
+
+
+@router.get("/me", response_model=UserMeResponse)
+async def me(user: User = Depends(get_current_user)) -> UserMeResponse:
+    """Return the current user's identity + role-derived permissions.
+
+    The frontend calls this on app boot (or after a token refresh) to
+    rehydrate the user state without keeping JWT payload state-of-truth
+    in the client. The permissions block lets the UI gate admin nav,
+    upload buttons, HITL approval surfaces, etc., without a separate
+    config endpoint.
+    """
+    perms = get_permissions(user.role)
+    return UserMeResponse(
+        user_id=user.user_id,
+        name=user.name,
+        role=user.role,
+        department=user.department,
+        permissions=UserPermissions(
+            allowed_doc_types=perms["allowed_doc_types"],
+            allowed_confidentiality=perms["allowed_confidentiality"],
+            max_results=perms["max_results"],
+            requires_hitl_above=perms.get("requires_hitl_above"),
+        ),
+    )

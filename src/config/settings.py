@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "financial_docs"
 
+    # --- Documents (Sprint 9 frontend PDF citation clickthrough) ---
+    # Filesystem root from which `GET /documents/{filename}` serves PDF files.
+    # Filenames are validated against path-traversal; only basenames matching
+    # files inside this directory are served (no recursive lookup).
+    DOCUMENTS_ROOT: str = "data/sample"
+
     # --- LiteLLM gateway (Sprint 8 8a) ---
     # Single proxy fronting every LLM call. When set, src/services/llm_factory.py
     # routes Anthropic / OpenAI / Groq calls through this URL instead of hitting
