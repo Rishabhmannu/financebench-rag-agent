@@ -55,6 +55,23 @@ def _attribution_kwargs() -> dict:
     return {"model_kwargs": {"user": uid}}
 
 
+# Sprint 8e Fix A — pinned seed for determinism on OpenAI-compatible models.
+# Per the OpenAI cookbook (`reproducible_outputs_with_the_seed_parameter`),
+# gpt-4o-mini at temperature=0 is "mostly deterministic" but not bit-stable;
+# pairing `temperature=0` with a fixed `seed` and matching `system_fingerprint`
+# makes outputs reproducible across calls when the underlying serving stack
+# doesn't change. Empirically (Sprint 8e Test 2) the grader VERDICT bit was
+# already stable across 10 calls at temp=0; the reason PROSE varied 3 ways.
+# Pinning the seed nails down the prose too, which de-noises the agentic
+# graph path (decompose / sufficiency edge cases shift retrieval when the
+# prose-level decompose output changes).
+#
+# Anthropic models do NOT accept a `seed` parameter via the Messages API,
+# so this only applies to OpenAI-routed calls (and Groq when proxied via
+# LiteLLM's OpenAI-compat endpoint).
+_OPENAI_SEED = 42
+
+
 def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatOpenAI:
     """OpenAI chat model. When `LITELLM_URL` is set, routes through the LiteLLM
     proxy at `LITELLM_URL/v1` (Sprint 8 8a Day 2); otherwise direct to OpenAI.
@@ -65,6 +82,7 @@ def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None)
     kwargs = {
         "model": model,
         "temperature": temperature,
+        "seed": _OPENAI_SEED,
         "callbacks": [get_cost_handler()],
     }
     if settings.LITELLM_URL:
@@ -145,6 +163,7 @@ def _groq(model: str, temperature: float = 0.0) -> ChatGroq | ChatOpenAI:
         return ChatOpenAI(
             model=model,
             temperature=temperature,
+            seed=_OPENAI_SEED,
             base_url=f"{settings.LITELLM_URL.rstrip('/')}/v1",
             api_key="sk-litellm-proxy",
             callbacks=[get_cost_handler()],

@@ -584,7 +584,9 @@ def score_with_ragas(
     # Wrap the judge LLM with our cost-tracking callback so RAGAS judge spend
     # also lands in cost_log.jsonl alongside generator/hallucination spend.
     evaluator_llm = LangchainLLMWrapper(
-        ChatOpenAI(model=evaluator_model, callbacks=[get_cost_handler()])
+        # Sprint 8e Fix A — `seed=42` makes RAGAS judge calls reproducible
+        # at the same level as the rest of the gpt-4o-mini-routed pipeline.
+        ChatOpenAI(model=evaluator_model, seed=42, callbacks=[get_cost_handler()])
     )
     metrics = [
         Faithfulness(llm=evaluator_llm),
@@ -770,7 +772,8 @@ def score_correctness(
         "Question: {question}\nGold answer: {gold}\nGenerated answer: {generated}"
     )
 
-    judge = ChatOpenAI(model=judge_model, temperature=0.0, callbacks=[get_cost_handler()])
+    # Sprint 8e Fix A — `seed=42` for reproducible correctness verdicts.
+    judge = ChatOpenAI(model=judge_model, temperature=0.0, seed=42, callbacks=[get_cost_handler()])
     structured = judge.with_structured_output(_Verdict)
 
     def _judge_one(rec: dict, generated: str) -> dict:
