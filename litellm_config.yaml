@@ -104,6 +104,20 @@ litellm_settings:
     # them as env vars rather than as nested keys here.
     # Production-grade extension would add a TTL + REDIS_PASSWORD.
 
+  # ── Sprint 8 8c: forward every LLM call to self-hosted Langfuse ──
+  # The langfuse-web container is auto-seeded with project keys
+  # (LANGFUSE_INIT_PROJECT_*) that match the LANGFUSE_PUBLIC_KEY /
+  # LANGFUSE_SECRET_KEY env vars on this container, so traces land in
+  # the right project on first boot — no manual UI step required.
+  # `failure_callback` ensures we also see errored calls in the trace UI,
+  # which is useful for debugging quota/timeout/format failures.
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  # Don't include raw user input in the trace payload metadata; the
+  # message body itself is captured but PII passing through this path
+  # already runs Presidio in the rag-agent's own guardrails node.
+  redact_user_api_key_info: true
+
 general_settings:
   # We don't need master-key auth in Day 1 (single-tenant local dev). Day 2 or
   # Sprint 9 may add per-user virtual keys when the admin panel lands.
