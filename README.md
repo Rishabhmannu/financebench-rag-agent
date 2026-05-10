@@ -2,7 +2,7 @@
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
-[![Tests](https://img.shields.io/badge/tests-248%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-294%20passing-brightgreen.svg)]()
 [![FinanceBench](https://img.shields.io/badge/FinanceBench-47.3%25%20pass-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -51,7 +51,8 @@ START → rbac_gate → guardrails → router ─→ retrieval → reranker → 
 |-----------|-----------|
 | Orchestration | LangGraph 0.6 (StateGraph, conditional edges, `interrupt()`) |
 | Backend | FastAPI + SSE streaming |
-| Frontend | Gradio ChatInterface (Next.js admin panel planned for Sprint 9) |
+| Frontend (legacy) | Gradio ChatInterface (Sprints 1–8) |
+| Frontend (current) | Next.js 16 + React 19 + Tailwind 4 + shadcn/ui (Sprint 9.1 in progress — replaces Gradio in 9.5) |
 | Vector DB | Qdrant (metadata filtering for RBAC) |
 | Document Processing | pypdf canonical (validated against Docling A/B at Sprint 7.5) |
 | Generator LLM | Claude Sonnet 4.6 (Anthropic) — quality-justified, kept across all tiering audits |
@@ -232,11 +233,24 @@ python scripts/seed_qdrant.py --sample
 # Start the API server (with hot reload)
 make run
 
-# In another terminal, start the Gradio frontend
+# In another terminal, start the Gradio frontend (legacy)
 make frontend
 ```
 
-Open http://localhost:7860 and login with a test account. Langfuse UI at http://localhost:3000 (default `admin@local.test` / `devpassword12`).
+Open http://localhost:7860 (Gradio) and login with a test account. Langfuse UI at http://localhost:3000 (default `admin@local.test` / `devpassword12`).
+
+### Next.js Frontend (Sprint 9 — in progress)
+
+A Next.js 16 admin/chat UI lives at [`web/`](web/). Phase 9.1 (login + streaming chat with sources + theme toggle) is complete; sidebar history, HITL dialog, admin panel, and citation PDF viewer are upcoming phases. Setup is independent of the Gradio app — both can run side-by-side during the migration:
+
+```bash
+cd web
+npm install
+cp .env.example .env.local
+npm run dev                 # http://localhost:3002
+```
+
+The frontend uses a BFF pattern — Next.js route handlers proxy to FastAPI with the JWT in an httpOnly cookie, so the browser never sees the token and CORS isn't a concern. See [web/README.md](web/README.md) for full architecture, common pitfalls, and the Sprint 9 phase tracker.
 
 ### Test Accounts
 
@@ -251,7 +265,7 @@ Open http://localhost:7860 and login with a test account. Langfuse UI at http://
 ## Development
 
 ```bash
-make test-unit         # Run 248 unit tests
+make test-unit         # Run 294 unit tests
 make test-integration  # Integration tests (requires Qdrant + Postgres)
 make eval              # RAGAS evaluation suite
 make lint              # Ruff lint check
@@ -288,9 +302,10 @@ make jwt               # Generate a test JWT token
 
 ```
 src/
-├── api/              # FastAPI app + routes (auth, chat, health, hitl, ingest, admin)
+├── api/              # FastAPI app + routes (auth, chat, health, hitl, ingest,
+│                     # admin, threads, documents)
 ├── config/           # Settings, RBAC config, prompt templates
-├── frontend/         # Gradio ChatInterface with streaming + HITL UI
+├── frontend/         # Gradio ChatInterface (legacy — removed in Sprint 9.5)
 ├── graph/
 │   ├── nodes/        # 14 LangGraph nodes — including research_agent.py subgraph
 │   ├── edges.py      # 5 conditional edge routing functions
@@ -299,11 +314,20 @@ src/
 ├── models/           # Pydantic models (RAGState, schemas, auth)
 ├── services/         # llm_factory, embeddings, vector_store, reranker_service,
 │                     # guardrails_service, ltr_gate_service, candidate_validator,
-│                     # cost_tracker, request_context, result_cache, llm_retry
+│                     # cost_tracker, request_context, result_cache, llm_retry,
+│                     # roles_service, thread_service
 └── tools/            # AST-restricted calculator (feature-flagged off — see Sprint 7.8)
 
+web/                  # Next.js 16 frontend (Sprint 9 — see web/README.md)
+├── src/app/          # App Router pages + BFF route handlers
+├── src/components/   # shadcn/ui + custom chat components
+├── src/hooks/        # use-stream-chat (the SSE consumer state machine)
+├── src/lib/          # env, session, api wrappers, hand-mirrored backend types
+└── src/proxy.ts      # Next 16 auth gate (formerly middleware.ts)
+
+migrations/           # Alembic — roles table + system role seed (Sprint 9.0)
 tests/
-├── unit/             # 248 unit tests (mocked LLMs)
+├── unit/             # 294 unit tests (mocked LLMs)
 ├── integration/      # Integration tests
 └── evaluation/       # RAGAS + DeepEval + correctness; 61-Q SEC + 150-Q FinanceBench
 
@@ -366,8 +390,13 @@ The Sprint 8 stack adds end-to-end observability without behavior change at defa
 - ✅ **Sprint 7.7** — text-embedding-3-large: +4.6pp; 2 documented null results
 - ✅ **Sprint 7.8** — voyage-finance-2: +1.4pp; calculator regression (-4pp) rolled back
 - ✅ **Sprint 7.9** — Heterogeneous tiering + LoRA reranker: +2.7pp, multi-hop unstuck, −46% per-eval cost
-- ✅ **Sprint 8** — Production plumbing (LiteLLM + Redis cache + Langfuse + per-stage result cache)
-- 🚧 **Sprint 9** — Next.js admin panel (replaces Gradio frontend; surfaces `/admin/costs` dashboard)
+- ✅ **Sprint 8** — Production plumbing (LiteLLM + Redis cache + Langfuse + per-stage result cache); 248 tests
+- ✅ **Sprint 9.0** — Backend prereqs for Next.js UI: 11 endpoints (`/auth/me`, `/threads`, `/documents/{filename}`, `/admin/roles` CRUD, `/admin/users`, `/ingest/upload`), Alembic migrations, dynamic role storage; 294 tests
+- 🚧 **Sprint 9.1** — Next.js vertical slice ✅ (login + chat with SSE streaming, sources, status pills, user header, theme toggle, BFF auth, proxy gate)
+- 🚧 **Sprint 9.2** — Thread sidebar (`/threads`) + HITL approval dialog (`/hitl/*`)
+- 🚧 **Sprint 9.3** — Citation PDF clickthrough (in-browser `react-pdf` viewer)
+- 🚧 **Sprint 9.4** — Admin panel: `/admin/costs` Recharts dashboard + user table + role CRUD
+- 🚧 **Sprint 9.5** — File-upload UI, eval dashboard, Cmd+K palette, `web` service in docker-compose, retire Gradio
 - 📝 **Sprint 10** — Portfolio writeup (Medium articles, comparison charts, demo video)
 
 ## License
