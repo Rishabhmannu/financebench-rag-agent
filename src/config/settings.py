@@ -53,6 +53,16 @@ class Settings(BaseSettings):
     # or `http://localhost:4000` for host-based dev.
     LITELLM_URL: str = ""
 
+    # --- Langfuse (Sprint 8 8c + 8d) ---
+    # Self-hosted Langfuse instance. LiteLLM forwards every LLM trace to it via
+    # success/failure callbacks; the `/admin/costs` endpoint queries the public
+    # API to aggregate spend by user / model / time window. Defaults match
+    # docker-compose.yml's auto-init project keys, so a clean local-compose
+    # bring-up just works without further config.
+    LANGFUSE_HOST: str = "http://langfuse-web:3000"
+    LANGFUSE_PUBLIC_KEY: str = "pk-lf-aa6baaad5f2b2115993cb1932d831e09"
+    LANGFUSE_SECRET_KEY: str = "sk-lf-e305bae5751200b21bc4f9cc5d644dca"
+
     # --- PostgreSQL ---
     POSTGRES_DB: str = "rag_agent"
     POSTGRES_USER: str = "rag_user"

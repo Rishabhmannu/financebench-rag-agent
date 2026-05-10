@@ -35,8 +35,24 @@ from langchain_openai import ChatOpenAI
 
 from src.config.settings import settings
 from src.services.cost_tracker import get_cost_handler
+from src.services.request_context import current_user_id
 
 logger = logging.getLogger(__name__)
+
+
+def _attribution_kwargs() -> dict:
+    """Build the per-call kwargs that carry user attribution to LiteLLM/Langfuse.
+
+    Sprint 8 8d: the FastAPI auth dependency populates `current_user_id`; here
+    we forward it as the OpenAI/Anthropic body field `user`, which LiteLLM
+    surfaces in Langfuse as `userId`. Returns an empty dict when no user is
+    bound (e.g. from a script or background job) so unauthenticated paths
+    work unchanged.
+    """
+    uid = current_user_id.get()
+    if not uid:
+        return {}
+    return {"model_kwargs": {"user": uid}}
 
 
 def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatOpenAI:
@@ -58,6 +74,7 @@ def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None)
         kwargs["api_key"] = settings.OPENAI_API_KEY
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
+    kwargs.update(_attribution_kwargs())
     return ChatOpenAI(**kwargs)
 
 
@@ -94,6 +111,7 @@ def _anthropic(model: str, temperature: float = 0.0, max_tokens: int = 1024) -> 
         kwargs["api_key"] = settings.ANTHROPIC_API_KEY
     if model not in _ANTHROPIC_NO_TEMPERATURE_MODELS:
         kwargs["temperature"] = temperature
+    kwargs.update(_attribution_kwargs())
     return ChatAnthropic(**kwargs)
 
 
@@ -130,6 +148,7 @@ def _groq(model: str, temperature: float = 0.0) -> ChatGroq | ChatOpenAI:
             base_url=f"{settings.LITELLM_URL.rstrip('/')}/v1",
             api_key="sk-litellm-proxy",
             callbacks=[get_cost_handler()],
+            **_attribution_kwargs(),
         )
     return ChatGroq(
         model=model,

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg_pool import AsyncConnectionPool
 
-from src.api.routes import auth, chat, health, hitl, ingest
+from src.api.routes import admin, auth, chat, health, hitl, ingest
 from src.config.settings import settings
 
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL), format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -90,3 +90,4 @@ app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(ingest.router)
 app.include_router(hitl.router)
+app.include_router(admin.router)
