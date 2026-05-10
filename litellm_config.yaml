@@ -1,0 +1,78 @@
+# LiteLLM proxy config — Sprint 8 Day 1
+#
+# Routes every chat-completion call through a single OpenAI-compatible
+# endpoint at http://litellm:4000/v1. Sprint 8 Day 2 refactors llm_factory.py
+# to use this gateway; Day 3 layers a Redis semantic cache on top.
+#
+# Model-name conventions:
+#   - We expose Sprint 7.9 canonical model names (e.g. "claude-sonnet-4-6")
+#     as the user-facing identifier
+#   - The actual underlying provider model is named via `litellm_params.model`
+#     using LiteLLM's provider/model syntax ("anthropic/claude-sonnet-4-6")
+#   - Callers (llm_factory.py, langchain) just say "claude-sonnet-4-6"
+#     and don't need to know about the provider routing
+#
+# API keys come from the LiteLLM container's environment (passed via
+# docker-compose env_file) — NEVER hard-coded here.
+
+model_list:
+  # ─── Anthropic (Sprint 7.9 canonical generator/synthesize/HITL) ───
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Opus 4.7 kept available for ad-hoc use even though Sprint 7.9 dropped it
+  # from the HITL canonical (Vectara hallucination benchmarks favored Sonnet)
+  - model_name: claude-opus-4-7
+    litellm_params:
+      model: anthropic/claude-opus-4-7
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # ─── OpenAI (decompose / sufficiency / eval judges / fallback) ───
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+
+  # ─── Groq (router / grader / query rewriter — Llama 3.3 free tier) ───
+  - model_name: llama-3.3-70b-versatile
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
+# ─── Routing strategy ───
+# Sprint 8 Day 1 keeps it minimal: no fallback chains yet. Day 2 will add
+# fallbacks once we verify the basic routing + prompt-caching pass-through
+# works end-to-end.
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  request_timeout: 120
+
+# ─── General settings ───
+litellm_settings:
+  # Drop unsupported params silently (e.g. `temperature` on Opus 4.7 — though
+  # Sprint 7.9 dropped Opus from the canonical so this rarely fires)
+  drop_params: true
+  # Forward Anthropic prompt-caching headers transparently (verified Day 2)
+  set_verbose: false
+  # Per-process budget guardrails — Sprint 8 Day 1 sets dev caps; Day 2 will
+  # tune to per-key budgets after verifying the proxy works
+  max_budget: 10.0
+  budget_duration: 24h
+
+general_settings:
+  # We don't need master-key auth in Day 1 (single-tenant local dev). Day 2 or
+  # Sprint 9 may add per-user virtual keys when the admin panel lands.
+  store_model_in_db: false

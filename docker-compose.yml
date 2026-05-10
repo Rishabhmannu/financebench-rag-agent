@@ -79,6 +79,30 @@ services:
     networks:
       - rag-net
 
+  # Sprint 8 8a — LiteLLM proxy as the single LLM gateway. Reads provider
+  # API keys from .env (same file the api service uses) and exposes an
+  # OpenAI-compatible endpoint at http://litellm:4000/v1. Sprint 8 Day 2
+  # refactors src/services/llm_factory.py to drive all chat completions
+  # through this proxy; Day 3 (sub-sprint 8b) layers a Redis semantic cache
+  # on top via LiteLLM's built-in cache plug-in.
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    ports:
+      - "4000:4000"
+    env_file: .env
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - rag-net
+
 volumes:
   qdrant_data:
   pg_data:

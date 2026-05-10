@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "financial_docs"
 
+    # --- LiteLLM gateway (Sprint 8 8a) ---
+    # Single proxy fronting every LLM call. When set, src/services/llm_factory.py
+    # routes Anthropic / OpenAI / Groq calls through this URL instead of hitting
+    # provider APIs directly. Default empty = direct-provider behavior preserved
+    # (matches all of Sprint 7.x). Set to `http://litellm:4000` inside compose
+    # or `http://localhost:4000` for host-based dev.
+    LITELLM_URL: str = ""
+
     # --- PostgreSQL ---
     POSTGRES_DB: str = "rag_agent"
     POSTGRES_USER: str = "rag_user"
