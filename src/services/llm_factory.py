@@ -40,12 +40,22 @@ logger = logging.getLogger(__name__)
 
 
 def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatOpenAI:
+    """OpenAI chat model. When `LITELLM_URL` is set, routes through the LiteLLM
+    proxy at `LITELLM_URL/v1` (Sprint 8 8a Day 2); otherwise direct to OpenAI.
+    The proxy uses the container's own OPENAI_API_KEY so the api_key arg is a
+    placeholder ("sk-litellm-proxy") — the langchain client requires *some*
+    value but the proxy ignores it.
+    """
     kwargs = {
         "model": model,
         "temperature": temperature,
-        "api_key": settings.OPENAI_API_KEY,
         "callbacks": [get_cost_handler()],
     }
+    if settings.LITELLM_URL:
+        kwargs["base_url"] = f"{settings.LITELLM_URL.rstrip('/')}/v1"
+        kwargs["api_key"] = "sk-litellm-proxy"
+    else:
+        kwargs["api_key"] = settings.OPENAI_API_KEY
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
     return ChatOpenAI(**kwargs)
@@ -66,13 +76,22 @@ def _anthropic(model: str, temperature: float = 0.0, max_tokens: int = 1024) -> 
     `temperature` is silently omitted for models in `_ANTHROPIC_NO_TEMPERATURE_MODELS`
     (e.g. Opus 4.7, which deprecated the parameter). This keeps the factory
     forward-safe even when Sprint 7.9 rotates HITL off Opus 4.7 to Sonnet 4.6.
+
+    Sprint 8 8a Day 2: when `LITELLM_URL` is set, routes through LiteLLM's
+    Anthropic pass-through at `LITELLM_URL/anthropic` (preserves langchain-
+    anthropic's native cache_control format end-to-end). Container holds
+    the real ANTHROPIC_API_KEY; we pass a placeholder.
     """
     kwargs = {
         "model_name": model,
         "max_tokens": max_tokens,
-        "api_key": settings.ANTHROPIC_API_KEY,
         "callbacks": [get_cost_handler()],
     }
+    if settings.LITELLM_URL:
+        kwargs["base_url"] = f"{settings.LITELLM_URL.rstrip('/')}/anthropic"
+        kwargs["api_key"] = "sk-litellm-proxy"
+    else:
+        kwargs["api_key"] = settings.ANTHROPIC_API_KEY
     if model not in _ANTHROPIC_NO_TEMPERATURE_MODELS:
         kwargs["temperature"] = temperature
     return ChatAnthropic(**kwargs)
@@ -95,7 +114,23 @@ def _llm_for_task(model_name: str, temperature: float = 0.0, max_tokens: int = 2
     )
 
 
-def _groq(model: str, temperature: float = 0.0) -> ChatGroq:
+def _groq(model: str, temperature: float = 0.0) -> ChatGroq | ChatOpenAI:
+    """Groq chat model. When `LITELLM_URL` is set, routes through LiteLLM's
+    OpenAI-compatible endpoint (Groq is exposed as a regular model in
+    LiteLLM's model_list, no separate /groq pass-through needed).
+
+    Returns `ChatOpenAI` instead of `ChatGroq` when proxied — same `.invoke()`
+    interface, langchain-groq isn't needed when the proxy is doing the
+    provider routing.
+    """
+    if settings.LITELLM_URL:
+        return ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            base_url=f"{settings.LITELLM_URL.rstrip('/')}/v1",
+            api_key="sk-litellm-proxy",
+            callbacks=[get_cost_handler()],
+        )
     return ChatGroq(
         model=model,
         temperature=temperature,
