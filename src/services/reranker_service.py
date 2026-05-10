@@ -103,17 +103,54 @@ def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
 
     Each returned chunk gains a `rerank_score` in metadata alongside its original
     retrieval score (which is kept for diagnostics / debugging).
+
+    Sprint 8e: per-pair Redis cache. Same (query, chunk_text) pair produces
+    a deterministic score (cross-encoder at temperature 0), so we look up
+    each pair before invoking the model and only call the model on misses.
+    Hit rate is high in practice — repeated retrieval retries against the
+    same chunk pool, and cross-question chunk overlap on the same filing
+    (Apple 10-K chunks score against many Apple-related queries).
     """
     if not chunks:
         return []
 
-    reranker = get_reranker()
-    pairs = [(query, c.get("content", "")) for c in chunks]
-    scores = reranker.predict(pairs)
+    # Identify the model variant in the cache key so swapping the LoRA
+    # adapter or the base model invalidates pre-FT scores automatically.
+    adapter_path = os.environ.get("RERANKER_ADAPTER_PATH", "").strip()
+    model_id = f"{RERANKER_MODEL}|adapter={adapter_path}" if adapter_path else RERANKER_MODEL
+
+    # Probe each pair's cache. Track which need a model forward pass.
+    from src.services.result_cache import _KEY_PREFIX, _client, _hash_key
+
+    cache_prefix = _KEY_PREFIX["reranker"]
+    cached_scores: dict[int, float] = {}
+    pending_indices: list[int] = []
+    pending_pairs: list[tuple[str, str]] = []
+
+    for i, c in enumerate(chunks):
+        chunk_text = c.get("content", "")
+        key = cache_prefix + _hash_key(model_id, query, chunk_text)
+        hit = _client.get(key)
+        if isinstance(hit, (int, float)):
+            cached_scores[i] = float(hit)
+        else:
+            pending_indices.append(i)
+            pending_pairs.append((query, chunk_text))
+
+    # Compute scores only for misses, then store them.
+    if pending_pairs:
+        reranker = get_reranker()
+        new_scores = reranker.predict(pending_pairs)
+        for idx, score in zip(pending_indices, new_scores):
+            score_f = float(score)
+            cached_scores[idx] = score_f
+            chunk_text = chunks[idx].get("content", "")
+            key = cache_prefix + _hash_key(model_id, query, chunk_text)
+            _client.set(key, score_f)
 
     scored = [
-        {**chunk, "rerank_score": float(score)}
-        for chunk, score in zip(chunks, scores)
+        {**chunk, "rerank_score": cached_scores[i]}
+        for i, chunk in enumerate(chunks)
     ]
     scored.sort(key=lambda c: c["rerank_score"], reverse=True)
     return scored[:top_k]

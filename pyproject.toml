@@ -65,6 +65,10 @@ dependencies = [
 
     # --- Observability ---
     "langsmith>=0.4,<1.0",
+
+    # --- Result cache (Sprint 8e: per-stage Redis caches for embeddings,
+    # reranker pairs, grader verdicts) ---
+    "redis>=5.0,<6.0",
 ]
 
 [project.optional-dependencies]

@@ -89,13 +89,24 @@ def grader_node(state: RAGState) -> dict:
     llm = LLMFactory.get_grader_llm()
     structured_llm = llm.with_structured_output(GradeResult)
 
-    # Pre-pass (sequential, no LLM): apply stages 1 and 2 to partition chunks
-    # into auto-decided (entity-reject / LTR-keep / LTR-drop) vs needs-LLM-grading.
-    # Index each chunk's outcome into a dict so we can rejoin in original order
-    # after the parallel LLM stage completes.
+    # Sprint 8e: per-(query, chunk) grader-verdict cache. Grader is
+    # ~8 LLM calls per question and the same chunk gets re-graded across
+    # retrieval retries on the same query — high-hit-rate, low-risk cache.
+    # Verdict is deterministic at temperature=0 so caching is correctness-safe.
+    from src.services.result_cache import _KEY_PREFIX, _client, _hash_key
+
+    grader_cache_prefix = _KEY_PREFIX["grader"]
+    grader_model = settings.GRADER_MODEL
+
+    # Pre-pass (sequential, no LLM): apply stages 1, 2, and the cache lookup
+    # to partition chunks into auto-decided (entity-reject / LTR-keep /
+    # LTR-drop / cache-hit) vs needs-LLM-grading. Index each chunk's outcome
+    # into a dict so we can rejoin in original order after the parallel LLM
+    # stage completes.
     pending_indices: list[int] = []
     decisions: dict[int, dict] = {}  # chunk_id -> {relevant, reason}
     rejected_by_entity = 0
+    cache_hits = 0
 
     for i, chunk in enumerate(chunks):
         # Stage 1: cheap metadata-based entity check
@@ -118,6 +129,19 @@ def grader_node(state: RAGState) -> dict:
                 decisions[i] = {"relevant": True, "reason": f"LTR gate high-confidence keep ({s:.3f})"}
                 continue
 
+        # Stage 2.5: result-cache lookup. Skip the LLM call when we've
+        # already evaluated this exact (model, query, chunk) tuple.
+        chunk_text = chunk.get("content", "")
+        cache_key = grader_cache_prefix + _hash_key(grader_model, query, chunk_text)
+        cached = _client.get(cache_key)
+        if isinstance(cached, dict) and "relevant" in cached:
+            decisions[i] = {
+                "relevant": bool(cached["relevant"]),
+                "reason": cached.get("reason", "cache hit"),
+            }
+            cache_hits += 1
+            continue
+
         # Stage 3 candidate — needs an LLM call
         pending_indices.append(i)
 
@@ -128,16 +152,24 @@ def grader_node(state: RAGState) -> dict:
     # FinanceBench question per run as a refusal in the cache.
     def _grade_one(idx: int) -> tuple[int, dict]:
         chunk = chunks[idx]
-        prompt = GRADER_PROMPT.format(query=query, chunk=chunk["content"])
+        chunk_text = chunk["content"]
+        prompt = GRADER_PROMPT.format(query=query, chunk=chunk_text)
 
         def _invoke() -> GradeResult:
             return structured_llm.invoke([HumanMessage(content=prompt)])
 
         try:
             result: GradeResult = retry_llm_call(_invoke, label=f"grader chunk {idx}")
-            return idx, {"relevant": result.relevant, "reason": result.reason}
+            decision = {"relevant": result.relevant, "reason": result.reason}
+            # Sprint 8e: cache the verdict so the next retrieval-retry round
+            # against this exact (query, chunk) pair skips the LLM call.
+            cache_key = grader_cache_prefix + _hash_key(grader_model, query, chunk_text)
+            _client.set(cache_key, decision)
+            return idx, decision
         except Exception as e:
             logger.warning(f"Grading failed for chunk {idx} after retries, marking as irrelevant: {e}")
+            # Don't cache errors — a transient failure should not poison
+            # the verdict for future retries.
             return idx, {"relevant": False, "reason": f"Grading error: {type(e).__name__}: {str(e)[:200]}"}
 
     if pending_indices:
@@ -200,10 +232,11 @@ def grader_node(state: RAGState) -> dict:
             )
 
     entity_msg = f", {rejected_by_entity} rejected by entity mismatch" if rejected_by_entity else ""
+    cache_msg = f", {cache_hits} cache hits" if cache_hits else ""
     fallback_msg = " [GRADER FALLBACK]" if grader_fallback_used else ""
     logger.info(
         f"Grading: {len(relevant_chunks)}/{len(chunks)} chunks relevant "
-        f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}, "
+        f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}{cache_msg}, "
         f"{len(pending_indices)} sent to LLM in parallel){fallback_msg}"
     )
 

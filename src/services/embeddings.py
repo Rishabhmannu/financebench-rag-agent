@@ -126,7 +126,29 @@ def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
 
 
 def embed_text(text: str, input_type: str = "query") -> list[float]:
-    """Embed a single text string. Returns a vector of floats."""
+    """Embed a single text string. Returns a vector of floats.
+
+    Sprint 8e: query embeddings (input_type="query") are cached by
+    (provider, model, input_type, text). Document embeddings are NOT
+    cached — they're embedded once at ingest time and stored in Qdrant.
+    """
+    if input_type == "query":
+        from src.services.result_cache import get_or_compute
+
+        return get_or_compute(
+            "query-emb",
+            (
+                settings.EMBEDDING_PROVIDER,
+                settings.EMBEDDING_MODEL,
+                input_type,
+                text,
+            ),
+            lambda: _embed_one_uncached(text, input_type),
+        )
+    return _embed_one_uncached(text, input_type)
+
+
+def _embed_one_uncached(text: str, input_type: str) -> list[float]:
     if settings.EMBEDDING_PROVIDER == "voyage":
         return _voyage_embed([text], input_type=input_type)[0]
     if settings.EMBEDDING_PROVIDER == "abaci":
