@@ -68,8 +68,12 @@ Every LLM call routed through `LLMFactory` is logged. Per-run summaries are prod
 | 7.8 | 19 | calculator tool | 40.7% | **−4.0pp** | $9.89 | flag off |
 | 7.9 | 3 | + heterogeneous model tiering | — | no regression | $11.62 | shipped |
 | **7.9** | **7** | **+ LoRA-fine-tuned BGE reranker on FB labels** | **47.3%** | **+2.7pp** | **$5.28** | **shipped** |
+| 8e | — | seed=42 verification (no architecture change) | 44.0% | within noise | ~$10 | controlled |
+| 7.10a | — | Multi-HyDE (3 hypotheticals, gpt-4o-mini @ T=0.3, RRF-fused) | 45.3% | +1.33pp (within noise) | ~$10 | flag off, code preserved |
 
-**Total**: 30.7% → 47.3% (+16.6pp). Refusal rate: 14.0% → 7.3% (halved). Per-eval cost: $9.70 → $5.28 (−46%).
+**Range across all 2026 canonical runs**: 44.0–47.3% (within the empirically-measured n=150 noise floor of ~±3pp). Refusal rate: 14.0% → 7.3% (halved). Per-eval cost trajectory: $9.70 → $5.28 (−46%) up to Sprint 7.9; Sprint 7.10a Multi-HyDE adds ~$0.06 in hypothetical-generation cost.
+
+**Sprint 7.10a takeaway**: retrieval metrics moved positively (RAGAS ctx_precision +3.59pp, DeepEval +2.52pp) but pass rate did not move beyond the noise floor. Direct evidence that generic retrieval interventions are subsumed by the LoRA-FT reranker on retrieval-solvable questions, and that the remaining failures are not retrieval-bound. The Multi-HyDE paper's "+11.2%" claim was measured against a vanilla single-query baseline; the paper's absolute number on a combined ConvFinQA+FinanceBench eval is 45.6%, which is where we landed. Earned the pivot from paper-derived sprint targets to per-phase eval diagnostics (Sprint 7.11). See `docs/engineering-log.md` "Sprint 7.10a — Multi-HyDE result" for full analysis.
 
 ### Per-slice breakdown (Sprint 7.9 Day 7 vs Sprint 7.8 voyage canonical)
 

@@ -196,38 +196,108 @@ The next sprints return to eval-quality work with a concrete roadmap derived fro
 
 ---
 
-## Roadmap — Sprint 7.10: eval-quality push
+## Sprint 7.10a — Multi-HyDE result: null on pass rate, signal on retrieval
 
-**State of FinanceBench leaderboard (2026)**: Mafin 2.5 + PageIndex reports 98.7%, DANA reports 94.3%, iterative-reasoning-on-fine-tuned-RAG (Nguyen et al. 2024) reports 85%. Original FinanceBench paper baselines were 38–43%. Our 44–47% sits credibly above the published baselines but well below current SOTA — the gap isn't incremental tuning, it's architectural.
+Shipped Sprint 7.10a (Multi-HyDE) end-to-end: gpt-4o-mini generates 3 hypothetical 10-K-style passages per query at temperature=0.3; each plus the original query runs through hybrid search; results RRF-fused (k=60) and deduped. Implementation behind `ENABLE_MULTI_HYDE` flag, default off. Full canonical FinanceBench eval at commit `dafb582`.
 
-[The Hidden Cost of 98% (Tao An)](https://tao-hpu.medium.com/the-hidden-cost-of-98-accuracy-a-practical-guide-to-rag-architecture-selection-6883adc5289c) documents that PageIndex publishes no latency/cost numbers and that per-query LLM reasoning makes it "slower and pricier" — so 98% isn't the right target for our budget. The realistic ceiling on our architecture (selective agentic + LoRA reranker + Voyage embeddings) before requiring a structural rewrite is probably the 55–70% range.
+### Result
 
-Three concrete levers ranked by expected ROI, **committed in order until quality target is achieved**:
+| Metric | seed42 baseline | Multi-HyDE n=3 | Delta |
+|---|---:|---:|---:|
+| **pass_rate** | **0.4400** (66/150) | **0.4533** (68/150) | **+1.33pp, +2q** |
+| RAGAS faith | 0.7021 | 0.7299 | +2.78pp |
+| RAGAS context_precision | 0.6894 | 0.7253 | **+3.59pp** |
+| RAGAS context_recall | 0.3822 | 0.3711 | −1.11pp |
+| DeepEval faith | 0.8355 | 0.8455 | +1.00pp |
+| DeepEval c.precision | 0.7670 | 0.7922 | **+2.52pp** |
+| DeepEval c.recall | 0.7276 | 0.7387 | +1.11pp |
+| refusal_rate | 6.0% | 7.3% | +1.3pp |
+| pipeline_time | 146 min | 172 min | +26 min (+17%) |
 
-| # | Lever | Claimed gain | Effort | Source |
-|---|---|---|---|---|
-| **7.10a** | **Multi-HyDE** — generate 3–5 hypothetical answers per query, search with each, dedupe top-K | **+11.2% accuracy, −15% hallucinations** | ~2 days | [Enhancing Financial RAG with Agentic AI and Multi-HyDE (arXiv 2509.16369)](https://arxiv.org/abs/2509.16369) |
-| 7.10b | **Metadata-augmented chunks** — re-ingest with LLM-extracted entities / quantities / topics embedded alongside chunk text | +12pp retrieval F1 | ~3 days + 90-min re-ingest | [RAG Chunking Strategies 2026 (Premai)](https://blog.premai.io/rag-chunking-strategies-the-2026-benchmark-guide/) |
-| 7.10c | **Iterative-reasoning (OODA) loop** — tighter version of our research-agent subgraph: generate → check coverage → retrieve more → regenerate, raise turn cap from 5 to 8–10 with sufficiency-driven retrieval expansion | +48pp over non-iterative in published results | ~1 week | Nguyen et al. 2024 (cited in [FinanceBench SOTA survey](https://www.emergentmind.com/topics/financebench)) |
+Per-question diff: 61 both pass, 77 both fail, **7 rescues** (mostly lookups: geographies, customer lists, board votes), **5 regressions** (mostly calc/multi-hop: AMCOR EBITDA, General Mills CCC, FY2020 ratios). Net +2 is **within the empirically-measured n=150 noise floor (~±3pp)**.
 
-**Decision rule between 7.10b vs 7.10c**: gate on the 7.10a full-eval result. If Multi-HyDE alone gets us past ~52%, prioritize 7.10b (metadata) — it's additive and lower-risk. If 7.10a underperforms (<50%), prioritize 7.10c (iterative reasoning) — it's higher-effort but addresses the multi-step-reasoning bottleneck that Multi-HyDE alone wouldn't fix.
+### What this means
 
-### Why these three, in this order
+Multi-HyDE moved retrieval metrics (+2.5-3.6pp ctx_precision across both judges) but did not move pass rate. The reranker (LoRA-FT on FinanceBench labels) + Voyage finance embeddings already cover the recall headroom Multi-HyDE was supposed to add. This is the same pattern observed across Sprints 7.7-7.8: **generic retrieval interventions get subsumed by the LoRA-FT reranker on questions that are already retrieval-solvable.**
 
-- **Multi-HyDE first** because it bridges the vocabulary mismatch our queries currently have with chunks ("FY23 revenue" vs "fiscal year 2023 revenues"). Lowest-effort, highest published gain claim, lowest regression risk (additive — original retrieval still runs, HyDE adds candidates).
-- **Metadata-augmentation second** if Multi-HyDE works because it stacks naturally: HyDE generates better queries → augmented chunks have better recall against those queries.
-- **Iterative reasoning third** if pass rate is still below target after the first two, because it's the biggest single lever but also the riskiest (latency × N iterations, potential for diverging into noise).
+### The estimation error worth recording
 
-### What we are NOT doing
+The "+11.2% accuracy" claim from the Multi-HyDE paper (arXiv 2509.16369) was measured against a **vanilla single-query baseline**, not against a stack like ours that already has voyage-finance-2 + LoRA-FT reranker + hybrid+BM25+RRF + research-agent decomposition. The paper's *absolute* number on a combined ConvFinQA+FinanceBench eval is **45.6%**. We landed at 45.33%. We hit academic parity with the paper's result, not the paper's delta over its own baseline. Citing paper-claimed deltas without controlling for baseline strength is a category error.
 
-- **PageIndex / vectorless tree-of-contents indexing** — months of architectural rewrite, undocumented production cost, unproven generalization. Wrong tool for this project.
-- **More seed / cache / proxy tweaks** — practical ceiling on stochastic-variance reduction was reached at Sprint 8e Fix A given the OpenAI API constraints. Further tweaks burn time without moving quality.
-- **More verification evals of the same config** — empirical noise floor is now characterized at ~15% per-question. Re-running the same setup adds no signal.
-- **GraphRAG (FinGEAR-style)** — 2–3 week investment with high variance; deferred until after 7.10c if pass rate is still gap-to-SOTA.
+### Mechanism diagnosis
+
+The retrieval-metric-up + pass-rate-flat pattern argues the bottleneck is **not** retrieval recall on this corpus. Candidates that fit the evidence:
+- **Parse-loss** — answer cells survive Docling-markdown chunking incompletely; retrieval finds the right page, but the chunk doesn't contain a parseable triple. Strongest hypothesis given the retrieval-vs-pass-rate gap.
+- **Reasoning** — multi-hop/calc questions where chunks are present but generator gets distracted (5 of 5 regressions follow this pattern).
+- **Both** — selectively, per question.
+
+Without per-phase eval (gold-chunk labels) the mechanism remains hypothesis, not measurement. Diagnosing it is the next sprint.
+
+---
+
+## Roadmap — Sprint 7.11 onward: evidence-first, not paper-first
+
+The Sprints 7.10b (metadata-augmented chunks) and 7.10c (OODA iterative reasoning) committed in the prior roadmap are **deprecated as currently framed**. Both stay inside the flat-text architecture and Multi-HyDE's null result is empirical evidence that further interventions of the same shape will hit the same ceiling. The right next move is *measurement before intervention*.
+
+### Sprint 7.11 — per-phase evaluation framework (3-4 days)
+
+Build the diagnostic that converts "where is the bottleneck?" from speculation to measurement.
+
+| Day | Deliverable |
+|---|---|
+| 1 | **Gold-chunk labeling**: for each of 150 FinanceBench Qs, find which chunks in `financebench_corpus_pypdf_voyage_finance2` contain the answer. Semi-automated: embed gold answer → cosine sim → top-3 candidates → manual confirm. Output: `tests/evaluation/financebench_gold_chunks.jsonl`. |
+| 2 | **Phase eval harness**: five metrics in one runner — (1) chunk-preservation IoU vs gold spans (Chroma-style), (2) retrieval Recall@k for k ∈ {5,10,20,50}, (3) reranker NDCG@8 + Precision@8, (4) grader precision/recall on 100-pair human-labeled sample, (5) per-node p50/p95 latency from existing Langfuse traces. |
+| 3 | **Run + analyze**: against current canonical config. Pivot decision based on what we learn. |
+| 4 (opt.) | Router F1 (50-Q labeled set) + hallucination-checker precision/recall (50 labeled answers) |
+
+**Decision rule from the diagnostic**:
+- High retrieval Recall@8 (≥0.80) + low pass rate → reasoning bottleneck → consider FT generator or iterative reasoning targeted on multi-hop slice
+- Low retrieval Recall@8 (<0.60) + good chunk preservation → reranker/fusion issue → reranker FT round 2 or fusion redesign
+- Low chunk preservation (<0.70) → upstream of retrieval → table-aware re-ingest (docling tables with `do_table_structure=True`) justified with evidence
+
+**Production-quality target reference**: Informatica/AWS Bedrock production-RAG guides cite Hit Rate@K=5 > 0.85 + RAGAS faithfulness > 0.90 as production targets. Our DeepEval faith is already 0.85; Hit Rate@5 is unmeasured.
+
+### Sprint 7.12 — supplemental external benchmarks (2 days)
+
+Add two external benchmarks alongside FinanceBench to test failure modes FinanceBench under-covers. **Subsetted, not full** — both are too large to run end-to-end:
+
+| Benchmark | Subset | Failure mode tested | Source |
+|---|---|---|---|
+| **ConvFinQA-150** (conversations) | 150 of 3,892 multi-turn conversations | Multi-turn reasoning where turn N depends on turn N-1; tests research-agent subgraph specifically | [github.com/czyssrs/ConvFinQA](https://github.com/czyssrs/ConvFinQA), [OpenFinLLM Leaderboard](https://finllm-leaderboard.readthedocs.io/en/latest/datasets/question_answering/convfinqa.html) |
+| **TAT-QA-150** (questions) | 150 of 16,552 | Hybrid table+text arithmetic — FinanceBench's weak spot | [TAT-QA project site](https://nextplusplus.github.io/TAT-QA/) |
+
+Wall time per benchmark: ~5-7 hours. Judge cost: ~$15-25 total.
+
+### Sprint 7.13 (conditional) — intervention based on 7.11 diagnostic
+
+Only if 7.11 surfaces a clear mechanism with sufficient effect-size:
+- If parse-loss is dominant → table-aware re-ingest with `docling.do_table_structure=True`, separate table-cell index, prose/table-aware retrieval routing
+- If reasoning is dominant → consider FT generator (QLoRA on 7-13B model with FinanceBench answer pairs, ~150 examples + augmentation)
+- If neither is clearly dominant → ship as-is + lean into the Morgan-Stanley-pattern framing
+
+### What we are explicitly NOT doing
+
+- **No more paper-derived deltas as targets.** Estimating gain from a paper's claim is a category error when our baseline is heavily stacked. The Multi-HyDE +11.2% was the precedent that confirmed this.
+- **No "try Sprint 7.10b then Sprint 7.10c" sequence** — both target retrieval/reasoning without first measuring which is broken.
+- **No table-aware re-ingest without evidence.** Existing repo data (docling_clean RAGAS faith 0.42 vs pypdf 0.71) is contrary evidence; only the per-phase diagnostic can justify this.
+- **No ChatPDF-style "drop and chat" UX add.** Our pattern is enterprise batch-ingest-once-serve-many (Morgan Stanley shape). Adding consumer flow dilutes the framing.
+- **No PageIndex / vectorless rewrite.** Wrong tool for our budget.
+- **No GraphRAG / FinGEAR.** Pure GraphRAG hits 28-29% answer accuracy on FinanceBench-class questions; only structure-aware variants help, and those are 2-3 week investments.
+- **No more verification evals of the same config.**
 
 ### Cost / time budget
 
-Estimated total: **~$30 LLM + ~6 days engineering + ~5 hours of eval wall time** across 7.10a–c if all three ship. Decision gates between each prevent over-investment.
+| Sprint | Engineering | Eval wall time | LLM cost |
+|---|---|---|---|
+| 7.11 phase eval | 3-4 days | ~1 hour | ~$2-5 |
+| 7.12 supplemental benchmarks | 2 days | ~10-15 hours | ~$15-25 |
+| 7.13 (conditional) | 3-7 days | ~3 hours | ~$10-15 |
+
+Total if all ship: **~6-13 days engineering + ~$25-45 LLM + ~14-18 hours of eval wall time.**
+
+### Project framing — Morgan Stanley reference pattern
+
+Verified via web search of 2026 enterprise RAG deployments: the canonical production pattern in financial services is **batch-ingest a fixed institutional corpus once, then serve many queries to many users with role-based access and human-in-the-loop on high-stakes outputs**. Morgan Stanley Wealth Management's GPT-4 chatbot operates over a 100,000-document internal knowledge base with daily regression testing. This project is structurally the same shape at smaller scale. The portfolio framing leans into that reference, not into ChatPDF/NotebookLM-style consumer flows. The 47% pass rate is below production accuracy targets (>75%) — which is precisely why the HITL approval gate and audit trail exist. The deployment shape is "AI as search-and-summarize layer for human analysts who review citations," not "autonomous decisioning tool."
 
 ---
 
@@ -243,7 +313,7 @@ A senior reviewer should read this section *before* the achievements section. I'
 6. **GraphRAG never tried.** Would likely be the biggest single quality lever remaining (FinGEAR shows the gap). Estimated 2–3 weeks of work, deferred until after the Sprint 7.10 levers above.
 7. **No production-deployment ops.** No load testing, no horizontal scaling validation, no incident response runbooks. The Langfuse + LiteLLM stack would work in production but hasn't been stress-tested.
 
-If I had another two weeks, the committed priority order (see "Roadmap — Sprint 7.10" section above) is: **(1) Multi-HyDE, (2) metadata-augmented chunks OR iterative-reasoning loop (gated on 7.10a result), (3) ship to free-tier infra (Render + Vercel + Neon) once eval target is hit so the public URL has something defensible to point at**. Sprint 9.2 frontend work (sidebar / HITL UI / admin panel) runs in parallel in a separate chat session and doesn't block the eval-quality push.
+If I had another two weeks, the committed priority order (see "Roadmap — Sprint 7.11 onward" above) is: **(1) Sprint 7.11 per-phase eval framework — gold-chunk labels + Hit Rate@k + reranker NDCG + chunk-preservation IoU, (2) Sprint 7.12 ConvFinQA-150 + TAT-QA-150 supplemental external benchmarks, (3) Sprint 7.13 conditional intervention only if 7.11 diagnoses a clear mechanism with sufficient effect-size**. Sprint 9.2 frontend work (sidebar / HITL UI / admin panel) runs in parallel in a separate chat session and doesn't block the eval-quality push. Sprint 7.10a (Multi-HyDE) shipped at commit `dafb582` with a null pass-rate result; flag default off, code preserved for ablation.
 
 ---
 
