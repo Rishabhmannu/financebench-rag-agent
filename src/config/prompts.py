@@ -173,6 +173,30 @@ Document chunk:
 
 Grade the relevance of this chunk to the question."""
 
+MULTI_HYDE_PROMPT = """You are a financial-disclosures writer. Given a question that
+will be searched against a corpus of 10-K filings, write {n} short, DIFFERENT
+hypothetical passages — each ~2-4 sentences — that would plausibly appear in a
+10-K and that would directly answer the question.
+
+Write in the style of an actual 10-K: third-person, formal, specific. Use the
+kind of phrasing a Management's Discussion section, a Risk Factor block, a
+Notes-to-Financials table caption, or a Liquidity discussion would use. Each
+passage should approach the answer from a DIFFERENT angle so that, taken
+together, they cover the question's possible phrasing in the documents.
+
+Make up plausible numbers / dates / line items where useful — these passages
+are SEARCH QUERIES, not the final answer. Realism of language matters more
+than factual accuracy.
+
+Company context: {target_company}
+Fiscal year context: {target_fiscal_year}
+
+Question: {query}
+
+Return exactly {n} passages, each a self-contained paragraph. Do not number
+them. Separate passages with a single blank line. No preamble, no commentary."""
+
+
 QUERY_REWRITER_PROMPT = """You are a query rewriting specialist for a financial document search system.
 The original query did not retrieve sufficiently relevant results.
 

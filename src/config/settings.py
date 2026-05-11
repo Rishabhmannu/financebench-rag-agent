@@ -120,6 +120,19 @@ class Settings(BaseSettings):
     ENABLE_SELECTIVE_RETRIEVAL_EVALUATOR: bool = False
     RETRIEVAL_EVALUATOR_MIN_CONFIDENCE: float = 0.55
 
+    # --- Multi-HyDE (Sprint 7.10a) ---
+    # Generates N hypothetical answers per query, embeds each, runs hybrid_search
+    # across all (orig + N) paths, RRF-fuses results, dedupes, returns top-K.
+    # Targets the vocabulary gap from question-phrasing → 10-K-phrasing: the
+    # hypothetical answers use document-style language and pull closer to the
+    # actual passages we need. Reference: arXiv 2509.16369 (+11.2% accuracy,
+    # -15% hallucinations on financial QA).
+    ENABLE_MULTI_HYDE: bool = False
+    MULTI_HYDE_N: int = 3
+    MULTI_HYDE_MODEL: str = "gpt-4o-mini"
+    # Temperature > 0 — we explicitly want the N hypotheticals to be different.
+    MULTI_HYDE_TEMPERATURE: float = 0.3
+
     # --- Embedding ---
     # Provider dispatch: "openai" (default) or "voyage". When "voyage", embeddings
     # go through voyage-finance-2 (Sprint 7.8 Week 1) — set EMBEDDING_MODEL to

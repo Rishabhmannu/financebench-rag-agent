@@ -52,6 +52,7 @@ _KEY_PREFIX = {
     "query-emb": "rag-cache:query-emb:v1:",
     "reranker": "rag-cache:reranker:v1:",
     "grader": "rag-cache:grader:v1:",
+    "multi-hyde": "rag-cache:multi-hyde:v1:",
 }
 
 # Default TTL: 7 days. Production deployments wanting tighter freshness can
