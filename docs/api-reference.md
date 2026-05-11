@@ -427,6 +427,68 @@ Hard-delete a role.
 - `404` — Role doesn't exist
 - `409` — Role is `is_system=true` and protected
 
+### GET `/admin/audit`
+
+Recent-queries timeline derived from Langfuse traces. The frontend admin "Activity" tab consumes this directly.
+
+**Query**: `hours` (default 24, range 1–720), `limit` (default 100, range 1–500)
+
+**Response** (200):
+```json
+{
+  "window_hours": 24,
+  "start": "2026-05-10T...",
+  "end": "2026-05-11T...",
+  "total": 27,
+  "events": [
+    {
+      "trace_id": "79ecc74d-...",
+      "timestamp": "2026-05-11T11:30:00Z",
+      "user_id": "analyst",
+      "query": "What was Apple FY23 revenue?",
+      "model_hint": "acompletion",
+      "cost_usd": 0.0015,
+      "latency_ms": 1234
+    }
+  ]
+}
+```
+
+`user_id` is `null` for unattributed traces (scripts, eval runs — anything that didn't pass through the FastAPI auth dep). `query` is a 200-char preview of the most-recent `user`-role message in the trace's `input` blob; handles both OpenAI string-content and Anthropic content-block formats.
+
+**Known limitation**: LiteLLM's Langfuse callback creates one trace per LLM call, not per chat conversation. So the `query` field may show a mid-pipeline prompt (e.g. the grader's system+user input) rather than the original chat message for traces from internal LLM calls. Real `/chat` traffic from authenticated users produces traces whose top-level user message is the original query.
+
+**Errors**:
+- `502` — Langfuse query failed
+
+### GET `/admin/evaluations`
+
+Eval-snapshot time series derived from `tests/evaluation/eval_results/financebench_*.json` files committed to the repo. Frontend renders this on the "Evaluations" tab as the campaign trajectory chart.
+
+**Response** (200):
+```json
+{
+  "total": 13,
+  "snapshots": [
+    {
+      "filename": "financebench_baseline.json",
+      "label": "baseline",
+      "mtime": 1715000000.5,
+      "num_samples": 150,
+      "pipeline_time_seconds": 4320,
+      "correctness": {"pass_rate": 0.307, "n_pass": 46, "n_samples": 150},
+      "ragas": {"faithfulness": 0.47, "answer_relevancy": 0.30, "context_precision": 0.55, "context_recall": 0.30},
+      "deepeval": {"faithfulness": 0.63, "contextual_precision": 0.51, "contextual_recall": 0.39},
+      "diagnostics": {"refusal_rate": 0.12, "pass_when_answered": 0.35, "slice_summary": {...}}
+    }
+  ]
+}
+```
+
+Snapshots are sorted by file mtime so the newest run is last. Old snapshots that embed metric dicts as JSON strings are auto-normalized to objects; missing fields surface as `null`.
+
+Files filtered out: `*.pipeline.json`, `*.ragas.json`, `*.deepeval.json`, `*.correctness.json`, `*.review.json`, `*.patronus.json`, `*_manifest.json` (per-sample drill-downs, not headline snapshots).
+
 ## Health
 
 ### GET `/health`

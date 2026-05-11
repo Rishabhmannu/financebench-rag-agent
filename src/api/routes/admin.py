@@ -9,9 +9,12 @@ this endpoint is just a thin reader on top.
 Sprint 9.0: extends to `/admin/users` and `/admin/roles` CRUD so the
 frontend admin panel can render the user table and edit RBAC dynamically.
 """
+import json
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -239,3 +242,228 @@ async def delete_role_endpoint(name: str, user: User = Depends(get_current_user)
             detail=f"Role '{name}' is a system role and cannot be deleted (only its permissions can be edited)",
         )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── /admin/audit — recent queries timeline (Sprint 9.0.2) ───────────────
+
+@router.get("/audit")
+async def admin_audit(
+    hours: int = Query(24, ge=1, le=720, description="Look-back window in hours"),
+    limit: int = Query(100, ge=1, le=500, description="Max events returned"),
+    user: User = Depends(get_current_user),
+):
+    """Derive a recent-queries timeline from Langfuse traces.
+
+    Each `chat` request lands a top-level Langfuse trace with the user
+    message + assistant response captured in the input/output blobs. We
+    fetch the most-recent traces from Langfuse's public `/api/public/traces`
+    endpoint, filter to within the time window, and surface:
+        - timestamp
+        - user_id (from the trace's `userId`, populated by Sprint 8 8d's
+          attribution path through LiteLLM)
+        - the user's query (best-effort extracted from the trace's input)
+        - the model that handled the chat (best-effort from observations)
+        - cost (sum of generation calculatedTotalCost on the trace)
+
+    Frontend renders this as the "Activity" tab. Without this endpoint the
+    panel would have to roll-up /admin/costs traces client-side to derive
+    the same info — uglier and chattier.
+    """
+    _require_admin(user)
+
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(hours=hours)
+    auth = (settings.LANGFUSE_PUBLIC_KEY, settings.LANGFUSE_SECRET_KEY)
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        try:
+            r = await client.get(
+                f"{settings.LANGFUSE_HOST.rstrip('/')}/api/public/traces",
+                auth=auth,
+                params={
+                    "fromTimestamp": start.isoformat(),
+                    "toTimestamp": end.isoformat(),
+                    "limit": min(limit, 100),  # Langfuse caps page size
+                },
+            )
+        except httpx.HTTPError as e:
+            logger.error("Langfuse traces query failed: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to query Langfuse for audit data",
+            )
+        if r.status_code != 200:
+            logger.error("Langfuse traces query non-200: %s %s", r.status_code, r.text[:200])
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to query Langfuse for audit data",
+            )
+        payload = r.json().get("data", [])
+
+    events: list[dict] = []
+    for t in payload:
+        # Trace input/output can be a dict, list, or string depending on
+        # the call shape — best-effort extract a user query preview.
+        query_preview = _trace_input_preview(t.get("input"))
+        # Model: peek at the first observation's name; cheap and good enough
+        model_hint = (t.get("name") or "").replace("litellm-", "")
+        events.append({
+            "trace_id": t.get("id"),
+            "timestamp": t.get("timestamp") or t.get("createdAt"),
+            "user_id": t.get("userId"),
+            "query": query_preview,
+            "model_hint": model_hint or None,
+            # Aggregate cost across the trace's observations (calculatedTotalCost
+            # on the trace itself sums them). Langfuse calls this `totalCost`.
+            "cost_usd": float(t.get("totalCost") or 0.0),
+            "latency_ms": t.get("latency"),  # in ms; null if not measured
+        })
+
+    # Newest first; the public API usually returns this order but be explicit
+    events.sort(key=lambda e: e["timestamp"] or "", reverse=True)
+    return {
+        "window_hours": hours,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "total": len(events),
+        "events": events[:limit],
+    }
+
+
+def _trace_input_preview(raw, max_chars: int = 200) -> str | None:
+    """Pull a user query out of the trace's `input` blob. Trace input shape
+    is inconsistent across our call sites:
+      - chat route invocation: dict with `messages: [{role, content}, ...]`
+      - direct LLM call: string or list of messages
+      - structured-output call: dict with various shapes
+    We grab the most-recent `user` message when we can identify one, else
+    fall back to a string preview of the whole blob.
+    """
+    if raw is None:
+        return None
+    # Case 1: dict shaped like a chat-completions request
+    if isinstance(raw, dict):
+        msgs = raw.get("messages")
+        if isinstance(msgs, list):
+            user_msgs = [m for m in msgs if isinstance(m, dict) and m.get("role") == "user"]
+            if user_msgs:
+                content = user_msgs[-1].get("content")
+                if isinstance(content, str):
+                    return content[:max_chars]
+                if isinstance(content, list):
+                    # Anthropic-style content blocks; pull text parts
+                    text = " ".join(
+                        b.get("text", "") for b in content if isinstance(b, dict)
+                    )
+                    return text[:max_chars] or None
+    # Case 2: list of messages
+    if isinstance(raw, list):
+        for m in reversed(raw):
+            if isinstance(m, dict) and m.get("role") == "user":
+                c = m.get("content")
+                if isinstance(c, str):
+                    return c[:max_chars]
+    # Case 3: bare string
+    if isinstance(raw, str):
+        return raw[:max_chars]
+    return None
+
+
+# ── /admin/evaluations — eval-snapshot time series (Sprint 9.0.2) ───────
+
+@router.get("/evaluations")
+async def admin_evaluations(user: User = Depends(get_current_user)):
+    """Surface the FinanceBench eval-results snapshots as a time series.
+
+    The frontend dashboard's "Evaluations" tab renders pass rate, cost,
+    RAGAS/DeepEval scores, and slice-level metrics over the campaign
+    history. Each `tests/evaluation/eval_results/financebench_*.json`
+    snapshot becomes one point on the time series.
+
+    Files filtered out: `.pipeline.json`, `.ragas.json`, `.deepeval.json`,
+    `.correctness.json`, `.review.json`, `.patronus.json` (per-sample
+    drill-downs, not headline snapshots), and `_manifest.json`.
+
+    Source-of-truth lives in committed files so this endpoint is
+    deterministic and doesn't require Langfuse / Postgres / Qdrant.
+    """
+    _require_admin(user)
+
+    root = Path("tests/evaluation/eval_results")
+    if not root.exists():
+        return {"snapshots": [], "total": 0}
+
+    excludes = (".pipeline.json", ".ragas.json", ".deepeval.json", ".correctness.json",
+                ".review.json", ".patronus.json", "_manifest.json")
+    snapshots: list[dict] = []
+    for fp in sorted(root.glob("financebench_*.json")):
+        name = fp.name
+        if any(name.endswith(ex) for ex in excludes):
+            continue
+        try:
+            with fp.open() as f:
+                data = json.load(f)
+        except (ValueError, OSError) as e:
+            logger.warning("Skipping unreadable eval snapshot %s: %s", name, e)
+            continue
+        snapshots.append(_eval_snapshot_to_record(name, fp, data))
+
+    # Order by file mtime so the most recent eval is last (matches a
+    # natural "over time" reading on a chart)
+    snapshots.sort(key=lambda s: s["mtime"])
+    return {"snapshots": snapshots, "total": len(snapshots)}
+
+
+def _parse_or_dict(v) -> dict:
+    """Older eval snapshots embed metric dicts as JSON strings; newer ones
+    store them as objects. Normalize to a dict either way."""
+    if isinstance(v, dict):
+        return v
+    if isinstance(v, str):
+        try:
+            return json.loads(v)
+        except (ValueError, TypeError):
+            return {}
+    return {}
+
+
+def _eval_snapshot_to_record(filename: str, path, data: dict) -> dict:
+    """Reduce an eval-results JSON to the headline metrics the frontend
+    chart needs. Defensive about missing keys — old snapshots may have
+    only some of the metric families."""
+    correctness = _parse_or_dict(data.get("correctness"))
+    ragas = _parse_or_dict(data.get("ragas"))
+    deepeval = _parse_or_dict(data.get("deepeval"))
+    diagnostics = _parse_or_dict(data.get("diagnostics"))
+
+    # Strip the financebench_ prefix and the .json suffix for the display label
+    label = filename.removeprefix("financebench_").removesuffix(".json")
+
+    return {
+        "filename": filename,
+        "label": label,
+        "mtime": os.path.getmtime(path),
+        "num_samples": data.get("num_samples"),
+        "pipeline_time_seconds": data.get("pipeline_time_seconds"),
+        "correctness": {
+            "pass_rate": correctness.get("pass_rate"),
+            "n_pass": correctness.get("n_pass"),
+            "n_samples": correctness.get("n_samples"),
+        },
+        "ragas": {
+            "faithfulness": ragas.get("faithfulness"),
+            "answer_relevancy": ragas.get("answer_relevancy"),
+            "context_precision": ragas.get("context_precision"),
+            "context_recall": ragas.get("context_recall"),
+        },
+        "deepeval": {
+            "faithfulness": deepeval.get("faithfulness"),
+            "contextual_precision": deepeval.get("contextual_precision"),
+            "contextual_recall": deepeval.get("contextual_recall"),
+        },
+        "diagnostics": {
+            "refusal_rate": diagnostics.get("refusal_rate"),
+            "pass_when_answered": diagnostics.get("pass_when_answered"),
+            "slice_summary": diagnostics.get("slice_summary"),
+        },
+    }
