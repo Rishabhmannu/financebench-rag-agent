@@ -20,9 +20,24 @@ def _token(role: str = "finance", user_id: str = "finance") -> str:
 
 @pytest.fixture
 def client():
-    # Inject a fake pool object so the 503 short-circuit doesn't fire
+    # Inject a fake pool object so the 503 short-circuit doesn't fire,
+    # then restore whatever was there before. Without the restore, this
+    # fixture leaks state to downstream tests (notably the integration
+    # tests that need a real psycopg pool on app.state.pool).
+    prior_pool = getattr(app.state, "pool", None)
+    prior_graph = getattr(app.state, "graph", None)
     app.state.pool = object()
-    return TestClient(app)
+    yield TestClient(app)
+    if prior_pool is None:
+        if hasattr(app.state, "pool"):
+            delattr(app.state, "pool")
+    else:
+        app.state.pool = prior_pool
+    if prior_graph is None:
+        if hasattr(app.state, "graph"):
+            delattr(app.state, "graph")
+    else:
+        app.state.graph = prior_graph
 
 
 @patch("src.api.routes.threads.list_threads_for_user", new_callable=AsyncMock)
