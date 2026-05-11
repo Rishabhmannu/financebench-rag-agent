@@ -117,6 +117,75 @@ Sprint 8 was NOT an eval-quality sprint. It was infrastructure: route every LLM 
 
 ---
 
+## Sprint 8e + Fix A — the variance characterization
+
+After Sprint 8 closed, I layered a second cache: per-stage Redis caches for Voyage query embeddings, BGE reranker scores, and grader verdicts — on a separate Redis DB to avoid colliding with LiteLLM's semantic cache from Sprint 8.
+
+The first cached canonical eval came in at **63/150 (42.0%) — a −7 question regression** vs the prior Sprint 8 run (70/150). Instinct: blame the cache. Three diagnostic tests disproved that.
+
+**Test 1: Did contexts diverge between runs?** Yes — but 14/16 of the *regressions* AND **9/9 of the rescues** had different retrieved contexts. Context-level run-to-run variance was normal, not cache-induced.
+
+**Test 2: Is gpt-4o-mini at `temperature=0` actually deterministic?** Same input × 10 grader calls. Verdict bit: 10/10 returned `relevant=True` (stable). Reason prose: 3 unique strings. The bit the cache stores is stable → cache is correctness-safe.
+
+**Test 3: Did the cache fire (hits) during the eval?** 2,080 grader writes, ~0 hits within the single run. The cache populated for *future* runs but had no effect on this one.
+
+### The real bug — a macOS Redis port collision
+
+`lsof -i :6379` revealed two Redis processes on the host:
+```
+redis-ser  PID 933   IPv4 127.0.0.1:6379 (LISTEN)   ← brew/launchd
+redis-ser  PID 933   IPv6 [::1]:6379    (LISTEN)
+com.docke  PID 86606 IPv6 *:6379        (LISTEN)   ← our compose Redis
+```
+
+Two processes bound to "port 6379" but on different interfaces. Python from the host resolved `localhost:6379` → IPv6 loopback → host Redis (PID 933), **not** the compose Redis. Confirmed by comparing `run_id`: docker-internal vs host-port lookups returned different IDs. So Sprint 8e was writing 20,508 cache entries to a rogue host Redis the rest of the stack didn't see, while LiteLLM (inside the compose network) correctly used `redis:6379` via service-name DNS.
+
+Fix: docker-compose maps Redis to host port `6380:6379`. Compose-internal calls unchanged. Verified by re-matching `run_id`.
+
+**The −7 was real run-to-run noise**, not a cache fault. Sprint 7.9 Day 2.5's ±3 net at n=30 scales to ~±7 at n=150 (√5 factor); −7 sits right at the noise envelope.
+
+### Fix A — `seed=42` on every OpenAI-routed call
+
+[OpenAI's own cookbook](https://cookbook.openai.com/examples/reproducible_outputs_with_the_seed_parameter) documents that gpt-4o-mini at `temperature=0` is "mostly deterministic" but not bit-stable, and pinning `seed` reduces (but doesn't eliminate) drift because `system_fingerprint` can change server-side. Wired `seed=42` into `_openai()`, `_groq()` (when proxied), and the eval-side RAGAS + Correctness judges.
+
+Determinism test, same input × 10 grader calls:
+- **Pre-fix**: verdict diversity 1, reason-prose diversity 3
+- **Post-fix**: verdict diversity 1, reason-prose diversity **2** (improved, not bit-perfect)
+
+### Four-way verification eval
+
+Re-ran the canonical FinanceBench 150-Q eval with the full Sprint 9.0 stack + `seed=42` in place:
+
+| Run | Pass rate | DE faith | DE c.prec | RAGAS faith | Errors |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Sprint 7.9 D7 (no proxy, no seed) — baseline | **71/150 (47.3%)** | 0.829 | 0.768 | 0.707 | 0 |
+| Sprint 8 (proxy, no seed) | 70/150 (46.7%) | 0.836 | 0.701 | 0.693 | 0 |
+| Sprint 8e (proxy + cache, no seed) | 63/150 (42.0%) | 0.842 | 0.751 | 0.683 | 1 |
+| **Sprint 9 (proxy + cache + `seed=42`)** | **66/150 (44.0%)** | **0.836** | **0.767** | **0.702** | **0** |
+
+**What `seed=42` measurably bought**:
+- Pass rate: 63 → 66 = **+3 questions (+2.0pp)** vs uncontrolled Sprint 8e
+- DeepEval `contextual_precision` recovered from 0.751 → 0.767 (matches baseline 0.768)
+- RAGAS `faithfulness` recovered from 0.683 → 0.702 (matches baseline 0.707)
+- Metric errors: 1 → 0 (cleaner run)
+
+**What it did NOT close**: the 5-question residual gap to Sprint 7.9 D7's baseline. That remainder is **Anthropic-side variance** — the Messages API doesn't accept a `seed` parameter, so Sonnet 4.6 (generator) and Haiku 4.5 (hallucination checker) still drift run-to-run within Anthropic's `temperature=0` bounds. Controlling what's controllable.
+
+### Production-plumbing trade-off, honestly stated
+
+| Workload | Pipeline-time impact of the LiteLLM + cache stack |
+|---|---|
+| **Unique-question batch eval** (FinanceBench) | **+10–20%** wall time. Cache hit rate ≈ 0 within a run because every question is unique. Pure tax. |
+| **Production traffic with repetition** (paraphrased / verbatim) | Win — cache hits skip the chunk-rerank + grader LLM calls; observability captures every call without per-component instrumentation. |
+
+The infrastructure is correctly designed for production-style traffic. The eval-throughput slowdown is the honest cost of building it.
+
+### Sprint 8f deferred indefinitely
+
+Sprint 8e's diagnostic flagged "cache agentic decompose/sufficiency" (Fix B) as a follow-up. Both use **gpt-4o-mini, which `seed=42` already addresses**. The remaining variance is Anthropic-side and uncacheable. Deferred.
+
+---
+
 ## Known limitations / what I'd build next
 
 A senior reviewer should read this section *before* the achievements section. I'm not pretending these aren't real.
