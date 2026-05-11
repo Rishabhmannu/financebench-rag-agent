@@ -186,6 +186,51 @@ Sprint 8e's diagnostic flagged "cache agentic decompose/sufficiency" (Fix B) as 
 
 ---
 
+## Honest accounting of the production-plumbing detour
+
+Sprints 8 → 9.0 (LiteLLM gateway, Langfuse stack, per-stage cache, admin endpoints, Alembic-managed RBAC, frontend backend prereqs) were **production-readiness** work, not eval-quality work. They moved zero questions on FinanceBench — by design, since they were chosen for the Full Stack AI Engineer portfolio narrative (observability, admin surface, multi-service docker-compose, integration tests), not for accuracy.
+
+That's a fair trade for what was built, but it should be called out honestly: **the eval pass rate has been flat in the 44–47% noise band since Sprint 7.9 Day 7**. Calling subsequent eval runs "regressions" misattributes run-to-run variance to architectural changes. The empirical noise floor at n=150 is ~15% per-question (measured: baseline vs Sprint 8 disagree on 23/150 questions despite near-identical configs).
+
+The next sprints return to eval-quality work with a concrete roadmap derived from the 2026 FinanceBench SOTA literature.
+
+---
+
+## Roadmap — Sprint 7.10: eval-quality push
+
+**State of FinanceBench leaderboard (2026)**: Mafin 2.5 + PageIndex reports 98.7%, DANA reports 94.3%, iterative-reasoning-on-fine-tuned-RAG (Nguyen et al. 2024) reports 85%. Original FinanceBench paper baselines were 38–43%. Our 44–47% sits credibly above the published baselines but well below current SOTA — the gap isn't incremental tuning, it's architectural.
+
+[The Hidden Cost of 98% (Tao An)](https://tao-hpu.medium.com/the-hidden-cost-of-98-accuracy-a-practical-guide-to-rag-architecture-selection-6883adc5289c) documents that PageIndex publishes no latency/cost numbers and that per-query LLM reasoning makes it "slower and pricier" — so 98% isn't the right target for our budget. The realistic ceiling on our architecture (selective agentic + LoRA reranker + Voyage embeddings) before requiring a structural rewrite is probably the 55–70% range.
+
+Three concrete levers ranked by expected ROI, **committed in order until quality target is achieved**:
+
+| # | Lever | Claimed gain | Effort | Source |
+|---|---|---|---|---|
+| **7.10a** | **Multi-HyDE** — generate 3–5 hypothetical answers per query, search with each, dedupe top-K | **+11.2% accuracy, −15% hallucinations** | ~2 days | [Enhancing Financial RAG with Agentic AI and Multi-HyDE (arXiv 2509.16369)](https://arxiv.org/abs/2509.16369) |
+| 7.10b | **Metadata-augmented chunks** — re-ingest with LLM-extracted entities / quantities / topics embedded alongside chunk text | +12pp retrieval F1 | ~3 days + 90-min re-ingest | [RAG Chunking Strategies 2026 (Premai)](https://blog.premai.io/rag-chunking-strategies-the-2026-benchmark-guide/) |
+| 7.10c | **Iterative-reasoning (OODA) loop** — tighter version of our research-agent subgraph: generate → check coverage → retrieve more → regenerate, raise turn cap from 5 to 8–10 with sufficiency-driven retrieval expansion | +48pp over non-iterative in published results | ~1 week | Nguyen et al. 2024 (cited in [FinanceBench SOTA survey](https://www.emergentmind.com/topics/financebench)) |
+
+**Decision rule between 7.10b vs 7.10c**: gate on the 7.10a full-eval result. If Multi-HyDE alone gets us past ~52%, prioritize 7.10b (metadata) — it's additive and lower-risk. If 7.10a underperforms (<50%), prioritize 7.10c (iterative reasoning) — it's higher-effort but addresses the multi-step-reasoning bottleneck that Multi-HyDE alone wouldn't fix.
+
+### Why these three, in this order
+
+- **Multi-HyDE first** because it bridges the vocabulary mismatch our queries currently have with chunks ("FY23 revenue" vs "fiscal year 2023 revenues"). Lowest-effort, highest published gain claim, lowest regression risk (additive — original retrieval still runs, HyDE adds candidates).
+- **Metadata-augmentation second** if Multi-HyDE works because it stacks naturally: HyDE generates better queries → augmented chunks have better recall against those queries.
+- **Iterative reasoning third** if pass rate is still below target after the first two, because it's the biggest single lever but also the riskiest (latency × N iterations, potential for diverging into noise).
+
+### What we are NOT doing
+
+- **PageIndex / vectorless tree-of-contents indexing** — months of architectural rewrite, undocumented production cost, unproven generalization. Wrong tool for this project.
+- **More seed / cache / proxy tweaks** — practical ceiling on stochastic-variance reduction was reached at Sprint 8e Fix A given the OpenAI API constraints. Further tweaks burn time without moving quality.
+- **More verification evals of the same config** — empirical noise floor is now characterized at ~15% per-question. Re-running the same setup adds no signal.
+- **GraphRAG (FinGEAR-style)** — 2–3 week investment with high variance; deferred until after 7.10c if pass rate is still gap-to-SOTA.
+
+### Cost / time budget
+
+Estimated total: **~$30 LLM + ~6 days engineering + ~5 hours of eval wall time** across 7.10a–c if all three ship. Decision gates between each prevent over-investment.
+
+---
+
 ## Known limitations / what I'd build next
 
 A senior reviewer should read this section *before* the achievements section. I'm not pretending these aren't real.
@@ -195,10 +240,10 @@ A senior reviewer should read this section *before* the achievements section. I'
 3. **Frontend (Sprint 9) is partial.** Sprint 9.1 vertical slice (login + streaming chat) is built and the BFF wiring works, but the smoke test caught an environment-variable issue (`LITELLM_URL` pointing to a docker-internal hostname while running uvicorn on the host) that's still pending fix. Sidebar history, HITL UI, admin panel, citation PDF viewer are not yet built.
 4. **Feature-flagged-off experiments left in source.** `ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK`, `ENABLE_LTR_GATE`, `ENABLE_CALCULATOR_TOOL` all `=False`. The code is preserved as research record but adds surface area to the repo. A cleaner version would delete or move to a `experiments/` branch.
 5. **Multi-judge eval all uses gpt-4o-mini.** RAGAS + DeepEval + correctness all judged by the same model family. A cleaner eval would diversify judges to control for judge-family bias (the [`scripts/dual_judge_check.py`](../scripts/dual_judge_check.py) script exists but wasn't used as the canonical gate).
-6. **GraphRAG never tried.** Would likely be the biggest single quality lever remaining (FinGEAR shows the gap). Estimated 2–3 weeks of work, deferred for time/budget.
+6. **GraphRAG never tried.** Would likely be the biggest single quality lever remaining (FinGEAR shows the gap). Estimated 2–3 weeks of work, deferred until after the Sprint 7.10 levers above.
 7. **No production-deployment ops.** No load testing, no horizontal scaling validation, no incident response runbooks. The Langfuse + LiteLLM stack would work in production but hasn't been stress-tested.
 
-If I had another two weeks, in priority order: (1) deploy backend + frontend on free-tier infra (Render + Vercel + Neon), (2) finish Sprint 9.2 (sidebar + HITL UI), (3) GraphRAG experiment to attempt SOTA.
+If I had another two weeks, the committed priority order (see "Roadmap — Sprint 7.10" section above) is: **(1) Multi-HyDE, (2) metadata-augmented chunks OR iterative-reasoning loop (gated on 7.10a result), (3) ship to free-tier infra (Render + Vercel + Neon) once eval target is hit so the public URL has something defensible to point at**. Sprint 9.2 frontend work (sidebar / HITL UI / admin panel) runs in parallel in a separate chat session and doesn't block the eval-quality push.
 
 ---
 
