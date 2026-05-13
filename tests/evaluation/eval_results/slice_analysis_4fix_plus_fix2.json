@@ -1,0 +1,97 @@
+{
+  "by_finbench_qtype": {
+    "domain-relevant": {
+      "V1": {
+        "slice": "domain-relevant",
+        "n": 50,
+        "n_pass": 31,
+        "pass_rate": 0.62
+      },
+      "Fix2": {
+        "slice": "domain-relevant",
+        "n": 50,
+        "n_pass": 32,
+        "pass_rate": 0.64
+      },
+      "delta_pp": 2.0000000000000018
+    },
+    "metrics-generated": {
+      "V1": {
+        "slice": "metrics-generated",
+        "n": 50,
+        "n_pass": 39,
+        "pass_rate": 0.78
+      },
+      "Fix2": {
+        "slice": "metrics-generated",
+        "n": 50,
+        "n_pass": 41,
+        "pass_rate": 0.82
+      },
+      "delta_pp": 3.9999999999999925
+    },
+    "novel-generated": {
+      "V1": {
+        "slice": "novel-generated",
+        "n": 50,
+        "n_pass": 32,
+        "pass_rate": 0.64
+      },
+      "Fix2": {
+        "slice": "novel-generated",
+        "n": 50,
+        "n_pass": 37,
+        "pass_rate": 0.74
+      },
+      "delta_pp": 9.999999999999998
+    }
+  },
+  "by_topical_category": {
+    "lookup": {
+      "V1": {
+        "slice": "lookup",
+        "n": 60,
+        "n_pass": 38,
+        "pass_rate": 0.6333333333333333
+      },
+      "Fix2": {
+        "slice": "lookup",
+        "n": 60,
+        "n_pass": 39,
+        "pass_rate": 0.65
+      },
+      "delta_pp": 1.6666666666666718
+    },
+    "multi_hop": {
+      "V1": {
+        "slice": "multi_hop",
+        "n": 27,
+        "n_pass": 20,
+        "pass_rate": 0.7407407407407407
+      },
+      "Fix2": {
+        "slice": "multi_hop",
+        "n": 27,
+        "n_pass": 23,
+        "pass_rate": 0.8518518518518519
+      },
+      "delta_pp": 11.111111111111116
+    },
+    "calc": {
+      "V1": {
+        "slice": "calc",
+        "n": 63,
+        "n_pass": 44,
+        "pass_rate": 0.6984126984126984
+      },
+      "Fix2": {
+        "slice": "calc",
+        "n": 63,
+        "n_pass": 48,
+        "pass_rate": 0.7619047619047619
+      },
+      "delta_pp": 6.349206349206349
+    }
+  },
+  "by_company": {}
+}

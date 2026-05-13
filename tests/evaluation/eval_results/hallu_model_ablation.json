@@ -1,0 +1,722 @@
+{
+  "haiku_4_5": {
+    "model": "claude-haiku-4-5",
+    "wall_s": 80.3,
+    "strict": {
+      "acc": 0.7333,
+      "macro_f1": 0.6591,
+      "per_class": {
+        "grounded": {
+          "f1": 0.8182,
+          "p": 0.75,
+          "r": 0.9,
+          "tp": 45,
+          "fp": 15,
+          "fn": 5
+        },
+        "hallucinated": {
+          "f1": 0.5,
+          "p": 0.6667,
+          "r": 0.4,
+          "tp": 10,
+          "fp": 5,
+          "fn": 15
+        }
+      },
+      "n": 75
+    },
+    "lenient": {
+      "acc": 0.7867,
+      "macro_f1": 0.4403,
+      "per_class": {
+        "grounded": {
+          "f1": 0.8806,
+          "p": 0.9833,
+          "r": 0.7973,
+          "tp": 59,
+          "fp": 1,
+          "fn": 15
+        },
+        "hallucinated": {
+          "f1": 0.0,
+          "p": 0.0,
+          "r": 0.0,
+          "tp": 0,
+          "fp": 15,
+          "fn": 1
+        }
+      },
+      "n": 75
+    },
+    "confusion_human_x_system": {
+      "Y_grounded": 45,
+      "PARTIAL_grounded": 14,
+      "PARTIAL_hallucinated": 10,
+      "N_grounded": 1,
+      "Y_hallucinated": 5
+    },
+    "per_record": {
+      "diag_005": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_003": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_002": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_006": {
+        "status": "hallucinated",
+        "score": 0.5
+      },
+      "diag_007": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_004": {
+        "status": "hallucinated",
+        "score": 0.65
+      },
+      "diag_001": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_011": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_008": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_009": {
+        "status": "hallucinated",
+        "score": 0.25
+      },
+      "diag_013": {
+        "status": "grounded",
+        "score": 0.92
+      },
+      "diag_010": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_016": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_014": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_015": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_012": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_017": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_018": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_020": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_019": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_022": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_021": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_023": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_024": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_025": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_027": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_030": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_028": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_029": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_031": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_032": {
+        "status": "grounded",
+        "score": 0.98
+      },
+      "diag_026": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_036": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_034": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_033": {
+        "status": "grounded",
+        "score": 0.98
+      },
+      "diag_035": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_037": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_038": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_039": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_042": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_041": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_040": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_043": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_045": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_048": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_044": {
+        "status": "hallucinated",
+        "score": 0.75
+      },
+      "diag_050": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_046": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_047": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_049": {
+        "status": "grounded",
+        "score": 0.92
+      },
+      "diag_051": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_052": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_053": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_054": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_055": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_056": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_057": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_059": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_058": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_061": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_060": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_062": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_063": {
+        "status": "hallucinated",
+        "score": 0.25
+      },
+      "diag_065": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_066": {
+        "status": "grounded",
+        "score": 0.92
+      },
+      "diag_067": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_068": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_069": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_064": {
+        "status": "grounded",
+        "score": 0.92
+      },
+      "diag_073": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_070": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_074": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_072": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_071": {
+        "status": "hallucinated",
+        "score": 0.65
+      },
+      "diag_075": {
+        "status": "hallucinated",
+        "score": 0.25
+      }
+    }
+  },
+  "sonnet_4_6": {
+    "model": "claude-sonnet-4-6",
+    "wall_s": 152.2,
+    "strict": {
+      "acc": 0.7733,
+      "macro_f1": 0.7301,
+      "per_class": {
+        "grounded": {
+          "f1": 0.8381,
+          "p": 0.8,
+          "r": 0.88,
+          "tp": 44,
+          "fp": 11,
+          "fn": 6
+        },
+        "hallucinated": {
+          "f1": 0.6222,
+          "p": 0.7,
+          "r": 0.56,
+          "tp": 14,
+          "fp": 6,
+          "fn": 11
+        }
+      },
+      "n": 75
+    },
+    "lenient": {
+      "acc": 0.72,
+      "macro_f1": 0.4186,
+      "per_class": {
+        "grounded": {
+          "f1": 0.8372,
+          "p": 0.9818,
+          "r": 0.7297,
+          "tp": 54,
+          "fp": 1,
+          "fn": 20
+        },
+        "hallucinated": {
+          "f1": 0.0,
+          "p": 0.0,
+          "r": 0.0,
+          "tp": 0,
+          "fp": 20,
+          "fn": 1
+        }
+      },
+      "n": 75
+    },
+    "confusion_human_x_system": {
+      "Y_grounded": 44,
+      "PARTIAL_grounded": 10,
+      "PARTIAL_hallucinated": 14,
+      "Y_hallucinated": 6,
+      "N_grounded": 1
+    },
+    "per_record": {
+      "diag_002": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_003": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_005": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_007": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_006": {
+        "status": "hallucinated",
+        "score": 0.5
+      },
+      "diag_001": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_004": {
+        "status": "hallucinated",
+        "score": 0.65
+      },
+      "diag_011": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_008": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_009": {
+        "status": "hallucinated",
+        "score": 0.2
+      },
+      "diag_010": {
+        "status": "hallucinated",
+        "score": 0.4
+      },
+      "diag_013": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_016": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_012": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_015": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_014": {
+        "status": "hallucinated",
+        "score": 0.85
+      },
+      "diag_017": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_018": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_020": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_019": {
+        "status": "hallucinated",
+        "score": 0.4
+      },
+      "diag_021": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_022": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_023": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_024": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_025": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_027": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_030": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_026": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_028": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_029": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_031": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_033": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_036": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_034": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_032": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_035": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_038": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_039": {
+        "status": "hallucinated",
+        "score": 0.6
+      },
+      "diag_037": {
+        "status": "grounded",
+        "score": 0.92
+      },
+      "diag_040": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_043": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_042": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_041": {
+        "status": "hallucinated",
+        "score": 0.72
+      },
+      "diag_045": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_048": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_044": {
+        "status": "hallucinated",
+        "score": 0.75
+      },
+      "diag_050": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_046": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_049": {
+        "status": "grounded",
+        "score": 0.9
+      },
+      "diag_051": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_047": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_052": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_055": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_053": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_054": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_056": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_058": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_057": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_059": {
+        "status": "grounded",
+        "score": 0.97
+      },
+      "diag_061": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_060": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_062": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_063": {
+        "status": "hallucinated",
+        "score": 0.1
+      },
+      "diag_065": {
+        "status": "grounded",
+        "score": 0.85
+      },
+      "diag_064": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_067": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_066": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_068": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_070": {
+        "status": "grounded",
+        "score": 0.95
+      },
+      "diag_073": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_069": {
+        "status": "hallucinated",
+        "score": 0.45
+      },
+      "diag_072": {
+        "status": "hallucinated",
+        "score": 0.55
+      },
+      "diag_074": {
+        "status": "grounded",
+        "score": 1.0
+      },
+      "diag_071": {
+        "status": "hallucinated",
+        "score": 0.62
+      },
+      "diag_075": {
+        "status": "hallucinated",
+        "score": 0.1
+      }
+    }
+  },
+  "delta_strict_macro_f1": 0.071,
+  "delta_lenient_macro_f1": -0.0217
+}

@@ -47,6 +47,23 @@ tests/evaluation/eval_results/*.json
 !tests/evaluation/eval_results/baseline_*.json
 !tests/evaluation/eval_results/after_sprint*.json
 !tests/evaluation/eval_results/final_*.json
+# Canonical milestone results under the calibrated Sonnet 4.6 + v2 judge (κ=0.932)
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_v1_grader.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_v1_grader.correctness.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_v1_grader.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_v1_grader.rejudged_sonnet_v2.diff.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.correctness.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.rejudged_sonnet_v2.diff.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.ragas.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.deepeval.json
+# Methodology artifacts referenced in docs/engineering-log.md
+!tests/evaluation/eval_results/audit_failed_qs_v1_grader.json
+!tests/evaluation/eval_results/audit_failed_qs_4fix.json
+!tests/evaluation/eval_results/hallu_model_ablation.json
+!tests/evaluation/eval_results/slice_analysis_4fix_plus_fix2.json
+!tests/evaluation/eval_results/pipeline_diagnostic_results.json
 # ...but re-ignore pipeline caches (they're intermediate, regenerated on each run)
 tests/evaluation/eval_results/*.pipeline.json
 
