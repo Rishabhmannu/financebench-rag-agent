@@ -155,7 +155,7 @@ class Settings(BaseSettings):
     # lookup questions: 00735, 00685, 03029, 00215). Three downgrades matched
     # the noise floor exactly (drop-in safe); the fourth (synthesize → Haiku
     # 4.5) was -1 below noise (real damage) so synthesize stays on Sonnet 4.6.
-    HALLUCINATION_MODEL: str = "claude-haiku-4-5"  # ↓ from sonnet-4-6 (saves ~$1.35/eval)
+    HALLUCINATION_MODEL: str = "claude-sonnet-4-6"  # component-F1 ablation (75-Q κ=0.932 labels): macro-F1 0.659 → 0.730 (+0.071), hallu-class F1 0.500 → 0.622
     # HITL high-stakes: dropped from Opus 4.7 per Vectara hallucination
     # leaderboard (Sonnet 4.6 has LOWER hallucination rate than Opus 4.6 on
     # verification tasks). Bonus: avoids Opus 4.7's `temperature`-deprecation

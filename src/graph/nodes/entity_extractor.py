@@ -34,8 +34,10 @@ logger = logging.getLogger(__name__)
 # Runtime-loaded alias map supports the base corpus + FinanceBench.
 COMPANY_ALIASES = build_company_alias_map()
 
-# Year pattern: 2020-2029 (bounds the plausible fiscal years for current filings)
-YEAR_PATTERN = re.compile(r"\b(20[2-9]\d)\b")
+# Year patterns. FULL = 4-digit 20XX (lookarounds so "FY2022" matches — \b fails
+# between letters and digits). SHORT = FY-prefixed 2-digit ("FY22" / "FY 22").
+YEAR_PATTERN_FULL = re.compile(r"(?<!\d)(20\d{2})(?!\d)")
+YEAR_PATTERN_SHORT = re.compile(r"\bFY\s?(\d{2})\b", re.IGNORECASE)
 
 
 def _dictionary_match(query: str) -> tuple[str | None, bool]:
@@ -72,9 +74,16 @@ def _dictionary_match(query: str) -> tuple[str | None, bool]:
 
 
 def _extract_year(query: str) -> int | None:
-    """Extract a 4-digit fiscal year from the query, if present."""
-    m = YEAR_PATTERN.search(query)
-    return int(m.group(1)) if m else None
+    """Extract the target fiscal year from the query.
+
+    For multi-year queries ("FY2021 and FY2022", "FY2018 - FY2020 average") the
+    target is the *latest* year — that's the fiscal year of the source 10-K,
+    which discusses all comparison years inside.
+    """
+    full = [int(y) for y in YEAR_PATTERN_FULL.findall(query)]
+    short = [2000 + int(y) for y in YEAR_PATTERN_SHORT.findall(query)]
+    years = full + short
+    return max(years) if years else None
 
 
 def _format_history(messages: list) -> str:

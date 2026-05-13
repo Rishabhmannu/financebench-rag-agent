@@ -150,10 +150,33 @@ ALSO classify the query's complexity (only matters when intent == "retrieval"):
       document sections (e.g. revenue from income statement AND PP&E from
       balance sheet for a turnover ratio)
 
+    ⓘ Implicit comparison / superlative / trend — the question doesn't say
+      "compare" but the verb implies one:
+        - Superlatives: "which segment/product/region had the HIGHEST /
+          LOWEST / BEST / WORST X"  → needs the segment breakdown table
+          AND the comparison step.
+        - Trend verbs (need YoY data + prior trend): "is X IMPROVING /
+          DECLINING / DETERIORATING", "is growth ACCELERATING / SLOWING",
+          "has X strengthened / weakened"
+        - Implicit ratios in financial terminology (the metric is multi-
+          component even if the user didn't define a formula): "free cash
+          flow CONVERSION", "operating LEVERAGE", "asset TURNOVER",
+          "DAYS receivable / payable / inventory", "interest COVERAGE"
+
   Examples:
     "What drove operating margin change FY22 vs FY21 for 3M?"  (decomposition)
     "If we exclude M&A, which segment dragged 3M's growth?"    (qualifier)
     "Compute days payable outstanding for Pepsico in FY2022."  (formula)
+    "Which JPM segment had the highest net income in Q2 2022?" (superlative)
+    "Is Adobe's FCF conversion improving as of FY2022?"        (trend + implicit ratio)
+    "Is JnJ's adjusted EPS growth accelerating in FY2023?"     (trend, growth-rate compare)
+
+NOT research_required — these LOOK multi-year but are just list/enumeration:
+    "What acquisitions has Company X done in FY2022 and FY2021?"      → simple_lookup
+    "Has Company X reported any legal battles in 2020, 2021 and 2022?" → simple_lookup
+    "What are the major products Company X sells as of FY22?"          → simple_lookup
+  Listing facts across years ≠ comparing them. If the user just wants
+  the list, it's a single retrieval pass over the relevant section.
 
 When uncertain, prefer "simple_lookup". The agent path is slower (~90s vs
 ~20s) and Sprint 7.6 Day 3 review showed it can REGRESS simple lookups by
@@ -162,9 +185,21 @@ trigger above is clearly present.
 
 Query: {query}"""
 
-GRADER_PROMPT = """You are a relevance grader for a financial document Q&A system.
-Given a user question and a retrieved document chunk, determine if the chunk
-is relevant to answering the question.
+GRADER_PROMPT = """You are a relevance grader for a multi-stage financial document Q&A system.
+Your role is to FILTER OUT chunks that are unrelated to the question. The
+downstream generator will combine multiple relevant chunks to compose the
+final answer — your role is NOT to verify that a single chunk alone is
+sufficient to answer.
+
+Mark a chunk RELEVANT if it contains ANY information that contributes to
+answering the question, including:
+- one component of a multi-source metric (e.g., the income statement when
+  the question needs income statement + cash flow data)
+- a table, line item, paragraph, or footnote tied to the question's subject
+- supporting context for the company, period, or topic the question asks about
+
+Mark a chunk IRRELEVANT only when it discusses a different topic, entity, or
+time period from what the question asks about.
 
 Question: {query}
 
@@ -346,11 +381,26 @@ Please try again with a different query or contact your administrator."""
 #     this out and forces the agent to extract qualifiers as first-class.
 
 DECOMPOSE_SYSTEM_PROMPT = """You are a financial research planner. Break down a complex
-question into 2–4 atomic sub-questions, each answerable from a single 10-K /
+question into 2–5 atomic sub-questions, each answerable from a single 10-K /
 10-Q / 8-K section.
 
 Your output drives a retrieval system that pulls evidence per sub-question.
 Bad decomposition → wrong retrieval → wrong final answer. Take this seriously.
+
+CRITICAL DEFINITION GUARD — if the question mentions ANY of these, use the
+EXACT components below in `required_quantities`. Do NOT substitute a
+near-cousin metric:
+
+  - "Quick ratio" / "acid-test ratio" → cash, short-term investments,
+    accounts receivable, current liabilities. DO NOT use "current assets"
+    here — that's the current ratio's numerator, a DIFFERENT metric.
+    Inventory and prepaid expenses are EXCLUDED from quick assets.
+  - "Cash conversion cycle (CCC)" → inventory, COGS, accounts receivable,
+    revenue, AND accounts payable. Missing AP makes the calculation
+    impossible (CCC = DIO + DSO − DPO; DPO needs AP).
+  - "Gross margin" for banks / insurers / financial-services companies →
+    flag in qualifiers; gross margin isn't a meaningful metric there
+    (no COGS line). Use operating margin or net interest margin instead.
 
 REQUIRED steps before emitting sub-questions:
 
@@ -361,20 +411,67 @@ REQUIRED steps before emitting sub-questions:
      - "as a % of" → compute a ratio, not just the absolute number
      - "if [the metric] is not relevant" → judge whether the metric applies
      - parentheses (X) → negative number convention; "(0.6)%" means -0.6%
+     - "is [X] improving / declining / deteriorating / strengthening /
+       weakening / accelerating / slowing AS OF FY Y" → strictly a YoY
+       comparison (FY Y vs FY Y-1). NOT a multi-year trend. Constrain
+       year scope to FY Y and FY Y-1 only — but still emit a separate
+       sub-Q for EACH input the metric needs (e.g. for a ratio like
+       wages-as-%-of-net-sales: emit wages-FY-Y, wages-FY-Y-1, net-sales-FY-Y,
+       net-sales-FY-Y-1 as four sub-Qs; do NOT collapse them into a
+       single YoY query). The point of the rule is to bound the year
+       scope, not the sub-Q count.
+
+       This rule TRIGGERS ONLY on those explicit trend verbs. It does
+       NOT trigger on:
+         - "X year average" / "3-year average" → use multi-year as written
+         - "historically consistent" / "fluctuating" → needs multi-year
+           context, decompose for the full window the question implies
+         - "increase or decrease in FY Y" → single-year direction; treat
+           as a regular YoY ratio Q with full per-input sub-Q enumeration
+           but no year-scope override
    List every qualifier in the question. If the question has no qualifier,
    say "no qualifiers".
 
-2. **Identify the required quantities.** Every formula / comparison / ratio
-   has 2+ inputs. List each input separately. Examples:
-     - "What's working capital?"          → [current assets, current liabilities]
-     - "What drove operating margin Δ?"   → [operating income FY-1, operating income FY, key drivers cited]
-     - "Days payable outstanding"          → [accounts payable, COGS or purchases, days in period]
-     - "If we exclude M&A, which segment?" → [reported growth per segment, organic growth per segment]
+2. **Identify the required quantities — get the FORMULA right.** Every
+   ratio / comparison has 2+ inputs. List each input separately. Use the
+   precise accounting definition, NOT a near-cousin metric:
+     - "Working capital"        = current assets − current liabilities
+     - "Current ratio"          = current assets / current liabilities
+     - "Quick ratio (acid-test)" = (cash + short-term investments + accounts
+                                   receivable) / current liabilities
+                                   — EXCLUDES inventory and prepaid expenses;
+                                   do NOT substitute current assets here.
+     - "DPO"                    = accounts payable / COGS × days in period
+     - "DSO"                    = accounts receivable / revenue × days
+     - "DIO"                    = inventory / COGS × days
+     - "Cash conversion cycle"  = DIO + DSO − DPO (needs AR, AP, inventory,
+                                   COGS, revenue — ALL of them; missing any
+                                   one component invalidates the calculation)
+     - "Gross margin"           = (revenue − COGS) / revenue (NOT meaningful
+                                   for financial-services companies like banks
+                                   or insurers; flag in qualifiers if asked)
+     - "Operating margin"       = operating income / revenue
+   If the question explicitly defines a formula in its own text, enumerate
+   EVERY component the formula names. The 5-sub-question budget exists so
+   that multi-component formulas (e.g. CCC) fit; use the full budget when
+   the formula demands it.
 
 3. **Emit sub-questions.** One per required quantity, plus one for any
-   qualifier-related context (e.g. "what does management cite as the drivers
-   of operating margin change?"). Each sub-question should be specific enough
-   to retrieve a single chunk's worth of evidence.
+   qualifier-related context. Two patterns that MUST get their own
+   sub-question:
+     (a) **"What drove X" / "what caused Y" / "why did Z change" / "what
+         explains" questions** require a separate MD&A sub-question targeting
+         management's qualitative discussion — the income statement alone is
+         insufficient. The numbers tell you the magnitude; the MD&A tells
+         you the drivers.
+     (b) **"Which segment / product / category / region performed best
+         (or worst) by X"** requires a segment-breakdown sub-question
+         (e.g. "Best Buy domestic Q2 FY2024 revenue by product category"),
+         NOT a total-company sub-question. If the question hints at relative
+         performance ("performed best", "highest", "leading"), the segment
+         table is the answer source.
+   Each sub-question should be specific enough to retrieve a single chunk's
+   worth of evidence.
 
 Output format (JSON):
 {{

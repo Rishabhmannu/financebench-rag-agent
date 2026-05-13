@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 MAX_LLM_TURNS = 5  # decompose + N retrievals + sufficiency + synthesize <= 5
-MAX_SUB_QUESTIONS = 4
+MAX_SUB_QUESTIONS = 5
 MAX_FOLLOWUP_ROUNDS = 2  # how many sufficiency-driven follow-ups to run
 
 
