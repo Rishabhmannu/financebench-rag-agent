@@ -2,11 +2,11 @@
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
-[![Tests](https://img.shields.io/badge/tests-294%20passing-brightgreen.svg)]()
-[![FinanceBench](https://img.shields.io/badge/FinanceBench-47.3%25%20pass-blue.svg)]()
+[![Tests](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)]()
+[![FinanceBench](https://img.shields.io/badge/FinanceBench-73.3%25%20pass-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **47.3% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a LoRA-fine-tuned reranker, and a self-hosted LLM observability stack.
+A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **73.3% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a LoRA-fine-tuned reranker, and a self-hosted LLM observability stack.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ A router classifies each query as a simple lookup or research-required. Simple l
 
 - **Backend** — FastAPI · LangGraph · Qdrant · PostgreSQL · Redis · PyJWT
 - **Frontend** — Next.js 16 · React 19 · Tailwind · shadcn/ui  *(in progress; Gradio is the current usable UI)*
-- **LLMs** — Claude Sonnet 4.6 · Claude Haiku 4.5 · gpt-4o-mini · Llama 3.3 (via Groq)
+- **LLMs** — Claude Sonnet 4.6 · gpt-4o-mini · Llama 3.3 (via Groq)
 - **Retrieval** — voyage-finance-2 embeddings · LoRA-fine-tuned BGE-reranker-v2-m3
 - **Observability** — self-hosted LiteLLM proxy + Langfuse v3 + Redis semantic cache
 - **Safety** — Microsoft Presidio PII detection · LLM Guard · LLM classifier (3-layer cascade)
@@ -44,21 +44,21 @@ Evaluated on the FinanceBench benchmark (150 questions across 32 companies):
 
 | Metric | Value |
 |---|---|
-| Correctness pass rate | **47.3%** (71/150) |
-| Refusal rate | 7.3% (11/150) |
-| RAGAS faithfulness | 0.707 |
-| RAGAS context precision | 0.733 |
-| DeepEval contextual precision | 0.768 |
+| Correctness pass rate | **73.3%** (110/150) |
+| Refusal rate | 5.3% (8/150) |
+| RAGAS faithfulness | 0.733 |
+| DeepEval faithfulness | 0.851 |
+| DeepEval contextual recall | 0.795 |
 
-Per-slice pass rate: **lookup 48%** (n=86), **multi-hop 46%** (n=13), **calc 47%** (n=51).
+Per-slice pass rate: **lookup 69.8%** (n=86), **multi-hop 76.9%** (n=13), **calc 78.4%** (n=51).
 
-The evaluation pipeline uses three judges in parallel, per-question diagnostics, reproducibility-metadata snapshots on every run, and a decision-gated approach in which each candidate intervention must clear an empirically-measured noise floor before shipping. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](docs/evaluation.md).
+The correctness judge is a Claude Sonnet 4.6 + structured-prompt setup calibrated to Cohen's κ = 0.932 against an 89-question hand-labeled set with an adversarial leniency guard. The evaluation pipeline uses three judges in parallel (RAGAS, DeepEval, custom correctness), per-question diagnostics, reproducibility-metadata snapshots on every run, and a decision-gated approach in which each candidate intervention must clear an empirically-measured noise floor before shipping. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](docs/evaluation.md).
 
 ## Known limitations
 
 - **Not deployed to production** — runs locally via `docker compose up -d`. No public URL or live traffic.
 - **Frontend is a vertical slice** — login + streaming chat work; sidebar, HITL UI, admin panel, citation PDF viewer are unbuilt.
-- **Below state-of-the-art** — [FinGEAR (EMNLP 2025)](https://arxiv.org/abs/2410.18141) reached ~55% on FinanceBench via GraphRAG.
+- **Below the top-published Mafin (~99%)** on FinanceBench, though above FinanceBench paper baselines (38–43%) and [FinGEAR EMNLP 2025](https://arxiv.org/abs/2410.18141) GraphRAG (~55%).
 
 ## Quick start
 
