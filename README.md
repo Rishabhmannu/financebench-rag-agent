@@ -3,10 +3,10 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
 [![Tests](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)]()
-[![FinanceBench](https://img.shields.io/badge/FinanceBench-73.3%25%20pass-blue.svg)]()
+[![FinanceBench](https://img.shields.io/badge/FinanceBench-72.7%25%20pass-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **73.3% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a LoRA-fine-tuned reranker, and a self-hosted LLM observability stack.
+A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **72.7% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a LoRA-fine-tuned reranker, and a self-hosted LLM observability stack.
 
 ## Architecture
 
@@ -44,13 +44,13 @@ Evaluated on the FinanceBench benchmark (150 questions across 32 companies):
 
 | Metric | Value |
 |---|---|
-| Correctness pass rate | **73.3%** (110/150) |
-| Refusal rate | 5.3% (8/150) |
-| RAGAS faithfulness | 0.733 |
-| DeepEval faithfulness | 0.851 |
-| DeepEval contextual recall | 0.795 |
+| Correctness pass rate | **72.7%** (109/150) |
+| Refusal rate | 6.7% (10/150) |
+| RAGAS faithfulness | 0.747 |
+| DeepEval faithfulness | 0.844 |
+| DeepEval contextual recall | 0.768 |
 
-Per-slice pass rate: **lookup 69.8%** (n=86), **multi-hop 76.9%** (n=13), **calc 78.4%** (n=51).
+Per-slice pass rate: **lookup 68.6%** (n=86), **multi-hop 84.6%** (n=13), **calc 76.5%** (n=51).
 
 The correctness judge is a Claude Sonnet 4.6 + structured-prompt setup calibrated to Cohen's κ = 0.932 against an 89-question hand-labeled set with an adversarial leniency guard. The evaluation pipeline uses three judges in parallel (RAGAS, DeepEval, custom correctness), per-question diagnostics, reproducibility-metadata snapshots on every run, and a decision-gated approach in which each candidate intervention must clear an empirically-measured noise floor before shipping. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](docs/evaluation.md).
 

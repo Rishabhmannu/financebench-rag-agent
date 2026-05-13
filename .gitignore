@@ -58,6 +58,17 @@ tests/evaluation/eval_results/*.json
 !tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.rejudged_sonnet_v2.diff.json
 !tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.ragas.json
 !tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.deepeval.json
+# Sprint 7.16 milestone (gen-v2 = anti-refusal nudge + enumerate-fully clause 8)
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.correctness.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.rejudged_sonnet_v2.diff.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.ragas.json
+!tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.deepeval.json
+# Sprint 7.16 validation artifacts
+!tests/evaluation/eval_results/validation_antirefusal_nudge.json
+!tests/evaluation/eval_results/validation_enumerate_fully.json
+!tests/evaluation/eval_results/validation_directional_clause9.json
 # Methodology artifacts referenced in docs/engineering-log.md
 !tests/evaluation/eval_results/audit_failed_qs_v1_grader.json
 !tests/evaluation/eval_results/audit_failed_qs_4fix.json

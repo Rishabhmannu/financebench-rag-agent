@@ -1,6 +1,6 @@
 # Engineering Log
 
-This is the condensed engineering narrative behind the project — the things that aren't obvious from reading the code. It's written for someone who wants to understand *how* the system got to **73.3% pass rate on FinanceBench** under a calibrated Sonnet 4.6 + v2 LLM-as-judge (Cohen's κ = 0.932 vs human labels), not just *what* the final state looks like.
+This is the condensed engineering narrative behind the project — the things that aren't obvious from reading the code. It's written for someone who wants to understand *how* the system got to **72.7% pass rate on FinanceBench** under a calibrated Sonnet 4.6 + v2 LLM-as-judge (Cohen's κ = 0.932 vs human labels), not just *what* the final state looks like.
 
 The full source-of-truth lives in commit messages. This document picks out the non-obvious findings, the failed interventions, and the methodology decisions that informed them.
 
@@ -16,12 +16,13 @@ The headline pass rate moved through three regimes:
 | Sprint 7.14 (judge recalibration, same V1 system) | **47.3% → 68.0%** | Sonnet 4.6 + v2 prompt at κ=0.932 unmasked that ~47% of "failures" were judge bugs (Signal 8) |
 | Sprint 7.15 (per-node diagnostic + 4 interventions) | 68.0% → 72.0% | Year-regex fix + decomposer prompt/cap + hallu Sonnet 4.6 upgrade + router prompt |
 | Sprint 7.15 follow-up (Fix 2 — YoY rule) | **72.0% → 73.3%** | Decomposer "is X improving as of FY Y → strictly YoY" rule, +2 net cases |
+| Sprint 7.16 (generator anti-refusal + enumerate-fully) | **73.3% → 72.7%** | −1 net at full-eval scope; validation-cohort wins washed out by pipeline stochasticity + one absence-as-answer misfire on incomplete retrieval (Signal 11) |
 
-Per-eval cost dropped **46% ($9.70 → $5.28)** through Sprint 7.9 model tiering; Sprint 7.15's hallu upgrade restored Sonnet 4.6 on the verification path (+$1.35/eval). Refusal rate halved (14.0% → 7.3%) across the original campaign. The multi-hop slice — stuck at 4/13 across three retrieval interventions — finally moved to 6/13 after a LoRA-fine-tuned reranker on FinanceBench correctness labels.
+Per-eval cost dropped **46% ($9.70 → $5.28)** through Sprint 7.9 model tiering; Sprint 7.15's hallu upgrade restored Sonnet 4.6 on the verification path (+$1.35/eval). Refusal rate halved (14.0% → 7.3%) across the original campaign and now sits at 6.7%. The multi-hop slice — stuck at 4/13 across three retrieval interventions — moved to 11/13 (84.6%) by Sprint 7.16 cumulative.
 
-**Across two campaigns, eleven interventions tested. Seven shipped. Four rolled back behind feature flags or reverted post-validation with the failure mechanism documented.** The methodology caught the failures cleanly and preserved the wins.
+**Across two campaigns, thirteen interventions tested. Eight shipped. Five rolled back behind feature flags or reverted post-validation with the failure mechanism documented.** The methodology caught the failures cleanly and preserved the wins.
 
-**Adjusted-actionable pass rate** (excluding 9 FinanceBench dataset errors verified during the Sprint 7.13 audit): **110/141 = 78.0%** — inside the Bedrock production-RAG band, +23pp above FinGEAR EMNLP 2025 SOTA.
+**Adjusted-actionable pass rate** (excluding 9 FinanceBench dataset errors verified during the Sprint 7.13 audit): **109/141 = 77.3%** — inside the Bedrock production-RAG band, +22pp above FinGEAR EMNLP 2025 SOTA.
 
 ---
 
@@ -863,6 +864,102 @@ Cumulative campaign total: ~$104.
 
 ---
 
+## Sprint 7.16 — generator anti-refusal + enumerate-fully — validation-cohort win that didn't survive full eval
+
+The Sprint 7.15 final state (110/150 = 73.33%) had 42 residual FAILs categorized by the Sonnet auditor into REFUSAL (11), WRONG_NUMBER (11), DATASET_SUSPECT (9), PARTIAL_ANSWER (7), WRONG_DIRECTION (3), PASS_NUMERIC_ROUNDING (1). Sprint 7.16 targeted the biggest two actionable buckets (REFUSAL + PARTIAL_ANSWER) plus WRONG_DIRECTION via generator prompt changes.
+
+### Three interventions designed; two shipped, one reverted
+
+**Intervention 1 — Anti-refusal nudge** (`GENERATOR_SYSTEM_PROMPT` clause 7 expansion):
+Diagnosis of the 11 REFUSAL cases broke them into 4 mechanisms:
+- A: Absence-as-answer (4 cases — gold was "none / 0 / didn't happen", system refused)
+- B: Synthesis refusal (3 cases — chunks had proxy data, system declined to compute)
+- C: Partial-with-hedge (1 case)
+- D: Retrieval miss (2 cases — unfixable here)
+- E: Guardrail/scope refusal (1 case — different system)
+
+Two complementary prompt rules added: (a) "evidence of absence IS the answer when the relevant section is in scope" (clause 7(c)); (b) "compute from proxy data with a [Computation note: derived from X because Y not retrieved] caveat instead of refusing" (clause 7(b) rewrite). Plus a softening of rule 2 to defer to clause 7's calibrated bottom-line cases.
+
+Validation: 11 REFUSAL targets + 25 stratified regression-smoke. Result: **+3 of 11 flipped to PASS, 0/25 regressions**. Ship gate cleared cleanly.
+
+**Intervention 2 — Enumerate-fully clause 8**:
+Diagnosis of the 7 PARTIAL_ANSWER cases surfaced a dominant sub-flavor: 3 of 7 are "list incomplete" (system got 1-2 of N items in chunks). Added clause 8: "When the question asks for a list, set, or composite, exhaustively cover every matching item present in the chunks; use the company's reported segment labels; include quantitative breakdowns alongside qualitative descriptions."
+
+Validation: 7 PARTIAL_ANSWER + same 25-case smoke. Result: **+1 of 7 flipped, 0/25 regressions**. Ship gate cleared.
+
+**Methodological finding (from PARTIAL_ANSWER diagnosis)**: Pattern A (list incomplete) was overwhelmingly retrieval-bound, not generator-bound. The missing items (Czech acquisition, PBM litigation, COVID drivers) weren't in retrieved chunks — no prompt fix could produce them. The audit had categorized them as "system gave partial answer" (true at output level) but the root cause was upstream. Banking as a sub-signal: **failure-mode audits classify by output shape, not by mechanism; per-bucket prompt fixes only address output-shape-bound failures**.
+
+**Intervention 3 — Directional-verdict clause 9 (reverted)**:
+Diagnosis of WRONG_DIRECTION: 1 case (`00438` Adobe op margin) already passing under Fix 2; 2 actionable (`00216` Verizon healthy quick ratio, `00790` CVS capital intensity) — both "system computes textbook metric, then dismisses its plain reading to flip the bottom-line yes/no." Drafted clause 9: "Trust your computed metric on directional-verdict questions; the escape hatch 'metric isn't useful for this company' applies only when the metric truly can't be computed."
+
+Validation: **0 of targets flipped; 1 stochastic regression on borderline `00438` (Adobe ran twice in the cohort, showed PASS once and FAIL once — pipeline nondeterminism on a borderline case).** Sonnet's prior toward presenting computed-value-plus-skepticism didn't yield to the prompt rule. **Reverted clause 9** because measured impact was zero on targets and the rule added regression risk on borderline cases.
+
+### Full 150-Q eval — measured result was lower than the targeted-cohort projection
+
+Projection from validation cohorts: anti-refusal +3, enumerate +1 = +4 cases → 114/150 = 76.0%.
+
+Actual measured result on full 150-Q with both fixes applied: **109/150 = 72.67%** (down 1 from prior 4fix+Fix2 state of 110/150 = 73.33%).
+
+Cross-system diff (4fix+Fix2 → gen-v2):
+
+| | n | Mechanism |
+|---|---:|---|
+| Rescues | 2 | `00669` JnJ gross-margin drivers (enumerate-fully working); `00685` Best Buy gross-margin "historically consistent" (anti-refusal/enumerate helping) |
+| Regressions | 3 | `01328` Pepsico restructuring `$411M → system said $0` — **absence-as-answer rule misfired** (rule encouraged "0" when chunks didn't show restructuring, but the data was retrievable in other sections the retrieval missed); `00605` Ulta Q4 repurchases — stochastic flip (was rescued by Fix 2 originally); `06247` Walmart DPO `42.69 → 42.76` — stochastic precision drift |
+| Net | **−1** | within the ±2-3 n=150 noise floor |
+
+Multi-judge panel (gen-v2 vs prior 4fix+Fix2):
+- RAGAS faithfulness: 0.733 → **0.747** (+0.014)
+- RAGAS context_precision: 0.669 → 0.661 (~flat)
+- DeepEval faithfulness: 0.851 → 0.844 (~flat)
+- DeepEval contextual_recall: 0.795 → 0.768 (−0.027)
+- Refusal rate: 5.3% → 6.7% (+1.4pp — anti-refusal nudge didn't reduce refusal rate net; the absence-as-answer rule shifted some cases away from refusal but stochastic + retrieval-bound cases moved into it)
+
+Per-slice (under κ=0.932 judge), vs prior 4fix+Fix2:
+- lookup: 69.8% → 68.6% (−1.2pp)
+- **multi_hop: 76.9% → 84.6% (+7.7pp)** — biggest movement; cumulative multi-hop slice is now +30pp vs V1 baseline (54% → 85%)
+- calc: 78.4% → 76.5% (−1.9pp)
+
+The multi_hop gain is the cleanest positive signal — the enumerate-fully rule is biting on multi-hop "what drove X" questions where the gold has multiple drivers.
+
+### Signal 11 — validation-cohort wins can wash out at full-eval scope
+
+**The methodological lesson worth banking**: prompt interventions that pass cheap targeted-cohort validation (+3, +1 on small focused sets) can come in net-zero or slightly negative on the full 150-Q eval because:
+
+1. **Pipeline stochasticity at n=150 is ±2-3 cases**. Same prompt, same code, two different verdicts on a fraction of cases per run (Sprint 7.9 Day 2.5 finding, confirmed again in Sprint 7.16 with `00605`, `06247`).
+2. **Smoke cohorts (25 random robust passes) sample only 17% of the non-target population**. Even with 0/25 regressions on smoke, the remaining 125 cases can absorb 1-2 unexpected regressions that the smoke didn't see.
+3. **Asymmetric-downside rules** (absence-as-answer encouraging "0" when chunks-don't-show-X) can misfire on cases where the chunks were incomplete but the data existed elsewhere. The validation cohort doesn't test "retrieval was incomplete for a fixable reason"; the full eval does.
+
+This is structurally similar to the Sprint 7.8 calculator regression (validated component, regressed integrated system through downstream interaction). Same shape pattern.
+
+**The right inference**: targeted-cohort validation is necessary but not sufficient. For prompt changes that touch every query (generator prompts especially), the validation gate should require a **full-eval re-measurement** before claiming the headline moves, not project from a 25-case smoke.
+
+### The shipped state
+
+Sprint 7.16 ships with both prompt changes preserved despite the −1 net at full eval, because:
+- The targeted mechanisms work on their targeted cases (validated)
+- The −1 is within the noise floor
+- Two of three regressions are stochastic (not architectural)
+- The one real regression (Pepsico absence-as-answer misfire) is a known failure mode of the rule; the rule's *legitimate* wins on cases like Ulta debt securities and CVS PP&E justify keeping it
+- Cumulative trajectory remains positive: V1 baseline 68.00% → gen-v2 72.67% = +4.67pp via Sprint 7.15 + 7.16 work
+
+The full 150-Q multi-judge eval landed at 109/150 = 72.67% raw / 109/141 = 77.30% adjusted-actionable (excluding the 9 FB dataset errors verified during the Sprint 7.13 audit).
+
+### Sprint 7.16 cost
+
+| Step | Cost |
+|---|---:|
+| Diagnostic (3 buckets × audit data, no LLM cost) | $0 |
+| 11 REFUSAL + 25 smoke validation (anti-refusal) | ~$3-4 |
+| 7 PARTIAL_ANSWER + 25 smoke (enumerate-fully) | ~$3-4 |
+| 3 WRONG_DIRECTION + 25 smoke (clause 9 — reverted) | ~$3-4 |
+| Full 150-Q + multi-judge panel + rejudge | ~$15-20 |
+| **Sprint 7.16 total** | **~$25-30** |
+
+Cumulative campaign total: ~$160.
+
+---
+
 ## Sprint 7.11 Days 2-3 — phase eval result + the grader-over-strictness finding
 
 > **CORRECTION (2026-05-12 evening)**: The "grader is the 24pp bottleneck" interpretation below was wrong. Sprint 7.13 Day 3 full-eval + audit (see next section) revealed that **a substantial fraction of "failures" were eval-framework artifacts** — not system failures. The phase-eval cascade math measured the gap between system output and judge output, NOT between system output and ground truth. The grader's "over-strictness" wasn't the rate-limiting step; the JUDGE's over-strictness was. The phase-eval methodology is still valuable; the interpretation needed correction.
@@ -1069,7 +1166,7 @@ Verified via web search of 2026 enterprise RAG deployments: the canonical produc
 A senior reviewer should read this section *before* the achievements section. I'm not pretending these aren't real.
 
 1. **Never deployed to production.** The full stack runs locally via `docker compose up -d`. No public URL. No real user traffic. CI workflows exist (`.github/workflows/`) but haven't been used for deployment.
-2. **73.3% sits above FinGEAR EMNLP 2025 SOTA (~55%) by +18pp and inside the Bedrock production-RAG band (~70%), but well below the top-published Mafin (~99%).** Adjusted-actionable rate (excluding 9 FinanceBench dataset errors): 78.0%. Patronus's original FinanceBench paper baselines were 38-43%. The 47.3% headline that drove the original campaign was a judge artifact — see Sprint 7.13/7.14 audit findings.
+2. **72.7% sits above FinGEAR EMNLP 2025 SOTA (~55%) by +18pp and inside the Bedrock production-RAG band (~70%), but well below the top-published Mafin (~99%).** Adjusted-actionable rate (excluding 9 FinanceBench dataset errors): 77.3%. Patronus's original FinanceBench paper baselines were 38-43%. The 47.3% headline that drove the original campaign was a judge artifact — see Sprint 7.13/7.14 audit findings.
 3. **Frontend (Sprint 9) is partial.** Sprint 9.1 vertical slice (login + streaming chat) is built and the BFF wiring works, but the smoke test caught an environment-variable issue (`LITELLM_URL` pointing to a docker-internal hostname while running uvicorn on the host) that's still pending fix. Sidebar history, HITL UI, admin panel, citation PDF viewer are not yet built.
 4. **Feature-flagged-off experiments left in source.** `ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK`, `ENABLE_LTR_GATE`, `ENABLE_CALCULATOR_TOOL` all `=False`. The code is preserved as research record but adds surface area to the repo. A cleaner version would delete or move to a `experiments/` branch.
 5. **Multi-judge eval all uses gpt-4o-mini.** RAGAS + DeepEval + correctness all judged by the same model family. A cleaner eval would diversify judges to control for judge-family bias (the [`scripts/dual_judge_check.py`](../scripts/dual_judge_check.py) script exists but wasn't used as the canonical gate).
@@ -1101,6 +1198,7 @@ If I had another two weeks, the committed priority order (see "Roadmap — Sprin
 | Sprint 7.14 Phase 1 (judge calibration build + eval) | ~$6.50 | ~$93.5 |
 | Sprint 7.14 Phase 2 (V1 rejudge 150 records × Sonnet) | ~$0.50 | ~$94 |
 | Sprint 7.15 (75-Q diagnostic + 4 interventions full eval + rejudge + 22-case validation) | ~$17 | ~$111 |
-| Sprint 7.15 follow-up (3 cheap post-intervention diagnostics + full 150-Q eval with Fix 2 + multi-judge panel + rejudge) | ~$20 | **~$131** |
+| Sprint 7.15 follow-up (3 cheap post-intervention diagnostics + full 150-Q eval with Fix 2 + multi-judge panel + rejudge) | ~$20 | ~$131 |
+| Sprint 7.16 (REFUSAL/PARTIAL_ANSWER/WRONG_DIRECTION diagnostics + 3 validation cycles + full 150-Q + rejudge) | ~$30 | **~$160** |
 
-Total LLM spend across the eval-quality sprints: **~$131**. Per-eval cost at canonical config (post-Sprint-7.15 with multi-judge panel): **~$20** (pipeline ~$13 with Sonnet 4.6 on hallu; RAGAS + DeepEval add ~$5-7 if run; correctness scoring ~$0.30; rejudge ~$0.50). Skipping RAGAS + DeepEval drops it to ~$13 — the multi-judge panel is optional for headline pass-rate measurement but useful for retrieval-quality diagnostics. The Sprint 7.13/7.14 audit + re-judging that re-framed the entire project's headline pass rate (47% → 68% under fair judging) cost ~$1.50 in marginal LLM spend; Sprint 7.15's component-diagnostic-driven interventions added +5.33pp on top for ~$37 — proof that hands-on data verification and per-component F1 measurement are the cheapest possible ways to catch interpretation errors and find real lift.
+Total LLM spend across the eval-quality sprints: **~$160**. Per-eval cost at canonical config (post-Sprint-7.15 with multi-judge panel): **~$20** (pipeline ~$13 with Sonnet 4.6 on hallu; RAGAS + DeepEval add ~$5-7 if run; correctness scoring ~$0.30; rejudge ~$0.50). Skipping RAGAS + DeepEval drops it to ~$13 — the multi-judge panel is optional for headline pass-rate measurement but useful for retrieval-quality diagnostics. The Sprint 7.13/7.14 audit + re-judging that re-framed the entire project's headline pass rate (47% → 68% under fair judging) cost ~$1.50 in marginal LLM spend; Sprint 7.15's component-diagnostic-driven interventions added +5.33pp on top for ~$37 — proof that hands-on data verification and per-component F1 measurement are the cheapest possible ways to catch interpretation errors and find real lift.

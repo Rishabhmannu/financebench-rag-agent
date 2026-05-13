@@ -1,6 +1,6 @@
 # Evaluation
 
-This document is the evidence layer behind the FinanceBench-150 headline of **73.3% pass rate under a calibrated Sonnet 4.6 + v2 LLM-as-judge (Cohen's κ = 0.932 vs human labels)**. It covers the methodology, the two benchmark datasets used, the full per-sprint trajectory, and reproduction commands. For the engineering narrative (what we learned, what we rolled back, why), see [engineering-log.md](engineering-log.md).
+This document is the evidence layer behind the FinanceBench-150 headline of **72.7% pass rate under a calibrated Sonnet 4.6 + v2 LLM-as-judge (Cohen's κ = 0.932 vs human labels)**. It covers the methodology, the two benchmark datasets used, the full per-sprint trajectory, and reproduction commands. For the engineering narrative (what we learned, what we rolled back, why), see [engineering-log.md](engineering-log.md).
 
 ## Evaluation methodology
 
@@ -9,7 +9,7 @@ This document is the evidence layer behind the FinanceBench-150 headline of **73
 | Dataset | Size | Role | Final score |
 |---|---|---|---|
 | Internal SEC 10-K | 61 Q&A over AAPL / MSFT / TSLA FY2023 (249 Qdrant chunks) | Primary regression gate for graph + prompt changes | Faithfulness 0.811, Answer Relevancy 0.834, Context Precision 0.747 |
-| FinanceBench (external) | 150 Q across 32 companies (68k Qdrant chunks from 10-K PDFs) | Co-primary external benchmark for generalization | **73.3% correctness pass rate** (Sonnet 4.6 + v2 judge, κ=0.932). Adjusted-actionable: 78.0% excluding 9 FB dataset errors |
+| FinanceBench (external) | 150 Q across 32 companies (68k Qdrant chunks from 10-K PDFs) | Co-primary external benchmark for generalization | **72.7% correctness pass rate** (Sonnet 4.6 + v2 judge, κ=0.932). Adjusted-actionable: 77.3% excluding 9 FB dataset errors |
 
 ### Multi-judge scoring
 
@@ -82,26 +82,28 @@ Range across all Phase-1 canonical runs: 44.0–47.3% — *the JUDGE's ceiling, 
 | **7.14 Phase 2** | V1 canonical config rejudged with the calibrated judge — same system, fair scoring | **68.0%** (102/150) | +22pp re-frame | ~$0.50 | rejudged |
 | 7.15 | + 4 interventions (year-regex fix, decomposer prompt+cap, hallu Sonnet 4.6 upgrade, router prompt) | 72.0% (108/150) | +4.0pp | ~$17 | shipped |
 | 7.15 follow-up | Fix 1 (cap revert 5→4) + Fix 2 (YoY rule) — 22-case validation | (projected −1 net) | — | ~$2 | Fix 1 reverted; Fix 2 kept |
-| **7.15 final** | **+ Fix 2 (YoY rule) — full 150-Q measured re-run with multi-judge panel** | **73.3%** (110/150) | **+1.3pp** | ~$20 | **shipped** |
+| 7.15 final | + Fix 2 (YoY rule) — full 150-Q measured re-run with multi-judge panel | 73.3% (110/150) | +1.3pp | ~$20 | shipped |
+| **7.16 final** | **+ anti-refusal nudge (clause 7) + enumerate-fully (clause 8) on generator prompt** | **72.7%** (109/150) | **−0.7pp** | ~$30 | **shipped — null at full-eval scope** |
 
-**Current shipped state**: 4 interventions + Fix 2 (`is X improving as of FY Y` → strictly YoY rule in decomposer). Fix 2 added 6 incremental rescues − 4 incremental regressions = **net +2 cases over the 4-intervention baseline**. Validates the YoY rule but also surfaces an over-generalization (4 regressions are cases where multi-year context was needed; "increase or decrease" and "historically consistent" phrasings were over-fitted to YoY). A targeted Fix 3 to tighten YoY trigger phrasing is deferred — net +2 beats the n=150 noise floor.
+**Current shipped state**: Sprint 7.15 (4 interventions + Fix 2 + Fix 3 decomposer prompts) + Sprint 7.16 (anti-refusal nudge + enumerate-fully clause 8 on generator). Sprint 7.16 was net −1 case at full-eval scope despite passing two targeted-cohort validations (+3 anti-refusal, +1 enumerate) — pipeline stochasticity at n=150 + one absence-as-answer misfire on incomplete retrieval (`01328` Pepsico restructuring) washed out the validation-cohort wins. The Sprint 7.16 prompt changes are preserved because the targeted mechanisms work on their targeted cases and the cumulative trajectory remains positive; the methodology lesson is banked as Signal 11.
 
-**Multi-judge panel at the Sprint 7.15 final state (vs V1 baseline)**:
+**Multi-judge panel at the Sprint 7.16 final state (vs V1 baseline)**:
 
-| Metric | V1 baseline | 4fix + Fix 2 | Δ |
+| Metric | V1 baseline | Sprint 7.16 (current) | Δ |
 |---|---:|---:|---:|
-| Correctness (κ=0.932) | 68.00% | **73.33%** | **+5.33pp** |
-| RAGAS faithfulness | 0.707 | 0.733 | +0.026 |
-| RAGAS context_precision | 0.733 | 0.669 | **−0.064** |
-| RAGAS context_recall | 0.386 | 0.381 | ~0 |
-| DeepEval faithfulness | 0.829 | 0.851 | +0.022 |
+| Correctness (κ=0.932) | 68.00% | **72.67%** | **+4.67pp** |
+| RAGAS faithfulness | 0.707 | 0.747 | +0.040 |
+| RAGAS context_precision | 0.733 | 0.661 | **−0.072** |
+| RAGAS context_recall | 0.386 | 0.389 | ~0 |
+| DeepEval faithfulness | 0.829 | 0.844 | +0.015 |
 | DeepEval contextual_precision | 0.768 | 0.752 | −0.016 |
-| DeepEval contextual_recall | 0.728 | **0.795** | **+0.067** |
-| DeepEval answer_relevancy | — | 0.815 | — |
+| DeepEval contextual_recall | 0.728 | 0.768 | +0.040 |
+| DeepEval answer_relevancy | — | 0.794 | — |
+| Refusal rate | 7.3% | 6.7% | −0.6pp |
 
-Trade-offs visible in the panel: retrieval **recall up, precision down** (decomposer emits more / narrower sub-queries → broader chunk pool, slightly noisier per-chunk). Faithfulness up on both judges (Sonnet 4.6 hallu upgrade landing in answer quality). Net correctness moves +5.33pp.
+Per-slice pass rate (κ=0.932): **lookup 68.6%** (59/86), **multi-hop 84.6%** (11/13 — +30pp vs V1 baseline), **calc 76.5%** (39/51).
 
-**Adjusted-actionable pass rate** (excluding 9 FinanceBench dataset errors verified during Sprint 7.15 residual audit): **110/141 = 78.0%** under the calibrated judge.
+**Adjusted-actionable pass rate** (excluding 9 FinanceBench dataset errors verified during Sprint 7.13 audit): **109/141 = 77.3%** under the calibrated judge.
 
 ### Why the re-framing matters
 
@@ -154,7 +156,7 @@ Final clean run, both tracks under identical code and settings.
 
 ## Reproducing the canonical evaluation
 
-Current canonical config (Sprint 7.15 final shipped state, **73.3% pass rate under κ=0.932 judge**):
+Current canonical config (Sprint 7.16 final shipped state, **72.7% pass rate under κ=0.932 judge**):
 
 ```bash
 EMBEDDING_PROVIDER=voyage \
@@ -162,7 +164,7 @@ EMBEDDING_MODEL=voyage-finance-2 \
 EMBEDDING_DIMENSIONS=1024 \
 RERANKER_ADAPTER_PATH=data/models/reranker_ft_v1 \
 python tests/evaluation/run_financebench.py \
-  --output tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.json \
+  --output tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.json \
   --collection financebench_corpus_pypdf_voyage_finance2 \
   --ragas-judge-model gpt-4o-mini \
   --deepeval-concurrency 6 \
@@ -170,7 +172,7 @@ python tests/evaluation/run_financebench.py \
 
 # Then re-judge correctness with the calibrated Sonnet 4.6 + v2 prompt
 python tests/evaluation/rejudge.py \
-  --input tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.correctness.json \
+  --input tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.correctness.json \
   --parallelism 4
 ```
 
@@ -182,4 +184,4 @@ Pipeline wall time ~90 min with the upgraded Sonnet 4.6 hallu-checker (Sprint 7.
 - FinanceBench (150 Q across 32 companies) is the co-primary external benchmark for generalization.
 - Evaluation outputs include diagnostics slices (refusal rate, lookup / multi-hop / calc per-slice metrics, contamination buckets) in addition to aggregates.
 - Baseline artifacts are checksum-frozen in [`tests/evaluation/eval_results/baseline_manifest.json`](../tests/evaluation/eval_results/baseline_manifest.json).
-- Milestone snapshots are committed: `baseline_real_sec_fy2023.json`, `after_sprint7_5_router_fix.json`, `after_sprint7_8_voyage_finance2.json`, `after_sprint7_9_voyage_tiered_ft.json`, `financebench_pypdf_voyage_tiered_ft_litellm_v1_grader.rejudged_sonnet_v2.correctness.json` (Sprint 7.14 V1 rejudge → 68.0%), `financebench_pypdf_voyage_tiered_ft_litellm_4fix.rejudged_sonnet_v2.correctness.json` (Sprint 7.15 with 4 interventions → 72.0%), `financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.rejudged_sonnet_v2.correctness.json` (Sprint 7.15 final shipped → **73.3%**).
+- Milestone snapshots are committed: `baseline_real_sec_fy2023.json`, `after_sprint7_5_router_fix.json`, `after_sprint7_8_voyage_finance2.json`, `after_sprint7_9_voyage_tiered_ft.json`, `financebench_pypdf_voyage_tiered_ft_litellm_v1_grader.rejudged_sonnet_v2.correctness.json` (Sprint 7.14 V1 rejudge → 68.0%), `financebench_pypdf_voyage_tiered_ft_litellm_4fix_plus_fix2.rejudged_sonnet_v2.correctness.json` (Sprint 7.15 final → 73.3%), `financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.rejudged_sonnet_v2.correctness.json` (Sprint 7.16 current shipped → **72.7%**).
