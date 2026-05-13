@@ -1,0 +1,105 @@
+file,record_id,stratum,draft,verdict,changed_from_draft,note
+judge_calibration_v1_labeled.md,calib_001,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_002,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_003,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_004,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_005,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_006,partial_answer,FAIL,FAIL,False,System misses a critical value or fact required by the gold answer.
+judge_calibration_v1_labeled.md,calib_007,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_008,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_009,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_010,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_011,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_012,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_013,numeric_rounding,PASS,FAIL,True,"Not just rounding: the system says about $70M remaining, while the gold answer is $77.78M."
+judge_calibration_v1_labeled.md,calib_014,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_015,partial_answer,FAIL,FAIL,False,System misses a critical value or fact required by the gold answer.
+judge_calibration_v1_labeled.md,calib_016,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_017,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_018,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_019,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_020,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_021,numeric_rounding,PASS,FAIL,True,The system gives dividends declared and explicitly says cash dividends paid cannot be confirmed; gold asks for cash dividends paid.
+judge_calibration_v1_labeled.md,calib_022,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_023,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_024,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_025,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_026,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_027,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_028,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_029,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_030,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_031,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_032,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_033,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_034,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_035,dataset_suspect,FAIL,FAIL,False,Judged against the gold answer as written; the system answer disagrees with that gold label.
+judge_calibration_v1_labeled.md,calib_036,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_037,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_038,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_039,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_040,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_041,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_042,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_043,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_044,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_045,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_046,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_047,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_048,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_049,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_050,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_051,partial_answer,FAIL,FAIL,False,System misses a critical value or fact required by the gold answer.
+judge_calibration_v1_labeled.md,calib_052,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_053,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_054,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_055,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_056,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_057,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_058,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_059,partial_answer,FAIL,PASS,True,"The system identifies the same two FY2022 acquisitions named in the gold answer; the omitted prior partial-ownership detail is extra context, not necessary to answer the question."
+judge_calibration_v1_labeled.md,calib_060,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_061,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_062,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_063,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_064,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_065,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_066,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_067,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_068,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_069,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_070,wrong_number_or_direction,FAIL,FAIL,False,System answer has a materially different number or conclusion from the gold answer.
+judge_calibration_v1_labeled.md,calib_071,partial_answer,FAIL,FAIL,False,System misses a critical value or fact required by the gold answer.
+judge_calibration_v1_labeled.md,calib_072,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_073,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_074,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_075,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_076,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_077,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_labeled.md,calib_078,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_079,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_080,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_081,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_082,numeric_rounding,PASS,PASS,False,"Matches the gold answer within acceptable rounding, unit, or percentage/decimal formatting tolerance."
+judge_calibration_v1_labeled.md,calib_083,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_084,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_085,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_086,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_labeled.md,calib_087,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_labeled.md,calib_088,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_labeled.md,calib_089,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_001,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_holdout_labeled.md,holdout_002,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_003,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_004,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_holdout_labeled.md,holdout_005,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_006,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_007,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_holdout_labeled.md,holdout_008,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_009,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_010,adversarial,FAIL,FAIL,False,Adversarial corruption makes the final asserted answer materially inconsistent with the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_011,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_holdout_labeled.md,holdout_012,judge_bug_recovery,PASS,PASS,False,System answer explicitly contains the gold answer; the original judge appears to have missed it or over-penalized extra context.
+judge_calibration_v1_holdout_labeled.md,holdout_013,clear_pass,PASS,PASS,False,System answer matches the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_014,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.
+judge_calibration_v1_holdout_labeled.md,holdout_015,refusal,FAIL,FAIL,False,System refuses or cannot provide the definite answer given by the gold answer.

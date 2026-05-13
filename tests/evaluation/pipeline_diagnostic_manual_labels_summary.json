@@ -1,0 +1,696 @@
+{
+  "summary": {
+    "total_records": 75,
+    "intent_counts": {
+      "retrieval": 75
+    },
+    "complexity_counts": {
+      "research_required": 48,
+      "simple_lookup": 27
+    },
+    "hallu_grounded_counts": {
+      "PARTIAL": 24,
+      "Y": 50,
+      "N": 1
+    },
+    "target_company_overrides": 0,
+    "target_year_overrides": 0
+  },
+  "records": [
+    {
+      "record": "diag_001",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Grounded for current assets and missing liabilities; business-model relevance discussion is not supported by retrieved chunks."
+    },
+    {
+      "record": "diag_002",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal is grounded."
+    },
+    {
+      "record": "diag_003",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Refusal is grounded in empty retrieval, but the general relevance discussion about 3M is unsupported."
+    },
+    {
+      "record": "diag_004",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "FY2023 acquisitions are mostly grounded, but some detailed allocations and FY2022/FY2021 availability statements are not supported by the shown chunks."
+    },
+    {
+      "record": "diag_005",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal/out-of-scope response contains no document factual claims."
+    },
+    {
+      "record": "diag_006",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Inventory values are grounded; COGS and the final ratio are not supported by the retrieved chunk."
+    },
+    {
+      "record": "diag_007",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_008",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "System accurately reflects the retrieved six-month pre-tax evidence and missing standalone Q2 net income in the shown chunks."
+    },
+    {
+      "record": "diag_009",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Core tax-rate comparison is supported; detailed driver table is not shown in the retrieved chunks."
+    },
+    {
+      "record": "diag_010",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Numerator components are grounded; denominator estimate and liquidity relevance discussion rely on unsupported information."
+    },
+    {
+      "record": "diag_011",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Main refusal is grounded in empty retrieval, but the unverified reference figures are not supported by chunks."
+    },
+    {
+      "record": "diag_012",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Some geography and segment claims are supported, but several cited figures/sources are not in the shown chunks."
+    },
+    {
+      "record": "diag_013",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Quick-asset components are grounded; current liabilities are missing and the relevance discussion is not fully supported by retrieved chunks."
+    },
+    {
+      "record": "diag_014",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Answer is grounded in the retrieved product-category table, even though the gold appears to use growth rather than absolute top-line."
+    },
+    {
+      "record": "diag_015",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Revenue is grounded; PP&E inputs and the final ratio rely on unverified figures outside the retrieved chunk."
+    },
+    {
+      "record": "diag_016",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal is grounded."
+    },
+    {
+      "record": "diag_017",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Claims are supported by the retrieved domestic and international store-count tables."
+    },
+    {
+      "record": "diag_018",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_019",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Capex figures are grounded; revenue inputs and final average are not directly supported by retrieved chunks."
+    },
+    {
+      "record": "diag_020",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_021",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "System's partial answer is grounded in the retrieved Q4 SG&A/net-sales table and the absence of separate wages disclosure."
+    },
+    {
+      "record": "diag_022",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Partial refusal is grounded because capex/investing activity was not retrieved."
+    },
+    {
+      "record": "diag_023",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_024",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Cost and segment-structure facts are grounded, but the conclusion that Upjohn is only a completed historical spinoff is not fully supported by the shown chunk."
+    },
+    {
+      "record": "diag_025",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_026",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "The $411M and embedded-line-item discussion are supported by the cash flow and restructuring-note chunks."
+    },
+    {
+      "record": "diag_027",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_028",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_029",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Retrieved chunk lacks exchange-registration information; refusal is grounded."
+    },
+    {
+      "record": "diag_030",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "N",
+      "notes": "Retrieved chunks are empty, but the answer asserts detailed business-model and metric claims."
+    },
+    {
+      "record": "diag_031",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_032",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_033",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_034",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_035",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Capital-intensity conclusion is grounded in retrieved capex, cash-flow, and capital-deployment evidence."
+    },
+    {
+      "record": "diag_036",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal is grounded."
+    },
+    {
+      "record": "diag_037",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_038",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Answer is grounded in the retrieved subsidiary-level balance sheet and its caveat."
+    },
+    {
+      "record": "diag_039",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "The answer is grounded in the retrieved Amcor chunks, even though retrieval/entity selection is wrong for the Ulta question."
+    },
+    {
+      "record": "diag_040",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_041",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Shown legal-matter claims are supported by the CVS legal-proceedings chunks."
+    },
+    {
+      "record": "diag_042",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Answer is grounded in retrieved cash-flow and FY2016 balance-sheet evidence, with caveats about missing FY2017 liabilities."
+    },
+    {
+      "record": "diag_043",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_044",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_045",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Partial refusal is grounded because the full-year repurchase amount is shown but Q4-specific repurchases are not."
+    },
+    {
+      "record": "diag_046",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Obligor-group data and missing consolidated inputs are grounded; general relevance/business-model discussion is unsupported."
+    },
+    {
+      "record": "diag_047",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Core 65-year dividend-increase claim is grounded, but several historical dividend-per-share figures in the table are not shown in retrieved chunks."
+    },
+    {
+      "record": "diag_048",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal is grounded."
+    },
+    {
+      "record": "diag_049",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Inventory values are grounded; business-model and inventory-composition explanations are not fully supported by retrieved chunks."
+    },
+    {
+      "record": "diag_050",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal and requested inputs are grounded."
+    },
+    {
+      "record": "diag_051",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_052",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Partial answer is grounded in the retrieved operating-cash-flow trend and missing FCF/net-income inputs."
+    },
+    {
+      "record": "diag_053",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_054",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Balance-sheet arithmetic is grounded; explanation about customer funds being pass-through/trust balances is not fully supported by chunks."
+    },
+    {
+      "record": "diag_055",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_056",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_057",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Balance-sheet and capex metrics are grounded; some business-model characterization is not explicitly supported by retrieved chunks."
+    },
+    {
+      "record": "diag_058",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_059",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_060",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_061",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_062",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Subsidiary names are grounded, but the historical-acquisition inference is not directly supported by the shown chunks."
+    },
+    {
+      "record": "diag_063",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Final DPO inputs are mostly drawn from outside the retrieved chunks; only cash-flow corroboration is shown."
+    },
+    {
+      "record": "diag_064",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Gross-margin calculations are grounded; business-model/relevance explanation is not fully supported by chunks."
+    },
+    {
+      "record": "diag_065",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Uses retrieved pre-tax income, interest expense, and operating income with caveats."
+    },
+    {
+      "record": "diag_066",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "FY2017 margin and insufficiency conclusion are grounded; detailed retail-metric explanation is unsupported."
+    },
+    {
+      "record": "diag_067",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_068",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Answer is grounded in the retrieved Ulta chunks despite the retrieval/entity mismatch for the Best Buy question."
+    },
+    {
+      "record": "diag_069",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Dividend payment and per-share amount are supported; policy, COVID reduction, and suspension context are not shown in retrieved chunks."
+    },
+    {
+      "record": "diag_070",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_071",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_072",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Organic-growth table is grounded; consumer-driver and product-line details cite chunks not shown."
+    },
+    {
+      "record": "diag_073",
+      "intent": "retrieval",
+      "complexity": "simple_lookup",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": "Empty retrieval; refusal is grounded."
+    },
+    {
+      "record": "diag_074",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "Y",
+      "notes": ""
+    },
+    {
+      "record": "diag_075",
+      "intent": "retrieval",
+      "complexity": "research_required",
+      "target_company": "OK",
+      "target_year": "OK",
+      "hallu_grounded": "PARTIAL",
+      "notes": "Retrieved chunks only show partial balance-sheet lines; total assets/liabilities, shares, and final per-share value are unsupported."
+    }
+  ]
+}
