@@ -17,6 +17,7 @@ The headline pass rate moved through three regimes:
 | Sprint 7.15 (per-node diagnostic + 4 interventions) | 68.0% → 72.0% | Year-regex fix + decomposer prompt/cap + hallu Sonnet 4.6 upgrade + router prompt |
 | Sprint 7.15 follow-up (Fix 2 — YoY rule) | **72.0% → 73.3%** | Decomposer "is X improving as of FY Y → strictly YoY" rule, +2 net cases |
 | Sprint 7.16 (generator anti-refusal + enumerate-fully) | **73.3% → 72.7%** | −1 net at full-eval scope; validation-cohort wins washed out by pipeline stochasticity + one absence-as-answer misfire on incomplete retrieval (Signal 11) |
+| Sprint 7.17 (grader architecture experiments — LoRA-FT + 4-way model swap) | **72.7%** (no change) | Null on pass rate; 5 methodology bugs caught and fixed mid-run; LoRA-FT MiniLM failed (base model 45× below validated minimum size — Signal 12); published 2026 best-practice "Haiku 4.5 for binary classification" doesn't transfer to FinanceBench — gpt-4o-mini wins on F1 + cost (Signal 13); Groq free tier operationally unusable. No production change. |
 
 Per-eval cost dropped **46% ($9.70 → $5.28)** through Sprint 7.9 model tiering; Sprint 7.15's hallu upgrade restored Sonnet 4.6 on the verification path (+$1.35/eval). Refusal rate halved (14.0% → 7.3%) across the original campaign and now sits at 6.7%. The multi-hop slice — stuck at 4/13 across three retrieval interventions — moved to 11/13 (84.6%) by Sprint 7.16 cumulative.
 
@@ -960,6 +961,109 @@ Cumulative campaign total: ~$160.
 
 ---
 
+## Sprint 7.17 — grader architecture experimentation — null on pass rate, two methodology signals banked
+
+Sprint 7.16 hit a clear ceiling on prompt-level interventions at the generator layer. The Sprint 7.16 attribution-diagnostic (Diag 2) found **~51% of remaining failures are upstream-bound** (gold chunks lost at retrieval or reranker before reaching the grader/generator) and **~49% downstream-bound**. Sprint 7.16's anti-refusal + enumerate-fully prompts targeted the downstream layer at the generator. Sprint 7.17 targeted the same downstream layer at the grader stage, where phase-eval had measured ~30pp gold-chunk recall loss (the grader rejects ~30% of relevant chunks before they reach the generator).
+
+### Investigation 1 — LoRA fine-tune of cross-encoder/ms-marco-MiniLM-L-6-v2 (Phase 1-2)
+
+Built training data with 3 negative-sampling strategies (random / hard / mixed) per the "When Fine-Tuning Fails" (arXiv 2506.18535) caveat that hard negatives don't always help. Trained 3 LoRA adapters (rank=8, alpha=16, dropout=0.1, BCE loss, 5 epochs, BF16 MPS on M4 Pro, ~$0 local training cost).
+
+**Training-time validation looked promising:**
+
+| Strategy | Best val_loss | Val acc | Val pos_recall | Val neg_recall |
+|---|---:|---:|---:|---:|
+| random | 0.2831 | 0.874 | 0.667 | 0.926 |
+| hard | 0.3758 | 0.830 | 0.630 | 0.880 |
+| mixed | 0.3359 | 0.870 | 0.704 | 0.912 |
+
+Validated the "When FT Fails" paper's hard-negative warning empirically — hard-negative-only was the weakest. Random was best on val_loss.
+
+**Component eval on the same 363-gold-chunk benchmark used in Sprint 7.17 Diag 3** killed the intervention:
+
+| Variant | Gold-chunk recall | Zero-recall Qs |
+|---|---:|---:|
+| base MiniLM (no FT) | 0.196 | n/a |
+| FT hard_r8 | 0.231 | 84 |
+| FT mixed_r8 | 0.229 | 85 |
+| FT random_r8 (best FT) | 0.328 | 68 |
+| **Current Llama/gpt-4o-mini grader** | **0.700** | **8** |
+
+The best FT'd MiniLM reached **32.8% gold-chunk recall — less than half of the production grader's 70%**. Per the [Lightweight Relevance Grader paper (arXiv 2506.14084)](https://arxiv.org/abs/2506.14084) the validated minimum base-model size for FT'd-with-classification-head graders is ~1B params (their best result: FT'd llama-3.2-1b achieved precision 0.7750; below that scored worse than gpt-4o-mini). MiniLM at 22.7M params is **45× below** the validated minimum.
+
+**Signal 12 (banked)**: *LoRA fine-tuning has a base-model-capacity floor.* If the base model can't perform the task at all out-of-the-box (base MiniLM at 19.6% gold-chunk recall is barely above random for binary relevance), no amount of LoRA on 1-2K examples bridges the gap to a much larger prompt-tuned LLM. The Sprint 7.9 reranker FT worked because BGE-reranker-v2-m3 (568M params) already had usable relevance discrimination at the base level (NDCG@8 ≈ 0.42 on FB unmodified). MiniLM-L-6-v2 doesn't have that floor.
+
+### Investigation 2 — model swap (user-prompted pivot after a config audit caught a mistake)
+
+After the LoRA failure, a user question surfaced a config-vs-runtime discrepancy: the engineering log had been describing the grader as "Llama-3.3-70b via Groq", but `.env` had `USE_GROQ_FAST_PATH=false`, which flips both the grader AND router to OpenAI's `gpt-4o-mini` per `src/services/llm_factory.py`. **The actual runtime grader was gpt-4o-mini, not Llama.** All phase-eval grader recall numbers (Sprint 7.11's 0.66, Sprint 7.17 Diag 3's 0.70) measured gpt-4o-mini, not Llama. Correction noted.
+
+Web research surfaced [arXiv 2506.14084](https://arxiv.org/abs/2506.14084) which claimed gpt-4o-mini was *worse* than a FT'd llama-3.2-1b for relevance grading. Separately, multiple 2026 production-RAG guides recommended Claude Haiku 4.5 specifically for "binary classification of chunk relevance" as the cost-effective production choice. Two hypotheses to test: (a) Haiku 4.5 should beat gpt-4o-mini; (b) Groq Llama-3.3-70b should beat both; (c) BGE-reranker-v2-m3 (with the production LoRA adapter from Sprint 7.9) as a free baseline.
+
+### Investigation 3 — 4-way fair comparison
+
+Built `scripts/eval_grader_models_compare.py` to test 4 backends on:
+- **100-pair balanced sample** (50 random gold positives + 50 same-doc non-retrieved hard negatives) → precision, recall, F1, accuracy
+- **363-gold-chunk recall set** (same as Diag 3) → gold-chunk recall + per-Q full/partial/zero buckets
+
+Each backend instantiated directly (no `LLMFactory` dependency, to keep the experiment isolated from the production runtime's `USE_GROQ_FAST_PATH=false` setting that affects multiple nodes).
+
+**The first run had 5 methodology bugs** (caught after user-prompted re-audit):
+
+1. `max_tokens=256` on Haiku 4.5 only (others uncapped) — potential silent truncation of Anthropic structured outputs
+2. Silent exception handler returning `(False, 0.0)` — errors counted as "irrelevant" verdicts, no error tracking
+3. Groq token-rate limit (18K tokens/min) missed in pacing — only the request-rate limit (30/min) was checked; we exceeded the token limit, causing late-run failures
+4. BGE backend used base `BAAI/bge-reranker-v2-m3` (no adapter) — production reranker is base + Sprint 7.9 LoRA-FT adapter at `data/models/reranker_ft_v1`. Unfair comparison
+5. `gpt-4o-mini` control instantiated without `seed=42` — production via `LLMFactory._openai()` uses seed=42 for determinism
+
+All 5 fixed in the v2 re-run. Groq paced at 6s/call to stay under 18K tokens/min. Backends reordered to BGE → gpt-4o-mini → Haiku → Groq last (per user request — if Groq daily quota exhausts, other three already have results).
+
+**Fair v2 comparison result:**
+
+| Backend | F1 (balanced) | Prec | Rec | Gold-chunk recall (363) | Zero-recall Qs | Errors | Latency | $/eval |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| BGE-reranker-v2-m3 + LoRA-FT v1 | 0.701 | 1.000 | 0.54 | 0.452 | 42 | 0 | 65ms | $0 |
+| **gpt-4o-mini (control)** | **0.826** | 0.905 | 0.76 | 0.700 | **7** | **0** | **1.5s** | **$1.86** |
+| Claude Haiku 4.5 @ max_tokens=512 | 0.814 | 0.972 | 0.70 | **0.719** | 10 | 0 | 2.2s | $12.60 |
+| Claude Haiku 4.5 @ max_tokens=2048 (control) | 0.814 | 0.972 | 0.70 | 0.714 | 10 | 0 | 2.1s | $12.60 |
+| Groq Llama-3.3-70b (free tier) | 0.113 | 1.000 | 0.06 | 0.003 (1/363) | **146** | **89 / 361** | 6.3s | n/a |
+
+### Three findings
+
+**1. Haiku@512 vs Haiku@2048 control settled the max_tokens question.** When the user (correctly) noted that production Anthropic calls use `max_tokens=2048` (with an explicit "Sprint 7.6 Day 4 fix" comment), we suspected Bug 1 might have been silently truncating Haiku's structured-output reasoning at 512 tokens. The control re-run at 2048 returned **identical results** (balanced F1=0.814, gold-recall=0.714). The Sprint 7.6 Day 4 lesson applies to *long-form generation* tasks (research-agent synthesis, hallu-checker reasoning), not short structured-output binary classification.
+
+**2. The published 2026 best-practice claim doesn't transfer.** Multiple sources recommended Haiku 4.5 as the cost-effective binary-classification choice. On our FinanceBench task, gpt-4o-mini beats Haiku 4.5 on F1 by 1.2pp. Haiku's only edge is +1.9pp gold-chunk recall, at **6.8× higher cost ($12.60 vs $1.86 per eval)**. The [Lightweight Relevance Grader paper's](https://arxiv.org/abs/2506.14084) similar claim (gpt-4o-mini < FT'd llama-3.2-1b) also doesn't transfer — gpt-4o-mini is competitive with all four tested alternatives on this domain.
+
+**Signal 13 (banked)**: *Published 2026 best-practice for binary classification doesn't always transfer to domain-specific tasks.* The 2026 web guidance and the [Lightweight Relevance Grader paper](https://arxiv.org/abs/2506.14084) both claimed gpt-4o-mini was suboptimal for relevance grading; on FinanceBench, gpt-4o-mini outperforms Haiku 4.5 (cited as "the cost-effective choice") on F1 by 1.2pp at 6.8× lower cost. The cleanest single experimental measure on your specific task can directly invalidate a cited claim. Empirical validation is required before swapping a production component on the basis of published research alone.
+
+**3. Groq Llama-3.3-70b free tier is operationally unusable at any sustained throughput.** Even with 6s/call pacing (= 10 req/min, well under both the 30 req/min and 18K tokens/min documented free-tier limits), Groq returned errors on **89-99% of calls** during both benchmarks. The few successful calls scored well directionally (precision=1.0 when working) but the reliability is disqualifying. We can't ship a grader that fails 90%+ of the time. Either pay for the Groq dev tier or rule out.
+
+### Decision
+
+**No production change. Keep gpt-4o-mini as the grader.** Sprint 7.17 is a null result on pass rate — the 4 candidate alternatives don't dominate the current production grader on F1 + cost + reliability. The +1.9pp recall edge Haiku 4.5 offers doesn't justify 6.8× cost given that neither variant clears the strict ship gate (recall ≥ 0.80).
+
+The grader stage appears to be at its **prompt-only LLM ceiling** — the remaining ~30pp gold-chunk recall gap to a perfect grader isn't a model-choice problem. Diag 2's attribution analysis (51% of failures are upstream-bound; only ~2 of 41 are pure grader-zero-recall) confirms that fixing the grader wouldn't move the headline much anyway. The next architectural lever, if pursued, is retrieval improvements (the 14 RETRIEVAL_MISS cases).
+
+### Sprint 7.17 cost
+
+| Step | Cost |
+|---|---:|
+| LoRA training (3 strategies × 1 rank, local M4 Pro MPS) | $0 |
+| Component eval of FT'd MiniLM variants | ~$0.50 |
+| 4-way fair comparison v1 (with 5 methodology bugs) | ~$1.50 |
+| 4-way fair comparison v2 (post-fixes) | ~$2.50 |
+| Haiku @ max_tokens=2048 control run | ~$1.50 |
+| **Sprint 7.17 total** | **~$5.50** |
+
+Cumulative campaign total: ~$165.
+
+### Confidence labels (per credibility rule)
+
+- **Measured**: BGE+LoRA, gpt-4o-mini, Haiku@512, Haiku@2048 all evaluated under identical conditions on the same 100-pair + 363-gold-chunk benchmarks. 0 errors in any of those four runs.
+- **Reasonable inference**: Groq's poor result is operational, not model-quality — the 11 calls that succeeded had precision=1.0. With a paid Groq tier, Llama-3.3-70b could match Haiku's level, but cost-per-eval would be ~$6.95 (still 3.7× gpt-4o-mini).
+- **Speculation, pending measurement**: That the 30pp gold-chunk recall gap is a prompt-level ceiling rather than a model-level one. A prompt rewrite test on gpt-4o-mini under the κ=0.932 judge (Sprint 7.13 V1 retry) would settle this — deferred since the cost-benefit no longer looks favorable given Diag 2's attribution that only ~2 failures are pure grader-zero-recall in the residual set.
+
+---
+
 ## Sprint 7.11 Days 2-3 — phase eval result + the grader-over-strictness finding
 
 > **CORRECTION (2026-05-12 evening)**: The "grader is the 24pp bottleneck" interpretation below was wrong. Sprint 7.13 Day 3 full-eval + audit (see next section) revealed that **a substantial fraction of "failures" were eval-framework artifacts** — not system failures. The phase-eval cascade math measured the gap between system output and judge output, NOT between system output and ground truth. The grader's "over-strictness" wasn't the rate-limiting step; the JUDGE's over-strictness was. The phase-eval methodology is still valuable; the interpretation needed correction.
@@ -1199,6 +1303,7 @@ If I had another two weeks, the committed priority order (see "Roadmap — Sprin
 | Sprint 7.14 Phase 2 (V1 rejudge 150 records × Sonnet) | ~$0.50 | ~$94 |
 | Sprint 7.15 (75-Q diagnostic + 4 interventions full eval + rejudge + 22-case validation) | ~$17 | ~$111 |
 | Sprint 7.15 follow-up (3 cheap post-intervention diagnostics + full 150-Q eval with Fix 2 + multi-judge panel + rejudge) | ~$20 | ~$131 |
-| Sprint 7.16 (REFUSAL/PARTIAL_ANSWER/WRONG_DIRECTION diagnostics + 3 validation cycles + full 150-Q + rejudge) | ~$30 | **~$160** |
+| Sprint 7.16 (REFUSAL/PARTIAL_ANSWER/WRONG_DIRECTION diagnostics + 3 validation cycles + full 150-Q + rejudge) | ~$30 | ~$160 |
+| Sprint 7.17 (grader LoRA-FT MiniLM + 4-way model comparison + max_tokens control) | ~$5.50 | **~$165** |
 
-Total LLM spend across the eval-quality sprints: **~$160**. Per-eval cost at canonical config (post-Sprint-7.15 with multi-judge panel): **~$20** (pipeline ~$13 with Sonnet 4.6 on hallu; RAGAS + DeepEval add ~$5-7 if run; correctness scoring ~$0.30; rejudge ~$0.50). Skipping RAGAS + DeepEval drops it to ~$13 — the multi-judge panel is optional for headline pass-rate measurement but useful for retrieval-quality diagnostics. The Sprint 7.13/7.14 audit + re-judging that re-framed the entire project's headline pass rate (47% → 68% under fair judging) cost ~$1.50 in marginal LLM spend; Sprint 7.15's component-diagnostic-driven interventions added +5.33pp on top for ~$37 — proof that hands-on data verification and per-component F1 measurement are the cheapest possible ways to catch interpretation errors and find real lift.
+Total LLM spend across the eval-quality sprints: **~$165**. Per-eval cost at canonical config (post-Sprint-7.15 with multi-judge panel): **~$20** (pipeline ~$13 with Sonnet 4.6 on hallu; RAGAS + DeepEval add ~$5-7 if run; correctness scoring ~$0.30; rejudge ~$0.50). Skipping RAGAS + DeepEval drops it to ~$13 — the multi-judge panel is optional for headline pass-rate measurement but useful for retrieval-quality diagnostics. The Sprint 7.13/7.14 audit + re-judging that re-framed the entire project's headline pass rate (47% → 68% under fair judging) cost ~$1.50 in marginal LLM spend; Sprint 7.15's component-diagnostic-driven interventions added +5.33pp on top for ~$37 — proof that hands-on data verification and per-component F1 measurement are the cheapest possible ways to catch interpretation errors and find real lift.

@@ -84,6 +84,7 @@ Range across all Phase-1 canonical runs: 44.0–47.3% — *the JUDGE's ceiling, 
 | 7.15 follow-up | Fix 1 (cap revert 5→4) + Fix 2 (YoY rule) — 22-case validation | (projected −1 net) | — | ~$2 | Fix 1 reverted; Fix 2 kept |
 | 7.15 final | + Fix 2 (YoY rule) — full 150-Q measured re-run with multi-judge panel | 73.3% (110/150) | +1.3pp | ~$20 | shipped |
 | **7.16 final** | **+ anti-refusal nudge (clause 7) + enumerate-fully (clause 8) on generator prompt** | **72.7%** (109/150) | **−0.7pp** | ~$30 | **shipped — null at full-eval scope** |
+| 7.17 | Grader architecture experiments — LoRA-FT MiniLM + 4-way model swap (gpt-4o-mini / Haiku 4.5 / Groq Llama / BGE+LoRA) | 72.7% (no change) | 0pp | ~$5.50 | **null on pass rate; 2 methodology signals banked** |
 
 **Current shipped state**: Sprint 7.15 (4 interventions + Fix 2 + Fix 3 decomposer prompts) + Sprint 7.16 (anti-refusal nudge + enumerate-fully clause 8 on generator). Sprint 7.16 was net −1 case at full-eval scope despite passing two targeted-cohort validations (+3 anti-refusal, +1 enumerate) — pipeline stochasticity at n=150 + one absence-as-answer misfire on incomplete retrieval (`01328` Pepsico restructuring) washed out the validation-cohort wins. The Sprint 7.16 prompt changes are preserved because the targeted mechanisms work on their targeted cases and the cumulative trajectory remains positive; the methodology lesson is banked as Signal 11.
 
