@@ -1,0 +1,2261 @@
+{
+  "summary": {
+    "n_total_pairs": 363,
+    "n_accepted": 254,
+    "n_rejected": 109,
+    "n_errors": 0,
+    "gold_chunk_recall": 0.6997,
+    "per_question_buckets": {
+      "full_recall": 84,
+      "partial_recall": 55,
+      "zero_recall": 8
+    }
+  },
+  "zero_recall_fb_ids": [
+    "financebench_id_01319",
+    "financebench_id_00288",
+    "financebench_id_00585",
+    "financebench_id_02119",
+    "financebench_id_00206",
+    "financebench_id_00746",
+    "financebench_id_00521",
+    "financebench_id_00605"
+  ],
+  "partial_recall_fb_ids": [
+    "financebench_id_03029",
+    "financebench_id_04672",
+    "financebench_id_02987",
+    "financebench_id_07966",
+    "financebench_id_04735",
+    "financebench_id_03856",
+    "financebench_id_10420",
+    "financebench_id_06655",
+    "financebench_id_08135",
+    "financebench_id_03882",
+    "financebench_id_01935",
+    "financebench_id_00799",
+    "financebench_id_03069",
+    "financebench_id_01964",
+    "financebench_id_05718",
+    "financebench_id_04254",
+    "financebench_id_04417",
+    "financebench_id_07661",
+    "financebench_id_03473",
+    "financebench_id_09724",
+    "financebench_id_06272",
+    "financebench_id_10130",
+    "financebench_id_02981",
+    "financebench_id_04209",
+    "financebench_id_04103",
+    "financebench_id_04854",
+    "financebench_id_10136",
+    "financebench_id_01488",
+    "financebench_id_01490",
+    "financebench_id_01491",
+    "financebench_id_10499",
+    "financebench_id_04412",
+    "financebench_id_03718",
+    "financebench_id_04171",
+    "financebench_id_03849",
+    "financebench_id_01911",
+    "financebench_id_01912",
+    "financebench_id_04700",
+    "financebench_id_00552",
+    "financebench_id_04458",
+    "financebench_id_03531",
+    "financebench_id_04080",
+    "financebench_id_00080",
+    "financebench_id_04980",
+    "financebench_id_01009",
+    "financebench_id_01328",
+    "financebench_id_03620",
+    "financebench_id_04481",
+    "financebench_id_00705",
+    "financebench_id_00702",
+    "financebench_id_02024",
+    "financebench_id_00215",
+    "financebench_id_06247",
+    "financebench_id_04784",
+    "financebench_id_06741"
+  ],
+  "per_record": [
+    {
+      "fb_id": "financebench_id_03029",
+      "chunk_id": "12ffcaa5-c2f9-4d13-811d-4a9f203a0c0d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from financing activities and other unrelated financial metrics, but it does not provide any information about capital expenditur"
+    },
+    {
+      "fb_id": "financebench_id_04672",
+      "chunk_id": "e0a804b6-7cd7-4698-85fb-e775881be24f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about the Property, Plant, and Equipment (PPNE) for 3M at year end FY2018, specifically the net amount of $8,738 million, which i"
+    },
+    {
+      "fb_id": "financebench_id_03029",
+      "chunk_id": "7c238afd-5730-4bed-9bce-13d1847fe798",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about 'Purchases of property, plant and equipment (PP&E)' which is directly related to capital expenditures. The amounts listed f"
+    },
+    {
+      "fb_id": "financebench_id_03029",
+      "chunk_id": "4a14431f-a506-4763-952d-f82f0bdcc6b7",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from operating activities and provides various line items related to net income and adjustments, but it does not mention capital "
+    },
+    {
+      "fb_id": "financebench_id_04672",
+      "chunk_id": "4a513108-a943-425c-9bfe-bcd2053031e3",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses shareholders' equity, retained earnings, treasury stock, and total liabilities, but it does not provide any information about net PPNE (Prop"
+    },
+    {
+      "fb_id": "financebench_id_00499",
+      "chunk_id": "c9bc4c5f-b19f-4f6f-abed-170e117c15c0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data from 3M's FY2022 consolidated statement of income, which is relevant for assessing whether 3M is a capital-intensive business."
+    },
+    {
+      "fb_id": "financebench_id_00499",
+      "chunk_id": "b9d3e7a6-5b4d-4d7f-b0c1-b3c9b4dfe949",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides data from the consolidated balance sheet, specifically the property, plant, and equipment figures, which are key indicators of capital intens"
+    },
+    {
+      "fb_id": "financebench_id_04672",
+      "chunk_id": "86d6ea92-5830-4351-91a9-187896084c53",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the net value of property, plant, and equipment (PPNE) for 3M, which is essential for answering the question about the year-end FY2018 net PP"
+    },
+    {
+      "fb_id": "financebench_id_00499",
+      "chunk_id": "91392567-d7e6-4533-ac8d-8358749dc2b0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides data on cash flows from investing activities, specifically the purchases of property, plant, and equipment (PP&E), which is a key indicator o"
+    },
+    {
+      "fb_id": "financebench_id_00499",
+      "chunk_id": "6993b12d-2357-4a11-998d-0df5824c4a6c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides data from the Consolidated Statement of Cash Flows for FY2022, including depreciation and amortization, which are key indicators of capital i"
+    },
+    {
+      "fb_id": "financebench_id_01226",
+      "chunk_id": "035e1c9c-5d29-470d-bfe7-def4a9e4e02f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Selling, General and Administrative Expenses (SG&A) and their impact on the company's financials, which is relevant to understanding the fac"
+    },
+    {
+      "fb_id": "financebench_id_00807",
+      "chunk_id": "269c2ab2-653e-4014-be89-cd2064a884e3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about 3M's current liabilities, which is essential for calculating the quick ratio. The quick ratio is a measure of liquidity tha"
+    },
+    {
+      "fb_id": "financebench_id_01865",
+      "chunk_id": "09a62871-a1a3-4aba-aecd-be703d96a4d1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed information about the sales change by business segment for 3M in 2022, including the organic sales changes for each segment. This di"
+    },
+    {
+      "fb_id": "financebench_id_00807",
+      "chunk_id": "c1106654-f47a-45f1-a227-0af2cc7cbafe",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about 3M's current assets, which are necessary to calculate the quick ratio. The quick ratio is a measure of liquidity that uses "
+    },
+    {
+      "fb_id": "financebench_id_01858",
+      "chunk_id": "bbea9b7f-52b0-4436-b599-92812a6e80ba",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about 3M's history of paying dividends, including recent dividend declarations and the fact that it has marked 65 consecutive yea"
+    },
+    {
+      "fb_id": "financebench_id_01858",
+      "chunk_id": "5d6da5b0-e7e8-4682-832c-eb5ac6028533",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about 3M's dividend declarations, including the amount and the fact that it marks the 65th consecutive year of dividend increases"
+    },
+    {
+      "fb_id": "financebench_id_02987",
+      "chunk_id": "502caa06-e5c5-4f9c-b2f5-1f4d7593bc97",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses total assets, liabilities, and shareholders' equity, but does not provide any information about revenue or property, plant, and equipment (P"
+    },
+    {
+      "fb_id": "financebench_id_02987",
+      "chunk_id": "ccf1161d-fd3a-4791-b95e-d3f8b9b5002b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses various expenses and income figures but does not provide any information about fixed assets or the average PP&E needed to calculate the fixe"
+    },
+    {
+      "fb_id": "financebench_id_02987",
+      "chunk_id": "d994b7b1-bae5-4454-bf34-9a51be8a6f57",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the FY2019 total net revenues for Activision Blizzard, which is necessary to calculate the fixed asset turnover ratio. It also includes relev"
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "chunk_id": "ccf1161d-fd3a-4791-b95e-d3f8b9b5002b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses various expenses and income figures for Activision Blizzard but does not provide any information related to capital expenditures (capex) or "
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "chunk_id": "33c7e65c-3204-4e1b-ba20-11482953c972",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from financing activities and other investing activities, but it does not provide any information related to capital expenditures"
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "chunk_id": "d994b7b1-bae5-4454-bf34-9a51be8a6f57",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net revenue figures for Activision Blizzard for FY2017, FY2018, and FY2019, which are necessary to calculate capex as a percentage of revenue"
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "chunk_id": "37c1f11c-3aa4-4ee2-a160-8b5d987d0fa3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about capital expenditures (capex) for the years FY2017 to FY2019, which is directly relevant to calculating capex as a percentag"
+    },
+    {
+      "fb_id": "financebench_id_00941",
+      "chunk_id": "0bb4b617-903d-4ea5-bbd3-938712f6cf70",
+      "grader_relevant": true,
+      "grader_reason": "The chunk lists specific debt securities (1.500% Notes due 2026, 1.750% Notes due 2030, and 1.500% Notes due 2031) that are registered to trade on national secu"
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "chunk_id": "4baf33dd-e477-4b76-8791-67ce16c83ee9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains financial data from the consolidated statements of cash flows for Activision Blizzard for the years 2017, 2018, and 2019, which is relevant f"
+    },
+    {
+      "fb_id": "financebench_id_02987",
+      "chunk_id": "bb012710-41f3-4fd7-9063-2ff117617407",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the Property and Equipment (PP&E) values for Activision Blizzard at the end of FY2018 and FY2019, which is necessary to cal"
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "chunk_id": "64912ca2-e20a-4a27-980f-2677f1e8e177",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash and cash equivalents and share-based compensation, which are unrelated to the calculation of capital expenditures (capex) as a percenta"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "e9289a4f-0fa5-4055-88af-1d5e484dc8eb",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses stockholders' equity and total liabilities but does not provide any information about cash from operations or total current liabilities, whi"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "64f01904-d81e-48f3-b197-c53b878775a5",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about current liabilities, which is necessary to calculate the operating cash flow ratio for Adobe in FY2015."
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "117bec92-72e2-4238-898e-0455c0c0c99e",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the consolidated balance sheets and current assets of Adobe but does not provide any information about cash from operations or total current"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "ec638606-9b59-448f-b0df-7bb168674568",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses stockholders' equity and total liabilities but does not provide any information about cash from operations or current liabilities specifical"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "d41d2214-bb41-4532-9ddd-011ab734d835",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about current liabilities, which is necessary to calculate the operating cash flow ratio for Adobe in FY2015."
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "dcfbce43-78f0-41d3-8924-0f44369cfefa",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flow activities and changes in cash and cash equivalents but does not provide the necessary information about cash from operations or t"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "15799748-b709-4823-9e61-7304f739ea9b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from investing and financing activities, but does not provide information about cash from operations or total current liabilities"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "8dbc235d-e5d0-4204-bbb4-e8f30303ef0f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about changes in operating assets and liabilities, which is relevant for calculating cash from operations, a key component needed"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "408760dd-b528-43b1-9495-49cfc8d24749",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses stock-based compensation and related tax benefits, which are not directly relevant to calculating the operating cash flow ratio for Adobe in"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "6cf7c945-4475-4dee-9b34-39452efdc40f",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses transactions related to short-term investments and property, which are not directly related to the operating cash flow ratio or the specific"
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "chunk_id": "063de082-f0f2-4e6d-9c7e-47a2f40c0af1",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses supplemental disclosures related to cash paid for income taxes and interest, as well as non-cash investing activities, but it does not provi"
+    },
+    {
+      "fb_id": "financebench_id_07507",
+      "chunk_id": "f774e04f-8af8-4741-a41d-50473fc216db",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the operating income figures for FY2015 and FY2016, which are necessary to calculate the year-over-year change in unadjusted operating income"
+    },
+    {
+      "fb_id": "financebench_id_07507",
+      "chunk_id": "f0a1dcb4-c4b9-4725-9174-e891dcafc5a0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the consolidated statements of income for Adobe for FY2015 and FY2016, which includes necessary data to calculate the year-over-year change i"
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "cf6941df-20e1-471e-94ab-8c2c8487879f",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses stockholders' equity and total liabilities but does not provide any information about cash from operations or total current liabilities, whi"
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "ac0e1aff-d33d-41a2-82b9-5ef18ee016d6",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total current liabilities for FY2017, which is necessary to calculate the operating cash flow ratio. Although it does not provide the cas"
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "310ab33f-15ed-45e5-9906-2bc9f18864fa",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Adobe's current liabilities, specifically the trade payables, which is a component needed to calculate the operating cash f"
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "5e2771e4-c1ea-4f86-8b0f-facb0955651a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the 'Net cash provided by operating activities' figure for FY2017, which is essential for calculating the operating cash flow ratio. It also "
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "6c2b32bb-638d-4745-9db0-f659ba74d9b8",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from investing and financing activities but does not provide any information about operating cash flow or total current liabiliti"
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "10f7b11c-6fc7-4730-bf82-fb8aaecd8d30",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information from the consolidated statements of cash flows for Adobe, which is necessary to calculate the operating cash flow ratio. It inclu"
+    },
+    {
+      "fb_id": "financebench_id_00438",
+      "chunk_id": "2b39c0c4-9465-4d3c-a72c-88b680b05074",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed financial data from Adobe's consolidated statements of income for FY2022, including revenue, cost of revenue, and operating income, "
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "chunk_id": "13d54aa9-87a8-4907-ab90-1fabd1473887",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows related to financing activities and cash equivalents but does not provide information about cash from operations or total current"
+    },
+    {
+      "fb_id": "financebench_id_00591",
+      "chunk_id": "6abd6c64-c7b6-435d-8624-c0fda9f4b264",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about cash flows from operating activities, which is essential for calculating free cash flow conversion. It includes net cash pr"
+    },
+    {
+      "fb_id": "financebench_id_01319",
+      "chunk_id": "14df20b3-26bd-41b3-9696-87c5140b3827",
+      "grader_relevant": false,
+      "grader_reason": "The chunk does not mention restructuring costs specifically, nor does it provide any information related to them. It discusses various other expenses and financ"
+    },
+    {
+      "fb_id": "financebench_id_00591",
+      "chunk_id": "4bde0e61-0eb0-46d9-b8a5-c36d7aba207b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information from the consolidated statements of cash flows for Adobe for FY2022, which is essential for assessing free cash flow conversion. "
+    },
+    {
+      "fb_id": "financebench_id_01319",
+      "chunk_id": "d0893bca-8ce0-4a1b-9f3e-d7e7a45fd054",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses various financial metrics and expenses from AES Corporation's income statement for FY2022, but it does not mention restructuring costs speci"
+    },
+    {
+      "fb_id": "financebench_id_00540",
+      "chunk_id": "2232c1e6-f35c-419d-99c7-da7e437276ae",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the inventory amount for FY2022, which is necessary to calculate the inventory turnover ratio. Although it does not provide sales data direct"
+    },
+    {
+      "fb_id": "financebench_id_00540",
+      "chunk_id": "14df20b3-26bd-41b3-9696-87c5140b3827",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the total revenue and cost of sales for AES Corporation in FY2022, which are necessary components for calculating the inven"
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "be066b78-31af-4a9e-9faf-63e711ec9289",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about total assets for FY2022, which is necessary to calculate the return on assets (ROA) as it includes the average total assets"
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "a5191527-fd5b-40c7-819a-d9d7b4f1b9df",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liabilities and equity but does not provide information about AES's FY2022 net income or total assets, which are necessary to calculate the "
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "2232c1e6-f35c-419d-99c7-da7e437276ae",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about AES's total assets for FY2022, which is necessary to calculate the average total assets for the ROA formula. It also includ"
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "14df20b3-26bd-41b3-9696-87c5140b3827",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about AES's FY2022 net income, which is necessary to calculate the return on assets (ROA). It also includes financial data from t"
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "d0893bca-8ce0-4a1b-9f3e-d7e7a45fd054",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the net income (loss) attributable to the AES Corporation for FY2022, which is essential for calculating the return on assets (ROA) as it is "
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "c4d448ba-0c4d-4b03-a2f1-1ef510a96a13",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about total assets as part of the statement of financial position, which is necessary to calculate the average total assets for F"
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "chunk_id": "9eb1b4dd-9176-4375-8600-04a02acaffb8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the FY2022 net income attributable to AES Corporation, which is necessary for calculating the return on assets (ROA). It also includes inform"
+    },
+    {
+      "fb_id": "financebench_id_06655",
+      "chunk_id": "8fb96699-d61a-4868-ab48-44073d9fa212",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the accounts payable figures for FY2016 and FY2017, which are necessary to calculate the average accounts payable for the DPO formula. It als"
+    },
+    {
+      "fb_id": "financebench_id_06655",
+      "chunk_id": "2afee52e-3aa1-4a41-a6cf-1c5fe623fd55",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information from Amazon's consolidated statements of operations, specifically the Cost of Sales (COGS) for FY2017, which is necessary for cal"
+    },
+    {
+      "fb_id": "financebench_id_06655",
+      "chunk_id": "e2272254-c670-479d-8205-3dc0fdec7d7f",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses stockholders' equity and liabilities, which are not directly related to the calculation of days payable outstanding (DPO) for FY2017. It doe"
+    },
+    {
+      "fb_id": "financebench_id_08135",
+      "chunk_id": "2afee52e-3aa1-4a41-a6cf-1c5fe623fd55",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the consolidated statements of operations for Amazon, including net product sales and net service sales for FY2016 and FY2017, which are nece"
+    },
+    {
+      "fb_id": "financebench_id_06655",
+      "chunk_id": "34772e1c-3c75-4cac-a79c-ff03fb3f7de2",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses income before taxes, net income, and earnings per share, which are unrelated to the calculation of days payable outstanding (DPO) for FY2017"
+    },
+    {
+      "fb_id": "financebench_id_08135",
+      "chunk_id": "34772e1c-3c75-4cac-a79c-ff03fb3f7de2",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses non-operating income, income before taxes, provision for income taxes, net income, and earnings per share, but it does not provide any infor"
+    },
+    {
+      "fb_id": "financebench_id_03882",
+      "chunk_id": "cbf5f289-8d3f-46cc-9f5d-f2b825323cb7",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liabilities and shareholders' equity but does not provide any information related to Amcor's net accounts receivable (AR) for FY2020."
+    },
+    {
+      "fb_id": "financebench_id_08286",
+      "chunk_id": "e1ff0bc1-19d7-4e57-b3bd-d9105f71bed5",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the net income figure for Amazon for FY2019, which is directly relevant to the question asking for the net income attributable to shareholder"
+    },
+    {
+      "fb_id": "financebench_id_03882",
+      "chunk_id": "0dc16d59-ae14-4576-84f6-2e4532da0eb9",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses shareholders' equity and related components, but it does not provide any information about Amcor's net accounts receivable (AR) for FY2020."
+    },
+    {
+      "fb_id": "financebench_id_03882",
+      "chunk_id": "d57bb25c-58f2-47ea-8119-bf5e11b42064",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about Amcor's trade receivables, which is a component of accounts receivable (AR) and is relevant for determining the net AR for "
+    },
+    {
+      "fb_id": "financebench_id_08286",
+      "chunk_id": "d1fba908-e70a-4309-9d0f-641f96ffd789",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the income statement for Amazon, including key figures such as net product sales, net service sales, operating expenses, operating income, an"
+    },
+    {
+      "fb_id": "financebench_id_01935",
+      "chunk_id": "78ffa1bf-700c-4a3b-8de1-15b348d039c3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the 8K filing related to AMCOR, specifically mentioning the New 2026 and New 2028 Notes, which are relevant to the financial context of the "
+    },
+    {
+      "fb_id": "financebench_id_00799",
+      "chunk_id": "e4bb02e5-e644-4f74-94a5-639d0af86a96",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about current liabilities, which is necessary to calculate the quick ratio. The quick ratio is defined as (Current Assets - Inven"
+    },
+    {
+      "fb_id": "financebench_id_00799",
+      "chunk_id": "6fabcdaf-0390-4fd1-a046-dc8d71043841",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Amcor's current assets, which are necessary to calculate the quick ratio. The quick ratio is defined as (Current Assets - I"
+    },
+    {
+      "fb_id": "financebench_id_01935",
+      "chunk_id": "285fa1a6-3aa7-46d1-b762-c35cb369554a",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses details about the 3.625% and 4.500% Guaranteed Senior Notes and related indentures, which are not directly related to the key agenda of AMCO"
+    },
+    {
+      "fb_id": "financebench_id_00799",
+      "chunk_id": "aaef712e-e878-4404-aa46-e1f0eff2db73",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses shareholders' equity and related financial figures, but it does not provide any information about the quick ratio or its changes between FY2"
+    },
+    {
+      "fb_id": "financebench_id_01935",
+      "chunk_id": "7cbbbea3-2e77-40ce-8eda-e872d5fb8b64",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the 8K filing by Amcor, specifically mentioning the date (June 30, 2022) and the entities involved, which is directly related to the key age"
+    },
+    {
+      "fb_id": "financebench_id_01079",
+      "chunk_id": "8fb364a7-89ac-42e5-8b64-b5cdc694dfd8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses a specific acquisition made by AMCOR in FY2023, including details about the purchase consideration and the nature of the acquired company, w"
+    },
+    {
+      "fb_id": "financebench_id_01079",
+      "chunk_id": "14209251-50de-434b-b067-8fbb99517c34",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about a major acquisition by AMCOR in FY2023, including details about the acquisition date, purchase consideration, and "
+    },
+    {
+      "fb_id": "financebench_id_01079",
+      "chunk_id": "7c387022-9942-49bc-8bf4-ef47a2fbac20",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses an acquisition made by AMCOR, including details about contingent consideration, identifiable net assets, and goodwill, which are relevant to"
+    },
+    {
+      "fb_id": "financebench_id_01079",
+      "chunk_id": "f0652a6a-c8f6-4cf3-b831-0290aeb401e9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses a major acquisition by AMCOR that occurred on August 1, 2022, which is relevant to the question about major acquisitions in FY2023, FY2022, "
+    },
+    {
+      "fb_id": "financebench_id_01148",
+      "chunk_id": "06a0d532-2b58-4e43-80e8-207786a0824a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Amcor's operations in the packaging industry, specifically mentioning their focus on responsible packaging for various sect"
+    },
+    {
+      "fb_id": "financebench_id_01148",
+      "chunk_id": "c77b7f03-0b96-455d-b6e3-76655eda822e",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Amcor's operations, specifically mentioning that it develops and produces packaging for various industries, including food,"
+    },
+    {
+      "fb_id": "financebench_id_01148",
+      "chunk_id": "26038c21-cc37-443e-8cd3-bf2432d7f449",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Amcor's primary operations in the packaging industry, specifically mentioning its involvement in packaging for food, bevera"
+    },
+    {
+      "fb_id": "financebench_id_01928",
+      "chunk_id": "93f2e5ca-ff98-4f81-9bcb-5236d71cba01",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides EBITDA figures for FY 2023, which is directly relevant to the question about AMCOR's Adjusted Non GAAP EBITDA for that fiscal year."
+    },
+    {
+      "fb_id": "financebench_id_01928",
+      "chunk_id": "c7da6440-9c44-48c0-8d2f-c72c95d08530",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the Adjusted EBITDA figure for FY 2023, which is directly relevant to the question about AMCOR's Adjusted Non GAAP EBITDA for that fiscal yea"
+    },
+    {
+      "fb_id": "financebench_id_00684",
+      "chunk_id": "f7341998-ef44-4001-939b-906dcfb6e2fe",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the consolidated statements of income for Amcor for FY2023, including net sales, cost of sales, and gross profit, which are essential compone"
+    },
+    {
+      "fb_id": "financebench_id_01936",
+      "chunk_id": "d49f5b6b-90ea-4f68-b687-0e5a88b92385",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed information about AMCOR's restructuring liability, including the breakdown of costs and the changes in the liability balance as of D"
+    },
+    {
+      "fb_id": "financebench_id_03069",
+      "chunk_id": "13327626-90cd-46bb-ba9c-90b0c50bbf76",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the depreciation and amortization amount for FY2015, which is essential for calculating the D&A % margin for AMD."
+    },
+    {
+      "fb_id": "financebench_id_03069",
+      "chunk_id": "c27b189b-e788-477e-81a7-2c2e675efccf",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the Consolidated Statements of Operations for AMD for the year ended December 26, 2015, which includes relevant financial data such as net re"
+    },
+    {
+      "fb_id": "financebench_id_03069",
+      "chunk_id": "6de63f83-d561-498b-8e50-93be1f3e4fe1",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from financing activities and supplemental disclosures related to cash paid for interest and income taxes, which are not relevant"
+    },
+    {
+      "fb_id": "financebench_id_03069",
+      "chunk_id": "366aeae9-d6cb-4f73-8fc2-cc042d601176",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses operating assets and liabilities, cash flows from investing and financing activities, but does not provide any information about depreciatio"
+    },
+    {
+      "fb_id": "financebench_id_00222",
+      "chunk_id": "8e625caa-872d-4351-a25f-fa2ac185f96b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about AMD's current liabilities, which is necessary to calculate the quick ratio. The quick ratio is a measure of liquidity that "
+    },
+    {
+      "fb_id": "financebench_id_00222",
+      "chunk_id": "2dc77f42-4706-470a-ae4c-c13c5d9ab950",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about AMD's current assets, which are necessary to calculate the quick ratio. The quick ratio is a measure of liquidity that uses"
+    },
+    {
+      "fb_id": "financebench_id_00995",
+      "chunk_id": "5585c6d0-11ac-4e5a-9ed2-a8192ccc04c8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides a detailed overview of the major products and services offered by AMD, including server microprocessors, GPUs, APUs, and other semiconductor "
+    },
+    {
+      "fb_id": "financebench_id_00917",
+      "chunk_id": "f36593da-e06c-4896-a718-721a90cb4329",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the operating income and gross margin for FY22, which are directly related to the operating margin change for AMD. It also mentions factors "
+    },
+    {
+      "fb_id": "financebench_id_01198",
+      "chunk_id": "26edbf93-9c9c-4670-8a08-cadc1296ecd2",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about AMD's revenue change for FY22, including the overall revenue figures, the percentage increase compared to FY21, an"
+    },
+    {
+      "fb_id": "financebench_id_01279",
+      "chunk_id": "952dc699-eed2-41a2-b4ce-161e9fcbbd41",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed information about cash flows from operating and investing activities for AMD in FY22, which is directly relevant to determining whic"
+    },
+    {
+      "fb_id": "financebench_id_01279",
+      "chunk_id": "707dc12a-a876-4a7a-9c57-33c889ca08db",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed information about cash flows from investing and financing activities for AMD in FY22, which is directly relevant to determining whic"
+    },
+    {
+      "fb_id": "financebench_id_01930",
+      "chunk_id": "0ba3dea7-d932-43a9-a4ba-b19255d15d4b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed information on net sales for AMCOR in FY 2023 and FY 2022, including components of growth and adjustments for FX, passthrough costs,"
+    },
+    {
+      "fb_id": "financebench_id_01279",
+      "chunk_id": "3c986143-0648-47a8-8c29-a56398567695",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about cash flows from operating activities for AMD in FY22, which is relevant to determining which category (operating, investing"
+    },
+    {
+      "fb_id": "financebench_id_00757",
+      "chunk_id": "0a3cf11e-a174-417a-91f0-5a88ae8b40df",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about customer concentration, stating that one customer accounted for 16% of AMD's consolidated net revenue for FY22, wh"
+    },
+    {
+      "fb_id": "financebench_id_00476",
+      "chunk_id": "ddc47cb1-df03-42c0-84f6-af878dc2f9da",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about securities registered under American Express' name, specifically mentioning 'Common Shares' and their trading symbol 'AXP' "
+    },
+    {
+      "fb_id": "financebench_id_00563",
+      "chunk_id": "41573006-303a-4e47-91e6-c622740e7194",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides a summary of net revenue by segment for FY21 and FY22, which is directly relevant to identifying which AMD reporting segment had the highest "
+    },
+    {
+      "fb_id": "financebench_id_00723",
+      "chunk_id": "f6e2b10b-240a-4097-9acc-a3c8fbcaa780",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data for AMEX, including total revenues, expenses, and net income, which are essential components for analyzing the operating margi"
+    },
+    {
+      "fb_id": "financebench_id_00723",
+      "chunk_id": "3d36298f-451a-4766-8570-0b79314184b4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data for AMEX for the year 2022, including total revenues and components of revenues, which are essential for analyzing the operati"
+    },
+    {
+      "fb_id": "financebench_id_01028",
+      "chunk_id": "c54d8a6a-85e4-4e58-bbb3-f31e5010bd37",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the geographies where American Express operates, specifically mentioning EMEA (Europe, the Middle East and Africa), APAC (A"
+    },
+    {
+      "fb_id": "financebench_id_00720",
+      "chunk_id": "f6e2b10b-240a-4097-9acc-a3c8fbcaa780",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data related to American Express for FY2022, including total revenues, expenses, and net income, which are relevant to understandin"
+    },
+    {
+      "fb_id": "financebench_id_00720",
+      "chunk_id": "3d36298f-451a-4766-8570-0b79314184b4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information on the revenues and net interest income for American Express for FY2022, which are relevant components that can help analyze the "
+    },
+    {
+      "fb_id": "financebench_id_01351",
+      "chunk_id": "2d5e6ec7-56e1-443b-aa3e-bfcf4ac92e3e",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the effective tax rates for FY2021 (24.6%) and FY2022 (21.6%), which directly answers the question about how much the effective tax rate of A"
+    },
+    {
+      "fb_id": "financebench_id_01351",
+      "chunk_id": "81aa9fba-5e2d-4ca1-bc77-9ed16bab18f1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the income tax provision for FY2021 and FY2022, which is necessary to calculate the effective tax rate for American Express for those years."
+    },
+    {
+      "fb_id": "financebench_id_01964",
+      "chunk_id": "487582cb-42be-4e6d-a981-e0224786b629",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses assets on American Express's balance sheet and does not provide any information about liabilities, which is what the question specifically a"
+    },
+    {
+      "fb_id": "financebench_id_01964",
+      "chunk_id": "528d5069-3eb1-4623-8c32-0698d4b5b66d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about various components of American Express's financials for 2022, including Card Member loans and receivables, which are likely"
+    },
+    {
+      "fb_id": "financebench_id_01964",
+      "chunk_id": "0013c1d6-3cbc-44f7-a3aa-fdabf97ab683",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the liabilities on American Express's Balance Sheet for 2022, including the amounts for customer deposits, account"
+    },
+    {
+      "fb_id": "financebench_id_05718",
+      "chunk_id": "c9da46c5-4c0f-4cc8-9da2-99f4b7ada4cb",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses various cash flow activities but does not provide any information about cash dividends paid by American Water Works for FY2020."
+    },
+    {
+      "fb_id": "financebench_id_05718",
+      "chunk_id": "f9a61e1d-103a-4485-82da-38b1b04158d4",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the cash flows from operating activities and provides details about net income and adjustments, but it does not mention cash dividends paid "
+    },
+    {
+      "fb_id": "financebench_id_05718",
+      "chunk_id": "88ae7e4a-b7cd-4247-b2f1-2bf4dc947917",
+      "grader_relevant": true,
+      "grader_reason": "The chunk includes the line item 'Dividends paid(389)', which directly provides the cash dividends paid by American Water Works for FY2020, contributing to answ"
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "68594384-4329-4aa8-83d5-dc184db31845",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the operating income and depreciation and amortization figures for FY2021, which are necessary components to calculate the unadjusted EBITDA "
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "957dad9d-7f0c-41a4-b583-86b50b08c2b5",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and earnings per share, which are not directly related to the cash flow statement or the unadjusted operating income + depreciati"
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "1f163695-63ba-4bda-a460-60710ebed83b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses financing activities, cash flows, and stock plans, which are unrelated to the operating income and depreciation and amortization figures nee"
+    },
+    {
+      "fb_id": "financebench_id_01981",
+      "chunk_id": "333c10a1-e014-43ec-a384-9fed00d98a11",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Card Member retention and mentions that it remained high in 2022, which directly answers the question about American Express's ability to re"
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "92819553-608d-443a-aaf1-df44a2ef0c36",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about cash flows from operating activities, which is relevant for calculating unadjusted EBITDA. Specifically, it mentions 'Net c"
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "67d343e1-0298-4fbd-857d-5d993ad439a9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information on the cash flow statement for FY2021, specifically detailing the depreciation and amortization amount, which is necessary to cal"
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "f6b3b55b-876a-447d-8009-16f43873bb01",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash paid for interest and income taxes, as well as non-cash investing activities, but does not provide any information related to American "
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "chunk_id": "119a41f3-e0d9-481a-af3f-1fa7cdde71c6",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from financing activities, which is unrelated to the cash flow statement and income statement components needed to calculate Amer"
+    },
+    {
+      "fb_id": "financebench_id_00070",
+      "chunk_id": "5f868451-84dd-42ac-9341-7f6f90775636",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about American Water Works' current assets, which is essential for calculating working capital. Working capital is defined as cur"
+    },
+    {
+      "fb_id": "financebench_id_00070",
+      "chunk_id": "4aeb55b7-bc23-407d-9ee4-36d7e68f2be3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the current liabilities of American Water Works, which is a component necessary to assess working capital. Working capital "
+    },
+    {
+      "fb_id": "financebench_id_02608",
+      "chunk_id": "92332de5-40bb-47e0-b942-f67dcf664991",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the income statement data for Best Buy for the fiscal years 2015 to 2017, which is necessary to calculate the net profit margin for those yea"
+    },
+    {
+      "fb_id": "financebench_id_02608",
+      "chunk_id": "fd11d05a-b76c-4da7-ac99-54fab91cface",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net earnings figures for Best Buy for the fiscal years 2015 to 2017, which are essential for calculating the net profit margin. It includes e"
+    },
+    {
+      "fb_id": "financebench_id_04417",
+      "chunk_id": "f03fd8ef-6130-4442-9130-3fc55b95c280",
+      "grader_relevant": false,
+      "grader_reason": "The chunk does not provide any information about the total amount of inventories for Best Buy for FY2019. It discusses total assets, liabilities, and equity but"
+    },
+    {
+      "fb_id": "financebench_id_04417",
+      "chunk_id": "c2fa10a7-02bb-4d05-bc81-6acd4f9b872b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the total amount of merchandise inventories for Best Buy as of February 2, 2019, which is directly relevant to the question about the year-en"
+    },
+    {
+      "fb_id": "financebench_id_02608",
+      "chunk_id": "7b23b2c4-a677-4bd9-b78a-c5321a98b2aa",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about diluted earnings per share for Best Buy, which is relevant to calculating the net profit margin. The net profit margin is d"
+    },
+    {
+      "fb_id": "financebench_id_01275",
+      "chunk_id": "683bc79e-eb2f-479e-82e6-2d001c922fd9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the cash flow from operating activities for Best Buy in FY2023, which is directly relevant to determining which category of"
+    },
+    {
+      "fb_id": "financebench_id_01275",
+      "chunk_id": "70350c89-b501-4197-bf82-6649eacf3724",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about cash flows related to financing activities, including dividends paid, borrowings, and repayments of debt, which are relevan"
+    },
+    {
+      "fb_id": "financebench_id_01077",
+      "chunk_id": "0a2135ff-48a9-45b2-8645-12f2af630a2d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the acquisition of Two Peaks, LLC d/b/a Yardbird Furniture, which occurred in FY2022. This is relevant to the question as it pertains to maj"
+    },
+    {
+      "fb_id": "financebench_id_00685",
+      "chunk_id": "a62d9878-7b0f-435c-a602-9861eac8a258",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the consolidated statements of earnings for Best Buy, including revenue, cost of sales, and gross profit for the fiscal years ended January 2"
+    },
+    {
+      "fb_id": "financebench_id_01275",
+      "chunk_id": "a6774d21-6171-411f-b8dc-1c83e3b74cbf",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed cash flow information for Best Buy in FY2023, including total cash provided by operating activities, total cash used in investing ac"
+    },
+    {
+      "fb_id": "financebench_id_01077",
+      "chunk_id": "d9142961-756d-4780-8626-0de422e578ad",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the acquisition of Current Health Ltd. in FY2022, which is relevant to the question about major acquisitions by Best Buy in FY2022. It provi"
+    },
+    {
+      "fb_id": "financebench_id_00288",
+      "chunk_id": "ae002868-7a45-4347-ac90-7a71ab9f99be",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liquidity management and capital resources but does not provide specific information about the Cash & Cash equivalents or any changes betwee"
+    },
+    {
+      "fb_id": "financebench_id_00288",
+      "chunk_id": "bc28d467-9040-47ae-90f1-1c2273df7b5d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses operating income, tax rates, and earnings per share, but does not provide any information about Cash & Cash equivalents or any changes betwe"
+    },
+    {
+      "fb_id": "financebench_id_00288",
+      "chunk_id": "a3ad4bbd-bc11-4a26-9537-3d53a3197c91",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses goodwill and intangible assets, employee termination benefits, and non-GAAP adjustments, which are unrelated to the question about the drop "
+    },
+    {
+      "fb_id": "financebench_id_00288",
+      "chunk_id": "d1824a40-baf0-44d1-95fe-719261d7585d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses non-GAAP operating income and tax rates, which are unrelated to the question about the drop in Cash & Cash equivalents between FY 2023 and Q"
+    },
+    {
+      "fb_id": "financebench_id_00460",
+      "chunk_id": "63cb5763-58c2-480d-9544-61b9168b35a3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the number of stores open at the beginning and end of the second quarters for both FY2024 and FY2023, which directly relate"
+    },
+    {
+      "fb_id": "financebench_id_00288",
+      "chunk_id": "ad36e73d-7c62-41a5-849d-a5608ac3a287",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses operating income and non-GAAP financial measures, which are unrelated to Cash & Cash equivalents. It does not provide any information about "
+    },
+    {
+      "fb_id": "financebench_id_00460",
+      "chunk_id": "55780c4c-2325-48df-988a-e843754dd435",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific data on the number of Best Buy stores at the beginning and end of Q2 for both FY2024 and FY2023, which directly addresses the questi"
+    },
+    {
+      "fb_id": "financebench_id_03838",
+      "chunk_id": "f903825d-e53f-4452-9af1-8b6889d948c8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides total net revenue figures for FY2019 and FY2020, which are essential for calculating the total revenue growth rate for Block during that peri"
+    },
+    {
+      "fb_id": "financebench_id_01902",
+      "chunk_id": "b9898ffb-4aa7-4b4b-8a65-6f7b7c9a9ff4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the performance of various product categories at Best Buy, including specific sales growth and decline percentages, which i"
+    },
+    {
+      "fb_id": "financebench_id_07661",
+      "chunk_id": "e24905a2-4a07-450a-8d6e-d7cde23f267c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the line 'Net cash provided by operating activities381,603 465,699 295,080', which directly provides the cash flow from operating activities "
+    },
+    {
+      "fb_id": "financebench_id_03838",
+      "chunk_id": "0086fcda-f912-4b12-9262-b4c26bd6250d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains financial data related to Block's income statement, including gross profit and operating income, which are components necessary to calculate "
+    },
+    {
+      "fb_id": "financebench_id_07661",
+      "chunk_id": "d01440de-d152-4453-9506-3e4e826cc0d4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the cash flow statement for Block (formerly known as Square) for FY2020, specifically detailing cash flows from operating activities, which i"
+    },
+    {
+      "fb_id": "financebench_id_07661",
+      "chunk_id": "cb4c0e6c-03c1-46ce-9bd9-8d3309754775",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from investing and financing activities, but does not provide any information about cash flow from operating activities for Block"
+    },
+    {
+      "fb_id": "financebench_id_07661",
+      "chunk_id": "dc31f5d4-abf4-4ad7-a650-6ada15972cd0",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses investing activities and cash flows related to marketable debt securities, property and equipment, and other investments, but it does not pr"
+    },
+    {
+      "fb_id": "financebench_id_01091",
+      "chunk_id": "ac85367e-4e1b-491b-ab64-0aeda7645857",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses ongoing legal actions related to Boeing, specifically mentioning investigations and settlements connected to the 737 MAX accidents, which ar"
+    },
+    {
+      "fb_id": "financebench_id_00517",
+      "chunk_id": "54e2e35c-a244-442d-b660-92941763ef1f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides revenue figures for Boeing's product categories (Commercial Airplanes, Defense, Space & Security, Global Services) for FY2022, which are nece"
+    },
+    {
+      "fb_id": "financebench_id_01091",
+      "chunk_id": "f8cd024f-caa2-4a5f-87de-9520e854eb4d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses ongoing legal proceedings related to Boeing, specifically mentioning multiple legal actions filed against the company due to the Lion Air Fl"
+    },
+    {
+      "fb_id": "financebench_id_01290",
+      "chunk_id": "fc34b72d-90ad-431e-a105-0a4e81da51b4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Boeing's revenue sources and mentions that a significant portion of revenues comes from a limited number of commercial airlines, which direc"
+    },
+    {
+      "fb_id": "financebench_id_00678",
+      "chunk_id": "c2c6a1fc-9664-4a2f-af5c-606e79a8ba19",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the Consolidated Statements of Operations for Boeing, which includes key financial metrics such as sales of products, total revenues, and cos"
+    },
+    {
+      "fb_id": "financebench_id_01290",
+      "chunk_id": "77e15898-5011-4c1e-88f8-731a5103e77d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Boeing's revenue sources, specifically mentioning the U.S. government and defense-related programs, which are relevant to identifying Boeing"
+    },
+    {
+      "fb_id": "financebench_id_01290",
+      "chunk_id": "33d2da58-0de3-49ad-ada9-4ce9164f680a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Boeing's revenues from U.S. government contracts, which indicates that the U.S. government is a primary customer of Boeing as of FY2022. Thi"
+    },
+    {
+      "fb_id": "financebench_id_00464",
+      "chunk_id": "5d3b28a8-7e99-4085-98d0-2a74de06375e",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the cyclicality of the airline industry, which directly relates to Boeing's business and its exposure to economic fluctuations, customer fin"
+    },
+    {
+      "fb_id": "financebench_id_00494",
+      "chunk_id": "ad8b0030-33c0-405c-9e18-514b06551279",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Boeing's production rate changes for FY2023, specifically mentioning the expected increase in the 787 program to 5 per month and the status "
+    },
+    {
+      "fb_id": "financebench_id_00464",
+      "chunk_id": "97bee020-9e2c-4741-b878-7358d47d814e",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses how market conditions and various factors influence demand for Boeing's commercial aircraft, indicating that the airline industry, which Boe"
+    },
+    {
+      "fb_id": "financebench_id_00585",
+      "chunk_id": "c2c6a1fc-9664-4a2f-af5c-606e79a8ba19",
+      "grader_relevant": false,
+      "grader_reason": "The chunk provides financial data related to Boeing's sales, costs, and income for FY2022 and FY2021, but it does not include any information about the effectiv"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "4e63df02-c42d-4dfa-a14a-a8383c882c20",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the net income attributable to shareowners of The Coca-Cola Company for FY2017, which is necessary to calculate the return on assets (ROA) as"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "8ed7334c-e1de-495c-9dfd-ebf85da7bdd1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the net income for FY2017, which is necessary to calculate the return on assets (ROA) for Coca Cola. It also includes financial data from the"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "ac72b8b5-4708-4d84-a059-699287e8d3fc",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the net income attributable to shareholders of Coca-Cola for FY2017, which is necessary to calculate the return on assets (ROA) as defined in"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "6c479547-3a53-48c7-9174-9ff56a98d9c8",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses diluted net income per share and average shares outstanding, which are not directly related to the calculation of return on assets (ROA) for"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "d51ada7b-3c69-451c-aebb-24485ac097db",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about total assets for FY2016 and FY2017, which is necessary to calculate the average total assets for the ROA formula. It also c"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "988cbb83-fe49-43f9-b512-11cc8cbe4f3e",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides details about the total assets for Coca Cola for FY2016 and FY2017, which are necessary to calculate the average total assets for the ROA for"
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "chunk_id": "afaf94e2-d7c1-4f68-a23a-56e6c607f4d8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about the total equity and total liabilities of Coca Cola, which is relevant for calculating the average total assets needed for "
+    },
+    {
+      "fb_id": "financebench_id_09724",
+      "chunk_id": "7dca15b0-3dbc-44c0-84df-8cb69acaf2a6",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and earnings per share, which are unrelated to the COGS % margin or the income statement line items needed to calculate it."
+    },
+    {
+      "fb_id": "financebench_id_09724",
+      "chunk_id": "a0e7a930-363d-484a-97b5-7f530e9dda71",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the necessary line items from Coca Cola's FY2021 income statement, specifically the Cost of Goods Sold (COGS) and Net Operating Revenues, whi"
+    },
+    {
+      "fb_id": "financebench_id_06272",
+      "chunk_id": "58c82676-baad-442f-a232-9502a47fc355",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the consolidated net income for FY2022, which is necessary to calculate the dividend payout ratio when combined with the total cash dividends"
+    },
+    {
+      "fb_id": "financebench_id_06272",
+      "chunk_id": "f8766358-e5b3-46ea-b21d-7641d4ec8ce1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the total cash dividends paid for FY2022, which is necessary to calculate the dividend payout ratio when combined with net income attributabl"
+    },
+    {
+      "fb_id": "financebench_id_06272",
+      "chunk_id": "15d00a56-d4bd-4909-9c37-bf7b988fa733",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the net income attributable to shareholders for FY2022, which is necessary to calculate the dividend payout ratio. Although it does not provi"
+    },
+    {
+      "fb_id": "financebench_id_06272",
+      "chunk_id": "3166ed04-bcca-4db2-a901-45eaa22443de",
+      "grader_relevant": true,
+      "grader_reason": "The chunk includes the total cash dividends paid for FY2022, which is necessary to calculate the dividend payout ratio when combined with net income attributabl"
+    },
+    {
+      "fb_id": "financebench_id_06272",
+      "chunk_id": "8f817242-300b-4867-80fc-9e54818bcc92",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the consolidated statements of cash flows for Coca Cola but does not provide any information about total cash dividends paid or net income a"
+    },
+    {
+      "fb_id": "financebench_id_10130",
+      "chunk_id": "4a76b448-e20f-49f6-9bd7-acd0a70e8c3b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and earnings per share, which are not directly related to the calculation of days payable outstanding (DPO) or the components nee"
+    },
+    {
+      "fb_id": "financebench_id_02981",
+      "chunk_id": "6e45509b-6967-42c6-b1f0-d024fcf648cf",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and other income-related figures but does not provide any information about operating income or the operating income percentage m"
+    },
+    {
+      "fb_id": "financebench_id_10130",
+      "chunk_id": "f3b5922d-5035-49c2-9e99-36a4ea0124a0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the Cost of Sales (COGS) for FY2020, which is a necessary component for calculating Days Payable Outstanding (DPO). Additionally, it includes"
+    },
+    {
+      "fb_id": "financebench_id_01346",
+      "chunk_id": "f55f4919-9498-47c4-a78f-5f662bda747a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the effective tax rates for Corning for FY2021 and FY2022, which directly answers the question about how much the effective tax rate has chan"
+    },
+    {
+      "fb_id": "financebench_id_02981",
+      "chunk_id": "d79a7085-9e11-4889-b726-91646c15265c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the income statement data for Corning for FY2019, FY2020, and FY2021, including the operating income figures needed to calculate the unadjust"
+    },
+    {
+      "fb_id": "financebench_id_00005",
+      "chunk_id": "00f60f2d-5002-4807-8f79-8c9ff48f1c58",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Corning's current assets, which are necessary to calculate working capital. Working capital is defined as current assets mi"
+    },
+    {
+      "fb_id": "financebench_id_00005",
+      "chunk_id": "009688a8-0c12-4af0-9fc1-852924810e54",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about current liabilities, which is essential for calculating working capital. Working capital is defined as current assets minus"
+    },
+    {
+      "fb_id": "financebench_id_04209",
+      "chunk_id": "091fff8d-f807-4e61-a4b6-5ce261fd0eed",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liabilities and equity but does not provide any information about total assets for Costco at the end of FY2021."
+    },
+    {
+      "fb_id": "financebench_id_04209",
+      "chunk_id": "03933905-76d3-43d1-a0bf-0a201b4c023b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the total assets amount for Costco at the end of FY2021, which is $59,268 million, directly answering the question."
+    },
+    {
+      "fb_id": "financebench_id_00790",
+      "chunk_id": "273d8501-dda7-4375-8126-ceb1be920a51",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data from CVS Health's FY2022 consolidated statements, including revenues and operating costs, which are essential components for a"
+    },
+    {
+      "fb_id": "financebench_id_01107",
+      "chunk_id": "18a86cd1-76ff-4a8c-adc0-304445b77dc0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses ongoing legal battles involving CVS Health, specifically mentioning lawsuits related to pricing litigation, which is relevant to the questio"
+    },
+    {
+      "fb_id": "financebench_id_00790",
+      "chunk_id": "cdf9083f-a83c-4eed-8875-d4dcf1b40660",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data from the consolidated balance sheets, including property and equipment, which are key components in assessing whether CVS Heal"
+    },
+    {
+      "fb_id": "financebench_id_01107",
+      "chunk_id": "8767de33-95fc-4456-837c-6167d2d863e7",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses CVS Health's ongoing legal battles related to opioid claims, specifically mentioning settlements from 2022, which directly addresses the que"
+    },
+    {
+      "fb_id": "financebench_id_01107",
+      "chunk_id": "14634dea-a0a4-4147-91cc-c35f716fc909",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses ongoing lawsuits and investigations involving CVS Health related to its PBM practices, which is directly relevant to the question about mate"
+    },
+    {
+      "fb_id": "financebench_id_01244",
+      "chunk_id": "ce65d109-3b30-4bf7-af92-f4143e41c887",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about CVS Health's dividends, specifically mentioning the quarterly cash dividend amounts for 2022, which includes Q2 of FY2022. "
+    },
+    {
+      "fb_id": "financebench_id_00822",
+      "chunk_id": "0d4bfe27-e90b-4ff3-9072-2a33a5329661",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed voting results for board member nominees, including the number of votes against each nominee, which directly addresses the question "
+    },
+    {
+      "fb_id": "financebench_id_00839",
+      "chunk_id": "86316aa5-f7b0-432b-b965-762a71a1b1ec",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Mary N. Dillon, the new CEO of Foot Locker, including her previous role as Chief Executive Officer of Ulta Beauty, Inc., wh"
+    },
+    {
+      "fb_id": "financebench_id_01244",
+      "chunk_id": "4b78a004-fba3-431a-b109-7ff19c39e6f3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about CVS Health's dividend payments, specifically mentioning the quarterly cash dividend amounts for 2022, which directly relate"
+    },
+    {
+      "fb_id": "financebench_id_04103",
+      "chunk_id": "14131c83-17e3-43d5-bd94-ce8879a4fbea",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the FY2019 net sales and cost of sales figures, which are necessary to calculate the cash conversion cycle (CCC) for General Mills. Specifica"
+    },
+    {
+      "fb_id": "financebench_id_04103",
+      "chunk_id": "2db92e8f-47b5-49e1-8e81-832f6af42678",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides key financial data from the Consolidated Balance Sheets of General Mills, including figures for accounts receivable, inventories, and account"
+    },
+    {
+      "fb_id": "financebench_id_03471",
+      "chunk_id": "990d603c-53ca-4379-b6cd-e0249baf7334",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total current assets and total current liabilities for General Mills as of May 31, 2020, which are necessary to calculate the working cap"
+    },
+    {
+      "fb_id": "financebench_id_03471",
+      "chunk_id": "2ed0e234-ccfc-4f52-806c-6618b83f458f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information on total current liabilities, which is necessary for calculating the working capital ratio. It also implies the presence of curre"
+    },
+    {
+      "fb_id": "financebench_id_04103",
+      "chunk_id": "77750b77-5d78-4924-9485-d145eace4243",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses total liabilities, stockholders' equity, and other financial metrics that are not directly related to the cash conversion cycle (CCC), which"
+    },
+    {
+      "fb_id": "financebench_id_04854",
+      "chunk_id": "56e357af-0636-4a02-ad70-bf0c042d97e4",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flow changes and cash equivalents but does not provide specific information about cash from operations or capital expenditures (capex) "
+    },
+    {
+      "fb_id": "financebench_id_04854",
+      "chunk_id": "418ff7a3-d5d5-409e-8421-379c724c5457",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from financing activities and investing activities but does not provide information about cash from operations or capital expendi"
+    },
+    {
+      "fb_id": "financebench_id_04854",
+      "chunk_id": "c11059d1-82d9-445c-a6fb-9635a1d3e956",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information on 'Net cash provided by operating activities' and 'Purchases of land, buildings, and equipment', which are necessary components "
+    },
+    {
+      "fb_id": "financebench_id_10136",
+      "chunk_id": "8e4d977e-bc41-4462-8b6f-22700d2361d3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information from the income statement for FY2022, specifically the net earnings attributable to shareholders, which is necessary for calculat"
+    },
+    {
+      "fb_id": "financebench_id_10136",
+      "chunk_id": "0f9f19e5-f377-4e18-b69c-5614f2604a6b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about dividends paid, which is necessary for calculating the retention ratio. It also provides context related to the cash flow s"
+    },
+    {
+      "fb_id": "financebench_id_10136",
+      "chunk_id": "c197d546-fc45-48e7-bf3e-1492ce6cf678",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net earnings attributable to General Mills for FY2022, which is necessary for calculating the retention ratio. It also includes dividends per"
+    },
+    {
+      "fb_id": "financebench_id_10136",
+      "chunk_id": "9d7980bb-1f37-4749-aff9-2419da4aaeef",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about net earnings for FY2022, which is necessary for calculating the retention ratio. It also provides context related to Genera"
+    },
+    {
+      "fb_id": "financebench_id_04854",
+      "chunk_id": "5c262479-3ee4-46a4-afac-80c3293ea89a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information from the consolidated statements of cash flows for General Mills for FY2020, which is necessary to calculate free cash flow (FCF)"
+    },
+    {
+      "fb_id": "financebench_id_10136",
+      "chunk_id": "603925a2-acd5-48ac-8fe8-a48b026628c3",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows related to operating, investing, and financing activities but does not provide any information about total cash dividends paid or"
+    },
+    {
+      "fb_id": "financebench_id_00711",
+      "chunk_id": "4deccadb-5093-43c4-9bff-5916dcf85c28",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the inventory amount for FY2022, which is necessary to calculate the inventory turnover ratio. It also mentions the context of the company's "
+    },
+    {
+      "fb_id": "financebench_id_00711",
+      "chunk_id": "c4207333-49d6-4974-a530-77c7fec8f1e7",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides sales to customers and cost of products sold for FY2022, which are essential components needed to calculate the inventory turnover ratio. Thi"
+    },
+    {
+      "fb_id": "financebench_id_00956",
+      "chunk_id": "a6b8e55f-16a5-474f-b917-a2a45e0c8fc4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific financial data for JnJ's FY2022, including sales growth figures and comparisons to previous years, which are essential for assessing"
+    },
+    {
+      "fb_id": "financebench_id_00669",
+      "chunk_id": "6a744e5b-3b5e-4c39-87f6-468f160439df",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the cost of products sold, which is a key component that can affect gross margin. It also mentions specific factors driving changes in costs"
+    },
+    {
+      "fb_id": "financebench_id_01484",
+      "chunk_id": "50e048c7-e89d-43fc-a780-cd0648eb7b47",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific sales figures and percentage changes for both U.S. and international sales for FY2022, which directly addresses the question compari"
+    },
+    {
+      "fb_id": "financebench_id_00651",
+      "chunk_id": "d8d72e31-5d37-4a51-bf21-88641435b67c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about JnJ's adjusted EPS for FY2022, including its growth rate of 3.6%. This information is relevant as it sets a baseline for un"
+    },
+    {
+      "fb_id": "financebench_id_01488",
+      "chunk_id": "dd05fc62-88b5-42e3-a3f2-ddbb40d5f3ee",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses Johnson & Johnson's financial updates and guidance but does not mention any specific business segment being treated as a discontinued operat"
+    },
+    {
+      "fb_id": "financebench_id_01488",
+      "chunk_id": "94572d9a-4910-4f04-a0d7-26b465897d37",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses Johnson & Johnson's financial guidance and sales growth but does not mention which business segment will be treated as a discontinued operat"
+    },
+    {
+      "fb_id": "financebench_id_01488",
+      "chunk_id": "93cccfd5-f9f0-46ea-8576-8d8151a477e5",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the separation of Kenvue Inc., which was formerly Johnson & Johnson's Consumer Health business. This directly relates to the question about "
+    },
+    {
+      "fb_id": "financebench_id_01490",
+      "chunk_id": "93cccfd5-f9f0-46ea-8576-8d8151a477e5",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the completion of the separation of Johnson & Johnson's Consumer Health business segment, which is directly related to the question about th"
+    },
+    {
+      "fb_id": "financebench_id_01490",
+      "chunk_id": "dd05fc62-88b5-42e3-a3f2-ddbb40d5f3ee",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the cash proceeds from the Kenvue debt offering and IPO, which is relevant to the financial impact of the separation of JnJ"
+    },
+    {
+      "fb_id": "financebench_id_01490",
+      "chunk_id": "94572d9a-4910-4f04-a0d7-26b465897d37",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses overall financial expectations and guidance for Johnson & Johnson in 2023, but it does not provide specific information about the gain from "
+    },
+    {
+      "fb_id": "financebench_id_01491",
+      "chunk_id": "dd05fc62-88b5-42e3-a3f2-ddbb40d5f3ee",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the cash proceeds of $13.2 billion that Johnson & Johnson secured from the Kenvue debt offering and initial public"
+    },
+    {
+      "fb_id": "financebench_id_01491",
+      "chunk_id": "94572d9a-4910-4f04-a0d7-26b465897d37",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses overall financial expectations and guidance for Johnson & Johnson in 2023, but it does not provide any specific information regarding the ca"
+    },
+    {
+      "fb_id": "financebench_id_01491",
+      "chunk_id": "93cccfd5-f9f0-46ea-8576-8d8151a477e5",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the completion of the separation of Kenvue from Johnson & Johnson, which is directly related to the question about the cash proceeds from th"
+    },
+    {
+      "fb_id": "financebench_id_01487",
+      "chunk_id": "00e00bc1-1f04-4247-9bbe-12b3a9eb15a1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the condensed consolidated statement of earnings for Johnson & Johnson, which includes sales figures and percentages for Q2 of FY2023 and Q2 "
+    },
+    {
+      "fb_id": "financebench_id_00299",
+      "chunk_id": "d60f9299-f9ce-4921-b2c2-598142ad72a0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net revenue figures for JPM's business segments (Asset & Wealth Management and Corporate) for the three months ended March 31, 2021, which is"
+    },
+    {
+      "fb_id": "financebench_id_00299",
+      "chunk_id": "b0f208e8-7a7e-4e77-abdb-19fcb8008690",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net revenue figures for JPM's business segments (Consumer & Community Banking, Corporate & Investment Bank, and Commercial Banking) for the p"
+    },
+    {
+      "fb_id": "financebench_id_02119",
+      "chunk_id": "75d1303c-a013-4f36-bf1d-b464429154e5",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses capital-related metrics and performance measures of JPMorgan Chase for Q1 2021, but it does not provide any information about the liquidatio"
+    },
+    {
+      "fb_id": "financebench_id_00206",
+      "chunk_id": "5be6648f-3bc6-4d17-ae8a-476181e77065",
+      "grader_relevant": false,
+      "grader_reason": "The chunk provides an overview of JPMorgan Chase's business operations and structure but does not contain any information about gross margins or their historica"
+    },
+    {
+      "fb_id": "financebench_id_01487",
+      "chunk_id": "00823e5c-f916-4e03-bc76-1f936e093bc0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about JnJ's net earnings as a percent of sales for both Q2 of FY2023 (20.1%) and Q2 of FY2022 (20.0%), which directly relates to "
+    },
+    {
+      "fb_id": "financebench_id_00206",
+      "chunk_id": "8c1dfc50-658a-4cfa-ab55-4a5b28065548",
+      "grader_relevant": false,
+      "grader_reason": "The chunk provides general information about JPMorgan Chase & Co. and its operations but does not address gross margins or their historical consistency. It does"
+    },
+    {
+      "fb_id": "financebench_id_00394",
+      "chunk_id": "738902cd-851a-438c-9c75-e4f76bbc1214",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net income figures for different business segments of JPM for the period ended June 30, 2022, which is relevant to identifying which segment "
+    },
+    {
+      "fb_id": "financebench_id_00394",
+      "chunk_id": "2616024b-c21c-4dea-8bea-7a54b9be5f54",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides net income figures for JPM's business segments (Consumer & Community Banking, Corporate & Investment Bank, and Commercial Banking) for Q2 202"
+    },
+    {
+      "fb_id": "financebench_id_02049",
+      "chunk_id": "e523ea8d-ca49-4782-b36a-897c6065f79c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the average total VaR for JPM in the second fiscal quarter of 2023 and compares it to the same period in the prior year, in"
+    },
+    {
+      "fb_id": "financebench_id_10499",
+      "chunk_id": "f89ccf10-381c-41c0-8946-d3644477fb7e",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liabilities and equity, which are not related to the inventory turnover ratio or the COGS and average inventory needed to calculate it."
+    },
+    {
+      "fb_id": "financebench_id_10499",
+      "chunk_id": "c2566d95-3d3c-43e1-8719-984f50465eb3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the Cost of Products Sold (COGS) for FY2019, which is essential for calculating the inventory turnover ratio. Although it does not provide av"
+    },
+    {
+      "fb_id": "financebench_id_10499",
+      "chunk_id": "6681aee2-aa4f-41ad-8dde-f9f80ad21fe4",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the inventory figures for Kraft Heinz for FY2019 and FY2018, which are necessary to calculate the average inventory for the inventory turnove"
+    },
+    {
+      "fb_id": "financebench_id_04412",
+      "chunk_id": "7ab7e560-3621-4b93-b27f-7289c0254c50",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the FY2020 revenue figure ($65,398 million), which is necessary for calculating the asset turnover ratio. It also includes financial data fro"
+    },
+    {
+      "fb_id": "financebench_id_10499",
+      "chunk_id": "c4db5063-0063-4d11-a349-210b8931ba80",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses shareholders' equity and related financial metrics, which are not relevant to the calculation of Kraft Heinz's FY2019 inventory turnover rat"
+    },
+    {
+      "fb_id": "financebench_id_04412",
+      "chunk_id": "a0d241d3-fb48-409e-98ff-d2ca9dbf6c88",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses earnings and earnings per share, which are not directly related to the calculation of the asset turnover ratio. It does not provide informat"
+    },
+    {
+      "fb_id": "financebench_id_04412",
+      "chunk_id": "4ee95229-c3d9-436e-9a59-1ac549e799c2",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total assets for Lockheed Martin for FY2020, which is necessary to calculate the asset turnover ratio. It also includes the total assets "
+    },
+    {
+      "fb_id": "financebench_id_04412",
+      "chunk_id": "8a4c924f-84ce-4f9c-9214-0bbb851b3732",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total net sales for FY2020, which is necessary to calculate the asset turnover ratio. It also includes financial data from the P&L statem"
+    },
+    {
+      "fb_id": "financebench_id_04412",
+      "chunk_id": "b0f72536-4421-41ab-b048-e5f364f2e4fc",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liabilities and stockholders' equity, which are not directly related to the calculation of the asset turnover ratio. It does not provide inf"
+    },
+    {
+      "fb_id": "financebench_id_03031",
+      "chunk_id": "d5967255-89d4-4244-9880-aefa551f6442",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about total current liabilities, which is necessary to calculate net working capital. It also implies the presence of current ass"
+    },
+    {
+      "fb_id": "financebench_id_03031",
+      "chunk_id": "68f5e392-c031-4c48-a308-e6d1c43dacad",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total current assets and current liabilities for Lockheed Martin as of December 31, 2021, which are necessary to calculate the net workin"
+    },
+    {
+      "fb_id": "financebench_id_03718",
+      "chunk_id": "f0302c49-35e8-4034-a04a-4b3c80f26466",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses expenses, earnings, and earnings per share but does not provide any information about Lockheed Martin's total revenue for FY2020 to FY2022, "
+    },
+    {
+      "fb_id": "financebench_id_04171",
+      "chunk_id": "0ef7e43b-683a-42dc-a1e1-84331a690e33",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the amount of accounts payable for MGM Resorts at the year end FY2018, which is specifically requested in the question."
+    },
+    {
+      "fb_id": "financebench_id_03718",
+      "chunk_id": "4f107c42-ef8f-427d-bfaa-2925c7833b7f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides Lockheed Martin's total net sales for FY2020, FY2021, and FY2022, which are essential for calculating the 2-year total revenue CAGR."
+    },
+    {
+      "fb_id": "financebench_id_04171",
+      "chunk_id": "9e841a5d-64e4-46e7-a588-b34567d65f45",
+      "grader_relevant": false,
+      "grader_reason": "The chunk does not provide any information about accounts payable for MGM Resorts for FY2018. It only includes details about assets and does not mention liabili"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "8323e34b-f6db-4db7-84d7-37b8dd73cda3",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses various expenses and income items but does not provide any information related to capital expenditures (capex) or revenue, which are necessa"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "6628a561-d93e-4a35-b927-2e90f80a9aae",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income, earnings per share, and related financial metrics, but it does not provide any information about capital expenditures (capex) or"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "895d3053-13a6-46b4-9b6b-46ffb7889893",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the consolidated statements of operations for MGM Resorts, focusing on revenues and expenses, but does not provide any information about cap"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "50738400-907f-4c31-8900-69b02c4f2e65",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about capital expenditures (capex) for MGM Resorts, specifically the line item 'Capital expenditures, net of construction payable"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "00ecfc5a-4082-4100-98c0-f648a73054bf",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from financing activities and does not provide any information related to capital expenditures (capex) or revenue, which are nece"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "816552bf-05a6-417a-acd9-2e6be5faa7d8",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses financing activities and cash flow disclosures but does not provide any information related to capital expenditures (capex) or revenue, whic"
+    },
+    {
+      "fb_id": "financebench_id_01254",
+      "chunk_id": "4804b6f5-b5d7-4c52-a96b-522b3e5dd0fe",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses MGM Resorts' dividend policy, specifically mentioning that they maintained an annual dividend of $0.01 per share throughout 2022, which dire"
+    },
+    {
+      "fb_id": "financebench_id_00382",
+      "chunk_id": "abd90469-50a4-4209-8aee-c44447f459e7",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed EBITDAR figures for different regions, including Las Vegas Strip Resorts and Regional Operations, which are directly relevant to ide"
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "chunk_id": "0b32e3d5-cd1a-43f8-a63c-30c3eb293425",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from operating activities and various adjustments to net income, but it does not provide any information about capital expenditur"
+    },
+    {
+      "fb_id": "financebench_id_01911",
+      "chunk_id": "6cb43880-788d-4612-83df-ff81745e81d1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information about 'Interest expense, net of amounts capitalized' which is necessary for calculating MGM's interest coverage ratio. It also pr"
+    },
+    {
+      "fb_id": "financebench_id_01911",
+      "chunk_id": "703134b0-d215-4cc8-8a9b-ef0ee61f3e4f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the annual Interest Expense figure (e.g., 'Interest expense, net of amounts capitalized') which is necessary for calculating MGM's interest c"
+    },
+    {
+      "fb_id": "financebench_id_01911",
+      "chunk_id": "0584a084-d27c-4e6c-aa0e-f47d8cb59573",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the reconciliation of net income to adjusted EBITDAR but does not provide the specific Adjusted EBIT figure or the annual Interest Expense n"
+    },
+    {
+      "fb_id": "financebench_id_01912",
+      "chunk_id": "a43d2d6e-2769-4f66-a4a3-96b548b3e058",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial performance data for the Las Vegas Strip Resorts, which is relevant to MGM's topline performance during FY2022. It includes net rev"
+    },
+    {
+      "fb_id": "financebench_id_01912",
+      "chunk_id": "2ba81dd1-8b06-4799-8c78-5a56728ca7a5",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses financial metrics and performance figures for MGM Resorts, but it does not provide any information about the regional performance or specify"
+    },
+    {
+      "fb_id": "financebench_id_01912",
+      "chunk_id": "d278ebf9-6f95-49df-8dde-938d61222e8f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial performance metrics for MGM, including net revenues and Adjusted Property EBITDAR, which are relevant to assessing the topline perf"
+    },
+    {
+      "fb_id": "financebench_id_04700",
+      "chunk_id": "a636c348-d056-484e-aa53-813f63eeb5a8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the total cost of revenue for Microsoft for FY2016, which includes the Cost of Goods Sold (COGS) information needed to answer the question."
+    },
+    {
+      "fb_id": "financebench_id_01912",
+      "chunk_id": "740095b0-3fff-4aba-aa31-77d98c9e3291",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific financial performance data for MGM China, including net revenues and EBITDAR loss, which are directly related to the topline perform"
+    },
+    {
+      "fb_id": "financebench_id_00407",
+      "chunk_id": "749ed9ff-b382-4d40-be35-394c439f9e19",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed information about MGM's short-term investments, specifically listing various types of debt investments and their fair values as of J"
+    },
+    {
+      "fb_id": "financebench_id_04700",
+      "chunk_id": "70761c88-d0f3-4dbf-8915-042b6754ca16",
+      "grader_relevant": false,
+      "grader_reason": "The chunk does not contain any information about the Cost of Goods Sold (COGS) for Microsoft in FY2016. It discusses other financial metrics such as operating i"
+    },
+    {
+      "fb_id": "financebench_id_00552",
+      "chunk_id": "93936b50-d059-4751-b8c1-7fa9b390e915",
+      "grader_relevant": false,
+      "grader_reason": "The chunk provides information about Microsoft's balance sheet, including assets and current liabilities, but does not mention any details regarding the company"
+    },
+    {
+      "fb_id": "financebench_id_00552",
+      "chunk_id": "4d22b576-a8fb-4fce-b4e4-27db842ef869",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Microsoft's long-term debt for FY2023 and FY2022, which is directly relevant to assessing whether Microsoft has increased i"
+    },
+    {
+      "fb_id": "financebench_id_04458",
+      "chunk_id": "58c71133-031d-4321-a843-67b6a562a09d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flow activities and non-cash items but does not provide specific information about unadjusted operating income or depreciation and amor"
+    },
+    {
+      "fb_id": "financebench_id_04458",
+      "chunk_id": "120561b5-4fab-4c9c-ab7a-d3895a1eb63a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the consolidated statements of operations for Netflix for the year ended December 31, 2015, which includes the unadjusted operating income ne"
+    },
+    {
+      "fb_id": "financebench_id_03282",
+      "chunk_id": "8efb81a2-6f10-419b-84bc-b418bf401f01",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total current liabilities for Netflix at year end FY2017, which is specifically what the question is asking for."
+    },
+    {
+      "fb_id": "financebench_id_04458",
+      "chunk_id": "0d0eee2a-6663-4c4f-b721-9eaa125355e1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information from the consolidated statements of cash flows for FY2015, including depreciation and amortization (D&A) figures, which are neces"
+    },
+    {
+      "fb_id": "financebench_id_03282",
+      "chunk_id": "12547899-3bdd-4dd8-a545-107e4dd9793a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the total current liabilities for Netflix as of December 31, 2017, which is directly relevant to the question asking for Netflix's year end F"
+    },
+    {
+      "fb_id": "financebench_id_03531",
+      "chunk_id": "b4423cf9-66ec-4c1d-a1b9-a1ae51f4cd96",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses liabilities and shareholders' equity but does not provide any information about total current assets for Nike at the end of FY2019."
+    },
+    {
+      "fb_id": "financebench_id_04302",
+      "chunk_id": "acfde6a4-c732-42f6-b0a2-941ed7ba6e26",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the necessary financial data for Nike's revenues and cost of sales for FY2016 to FY2018, which are essential for calculating the cost of good"
+    },
+    {
+      "fb_id": "financebench_id_03531",
+      "chunk_id": "05e53b83-355e-444f-a2ef-e3fe5cdc1240",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the total current assets for Nike at the end of FY2019, which is specifically what the question is asking for."
+    },
+    {
+      "fb_id": "financebench_id_04080",
+      "chunk_id": "95ed48e3-def9-46ad-91da-3b008d923e9e",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the FY2021 Cost of Sales (COGS) for Nike, which is necessary to calculate the inventory turnover ratio as defined in the question."
+    },
+    {
+      "fb_id": "financebench_id_04080",
+      "chunk_id": "f045d1a2-8738-4bd7-a442-689d59a84413",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses accounts payable, current liabilities, long-term debt, and shareholders' equity, which are not related to the income statement or inventory "
+    },
+    {
+      "fb_id": "financebench_id_01163",
+      "chunk_id": "e0144ee0-265e-4458-bdd7-70b28d85dab5",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about cash flows from operations for Nike in FY2023, which is directly relevant to determining which activities brought in the mo"
+    },
+    {
+      "fb_id": "financebench_id_04458",
+      "chunk_id": "70c98870-03f0-45dc-a327-f514fbf4ca7f",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from investing and financing activities, but does not provide any information related to the statement of income, unadjusted oper"
+    },
+    {
+      "fb_id": "financebench_id_04080",
+      "chunk_id": "b32e20c3-f2b2-42ff-97fa-5d06d41bdd40",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about inventories for FY2021, which is necessary to calculate the inventory turnover ratio as it includes the inventory figure ne"
+    },
+    {
+      "fb_id": "financebench_id_01163",
+      "chunk_id": "f09399c4-2ebe-4735-86e9-277d18b276b6",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed cash flow data for operations, investing, and financing activities for Nike in FY2023, which directly relates to the question about "
+    },
+    {
+      "fb_id": "financebench_id_00080",
+      "chunk_id": "3ff2acee-a214-44f0-9468-f7734b612491",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides data on current liabilities, which is necessary to calculate working capital. Working capital is defined as current assets minus current liab"
+    },
+    {
+      "fb_id": "financebench_id_01163",
+      "chunk_id": "35c75d53-2e04-46e8-907a-370774d7cbbb",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides detailed cash flow information related to financing activities, which is necessary to determine the overall cash flow performance of Nike in "
+    },
+    {
+      "fb_id": "financebench_id_00080",
+      "chunk_id": "49cbd195-29c8-40b1-b011-24dc0952c963",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses equity and liabilities but does not provide any information about working capital or its components, nor does it address whether working cap"
+    },
+    {
+      "fb_id": "financebench_id_04980",
+      "chunk_id": "f58d4cc0-1f0c-4cd7-838d-ef5f976cc7a3",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the capital spending amount for FY2021, which is directly relevant to the question about PepsiCo's capital expenditure for that fiscal year."
+    },
+    {
+      "fb_id": "financebench_id_04980",
+      "chunk_id": "b606a796-5fa9-406c-b35f-1cc77460fc66",
+      "grader_relevant": false,
+      "grader_reason": "The chunk does not provide any information regarding the capital expenditure amount for PepsiCo in FY2021. It only includes details about operating activities a"
+    },
+    {
+      "fb_id": "financebench_id_00080",
+      "chunk_id": "80f151f9-9b98-4110-ab70-e4863681692c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about PayPal's current assets and current liabilities, which are essential components for calculating working capital. Working ca"
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "96389f0a-fd7c-4ffe-bafd-1b7c36e2ba4d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk does not provide any information about the geographies where PepsiCo operates as of FY2022. It mainly discusses risk factors and general company defin"
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "035679fb-4abb-4e25-a6a2-80fff7b4aad6",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about PepsiCo's operations in more than 200 countries and territories, which is relevant to identifying the geographies in which "
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "d65b3e1c-86af-4d73-afac-2524e9051e54",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses forward-looking statements and risks related to Pepsico's future performance, but it does not provide any information about the geographies "
+    },
+    {
+      "fb_id": "financebench_id_04980",
+      "chunk_id": "d2ac9520-c6bc-4a33-ae75-4532d8f2f32b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains information related to the statement of cash flows, which is relevant for determining the capital expenditure amount for PepsiCo in FY2021. S"
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "12017d31-e5a1-4f09-a47c-45921e4633d8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the geographical segments where PepsiCo operates, specifically mentioning North America, Latin America, and Europe, which d"
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "5b37953e-2b2b-4a13-9e29-01a031302e98",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses forward-looking statements and does not provide any information about the geographies where Pepsico operates as of FY2022."
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "e5656aee-41ee-4a5c-afec-b6c67993d680",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the geographies where Pepsico operates, specifically mentioning Africa, the Middle East, South Asia, and the Asia Pacific r"
+    },
+    {
+      "fb_id": "financebench_id_00735",
+      "chunk_id": "0d9bc873-d321-4ed1-9e0e-8923bd271159",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses legal proceedings involving Pepsico, which is directly related to the question about ongoing legal battles from FY2022 and FY2021."
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "chunk_id": "068bc2fb-2b7b-45bd-b516-f15ae6d30a62",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the geographies where Pepsico operates, including regions such as Latin America, Europe, Africa, the Middle East, "
+    },
+    {
+      "fb_id": "financebench_id_01328",
+      "chunk_id": "40302df9-1313-4e70-a341-a35c4f9dd0f0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about total restructuring and impairment charges for FY2022, which directly relates to the question about restructuring costs in "
+    },
+    {
+      "fb_id": "financebench_id_01328",
+      "chunk_id": "b3a71309-32b0-4c54-b24a-c49d92c1f4ae",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses a multi-year productivity plan and general guidance on restructuring and impairment charges but does not provide specific information about "
+    },
+    {
+      "fb_id": "financebench_id_01328",
+      "chunk_id": "1b52d1cd-2d3c-47ef-9ed5-d7024626bb98",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses pre-tax charges related to restructuring costs, which are relevant to the question about Pepsico's income statements for FY2022. It provides"
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "chunk_id": "5cff2f4f-3ca8-4bd7-aec3-adc26e9668a3",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and related metrics, which are not directly relevant to calculating unadjusted EBITDA or capex for FY2022."
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "chunk_id": "62d03e9c-a119-4bdd-a6e3-eb5a8a61c3a1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the operating profit for FY2022, which is a component needed to calculate unadjusted EBITDA. It also includes relevant financial data from th"
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "chunk_id": "e9acee76-cf50-4b5c-8db5-0b6cddf052aa",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about capital spending (capex) for FY2022, which is necessary to calculate unadjusted EBITDA less capex. It also includes the net"
+    },
+    {
+      "fb_id": "financebench_id_04481",
+      "chunk_id": "62d03e9c-a119-4bdd-a6e3-eb5a8a61c3a1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the operating profit for FY2022, which is necessary for calculating unadjusted EBITDA. It also includes relevant financial data from the P&L "
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "chunk_id": "691c3761-50ec-4b0e-9660-5298f5207ff1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the depreciation and amortization figure for FY2022, which is necessary to calculate unadjusted EBITDA as defined in the question. It also in"
+    },
+    {
+      "fb_id": "financebench_id_04481",
+      "chunk_id": "5cff2f4f-3ca8-4bd7-aec3-adc26e9668a3",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and earnings per share, which are not directly related to the calculation of unadjusted EBITDA or the EBITDA % margin for FY2022."
+    },
+    {
+      "fb_id": "financebench_id_04481",
+      "chunk_id": "e9acee76-cf50-4b5c-8db5-0b6cddf052aa",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash payments, pension expenses, tax charges, and changes in assets and liabilities, but does not provide any information related to unadjus"
+    },
+    {
+      "fb_id": "financebench_id_04481",
+      "chunk_id": "691c3761-50ec-4b0e-9660-5298f5207ff1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the depreciation and amortization (D&A) figure for FY2022, which is necessary for calculating unadjusted EBITDA. It also includes operating i"
+    },
+    {
+      "fb_id": "financebench_id_04481",
+      "chunk_id": "17136bb0-ecda-4bd5-a259-b7279c3357a7",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses investing activities and cash flow details that are not directly related to the calculation of unadjusted EBITDA % margin or the operating i"
+    },
+    {
+      "fb_id": "financebench_id_00705",
+      "chunk_id": "2ac46b25-fdf6-4f64-9a03-5dd7b41b72fb",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the general terms and conditions of the 2023 Five Year Credit Agreement but does not provide specific information about the increase in the "
+    },
+    {
+      "fb_id": "financebench_id_01482",
+      "chunk_id": "a4e709f3-9b64-4814-a226-8ed51041d419",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific details about the outcome of the shareholder vote on the proposal for a congruency report on net-zero emissions policies, which dire"
+    },
+    {
+      "fb_id": "financebench_id_00705",
+      "chunk_id": "6582559a-91c6-451d-824a-b441dae7ceb9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about PepsiCo's 2023 Five Year Credit Agreement, including the initial borrowing limit of $4,200,000,000 and the potential increa"
+    },
+    {
+      "fb_id": "financebench_id_00705",
+      "chunk_id": "796a0e72-bf2d-47f9-8b32-717f45ecfa32",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about PepsiCo's new five year unsecured revolving credit agreement, including the amount it was increased to ($4,200,000"
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "chunk_id": "17136bb0-ecda-4bd5-a259-b7279c3357a7",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about capital spending, which is necessary to calculate EBITDA less capex. It also includes figures from the cash flow statement,"
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "chunk_id": "2ac46b25-fdf6-4f64-9a03-5dd7b41b72fb",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the 2023 Five Year Credit Agreement, which is relevant to understanding the borrowing capacity of PepsiCo under its unsecured revolving cred"
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "chunk_id": "530a33b3-69e1-4e45-a68c-4f645dc9aff1",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the total amount PepsiCo can borrow under its unsecured revolving credit agreements, stating that it can borrow up"
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "chunk_id": "6582559a-91c6-451d-824a-b441dae7ceb9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the total amount PepsiCo can borrow under its unsecured revolving credit agreements, which is directly related to "
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "chunk_id": "03d2fb74-1450-49bf-89a5-6faf506f61f9",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about PepsiCo's unsecured revolving credit agreements, specifically mentioning the total amount of the new agreement ($4,200,000,"
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "chunk_id": "796a0e72-bf2d-47f9-8b32-717f45ecfa32",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about PepsiCo's unsecured revolving credit agreements, specifically mentioning the new $4,200,000,000 five year unsecured revolvi"
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "chunk_id": "9fc1f467-c79c-4893-aefd-61639549daa2",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the 2023 364 Day Credit Agreement, which is relevant to the question about the total amount PepsiCo may borrow under its unsecured revolving"
+    },
+    {
+      "fb_id": "financebench_id_01474",
+      "chunk_id": "f0bc0980-57b3-4a20-82a6-d735fa751f7d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Pepsico's performance and business momentum in FY2023Q1, which directly relates to the reason for raising full year guidance for FY2023. It "
+    },
+    {
+      "fb_id": "financebench_id_01476",
+      "chunk_id": "f0bc0980-57b3-4a20-82a6-d735fa751f7d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about Pepsico's guidance for core constant currency EPS growth, indicating an increase from 8 percent to 9 percent, whic"
+    },
+    {
+      "fb_id": "financebench_id_00302",
+      "chunk_id": "42e99a59-589d-486c-baf2-a42fba441422",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Pfizer's Property, Plant, and Equipment (PPNE) for FY20 and FY21, specifically stating the values for both years (14,882 mi"
+    },
+    {
+      "fb_id": "financebench_id_00702",
+      "chunk_id": "36b56205-5420-46eb-813b-c4b31214e46b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses financial data from FY2021 and does not provide any information about events affecting Pfizer's net income in 2019."
+    },
+    {
+      "fb_id": "financebench_id_02416",
+      "chunk_id": "05b2fc71-43c9-48b9-a3a5-c2e9862c54da",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the acquisition of Trillium by Pfizer, which is directly relevant to the question about companies acquired by Pfizer."
+    },
+    {
+      "fb_id": "financebench_id_00702",
+      "chunk_id": "f00d9cbb-a132-4d27-a2d9-ef9c4ca7db89",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides financial data for Pfizer for the year 2019, including net income and various components of revenues and expenses. This information is releva"
+    },
+    {
+      "fb_id": "financebench_id_02416",
+      "chunk_id": "9940b3bc-9530-41cb-baa9-a21e1eb011be",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses the acquisition of Array by Pfizer, which is directly relevant to the question about companies acquired by Pfizer."
+    },
+    {
+      "fb_id": "financebench_id_02416",
+      "chunk_id": "49c6363d-9192-4823-b052-f86f01332346",
+      "grader_relevant": true,
+      "grader_reason": "The chunk mentions the acquisition of Therachon by Pfizer, which is relevant to the question about companies acquired by Pfizer."
+    },
+    {
+      "fb_id": "financebench_id_02416",
+      "chunk_id": "a71555f2-68a9-4c49-b17d-e1535366e26c",
+      "grader_relevant": true,
+      "grader_reason": "The chunk mentions the acquisition of Therachon by Pfizer, which is relevant to the question about companies acquired by Pfizer. It also discusses the financial"
+    },
+    {
+      "fb_id": "financebench_id_00283",
+      "chunk_id": "e861597a-7b4b-4b6c-8869-f65211c9f0d7",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the expected costs associated with the separation of Upjohn, which directly answers the question regarding how muc"
+    },
+    {
+      "fb_id": "financebench_id_00724",
+      "chunk_id": "25056e9a-dcdb-43fb-a604-602f12a080d0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides year-over-year revenue data for Pfizer across different geographic regions for Q2 2023, which is directly relevant to identifying which regio"
+    },
+    {
+      "fb_id": "financebench_id_02419",
+      "chunk_id": "e861597a-7b4b-4b6c-8869-f65211c9f0d7",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses Pfizer's business segments and mentions the separation of Upjohn, which is relevant to the question about whether Pfizer is spinning off any"
+    },
+    {
+      "fb_id": "financebench_id_00746",
+      "chunk_id": "d0e0455a-0a74-4027-bc66-4a3efa8aef16",
+      "grader_relevant": false,
+      "grader_reason": "The chunk provides general information about Ulta Beauty's 10-K filing, including the company's name, jurisdiction, and address, but does not mention any specif"
+    },
+    {
+      "fb_id": "financebench_id_00521",
+      "chunk_id": "e54cd983-a44d-4fa8-91c1-94897602d19d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses financial metrics related to operating assets, liabilities, and cash flows, but does not mention any acquisitions made by Ulta Beauty in FY2"
+    },
+    {
+      "fb_id": "financebench_id_00521",
+      "chunk_id": "13cb15e4-16a1-44e2-b328-0ea3f5052388",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the consolidated statements of cash flows for Ulta Beauty, focusing on financial metrics such as net income and adjustments to reconcile net"
+    },
+    {
+      "fb_id": "financebench_id_00603",
+      "chunk_id": "e04f44a9-d8a0-46d9-b7d8-a940a4280fcb",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the increase in merchandise inventories at the end of FY2022, which is relevant to understanding the factors that may have "
+    },
+    {
+      "fb_id": "financebench_id_00605",
+      "chunk_id": "5453549a-29a8-4e19-bcc8-a52b8d72b69a",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses share repurchases in fiscal 2022, not FY 2023, and does not provide any information about Ulta Beauty's stock repurchases for FY 2023 or the"
+    },
+    {
+      "fb_id": "financebench_id_00601",
+      "chunk_id": "cb101214-da24-4158-b8ca-02b1dea58cb0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk discusses SG&A expenses and provides specific information about the reduction in SG&A as a percentage of net sales in FY2023, including the factors th"
+    },
+    {
+      "fb_id": "financebench_id_00746",
+      "chunk_id": "4952ba92-5d1a-4751-ac6b-4a65d8a6f282",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the common stock of Ulta Beauty and its registration on the NASDAQ, but it does not provide any information about debt securities registered"
+    },
+    {
+      "fb_id": "financebench_id_02024",
+      "chunk_id": "d2d0f940-7dae-482d-8d30-e4386153072e",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses general accounting practices related to employee benefit plans but does not provide specific information about Verizon's expected payments f"
+    },
+    {
+      "fb_id": "financebench_id_02024",
+      "chunk_id": "97b5f944-9397-448d-96e6-9387a09d9d9f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific information about the expected benefit payments to retirees for the year 2024, which directly answers the question regarding Verizon"
+    },
+    {
+      "fb_id": "financebench_id_00859",
+      "chunk_id": "dfda6d03-400e-40a4-b7db-796b4508586d",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about the derivative instruments used by Verizon to manage exposure to fluctuations in foreign currency exchange rates and intere"
+    },
+    {
+      "fb_id": "financebench_id_00606",
+      "chunk_id": "cb101214-da24-4158-b8ca-02b1dea58cb0",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about SG&A expenses as a percentage of net sales, which is relevant to understanding Ulta Beauty's wage expenses in relation to n"
+    },
+    {
+      "fb_id": "financebench_id_00216",
+      "chunk_id": "c856bff4-afaa-4c95-b72b-6f0cd274cf58",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Verizon's current assets, which are necessary to calculate the quick ratio. The quick ratio is a measure of liquidity that "
+    },
+    {
+      "fb_id": "financebench_id_00216",
+      "chunk_id": "10299557-9582-456c-b355-ed8553863781",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Verizon's current liabilities, which is essential for calculating the quick ratio. The quick ratio is a liquidity metric th"
+    },
+    {
+      "fb_id": "financebench_id_00566",
+      "chunk_id": "42b67d1c-67f2-4ea5-9ccd-2ced282801cd",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific figures for Verizon's long-term debt obligations as of December 31, 2022 and 2021, which directly relates to the question of whether"
+    },
+    {
+      "fb_id": "financebench_id_00215",
+      "chunk_id": "c856bff4-afaa-4c95-b72b-6f0cd274cf58",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides information about Verizon's property, plant, and equipment, which is a key component in assessing whether the business is capital intensive. "
+    },
+    {
+      "fb_id": "financebench_id_00215",
+      "chunk_id": "e882c96b-9e0b-47eb-8f7a-2ec8db0a9f76",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses Verizon's consolidated operating revenues for FY 2022 and comparisons to FY 2021, but it does not provide any information about capital inte"
+    },
+    {
+      "fb_id": "financebench_id_00566",
+      "chunk_id": "4acf06f7-7660-438f-909f-cd15a5bc2e4b",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides specific figures for Verizon's total long-term debt for both 2022 and 2021, which directly relates to the question of whether Verizon has inc"
+    },
+    {
+      "fb_id": "financebench_id_06247",
+      "chunk_id": "7ed7ee1d-8a2e-430f-9bf9-ff3d3d85c73b",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses consolidated net income and income per share, which are not directly related to the calculation of days payable outstanding (DPO) for Walmar"
+    },
+    {
+      "fb_id": "financebench_id_06247",
+      "chunk_id": "d073a64b-44be-4562-858d-d57947c9ce2a",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the Cost of Sales (COGS) for FY2018, which is essential for calculating the Days Payable Outstanding (DPO) as per the formula given in the qu"
+    },
+    {
+      "fb_id": "financebench_id_06247",
+      "chunk_id": "63e5a9c8-5c1d-417e-ae7b-695a33b5deb8",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the accounts payable figures for FY2017 and FY2018, which are necessary to calculate the average accounts payable for the DPO formula. It als"
+    },
+    {
+      "fb_id": "financebench_id_04784",
+      "chunk_id": "864b41e1-eab4-4df3-8306-5c21e130ff09",
+      "grader_relevant": true,
+      "grader_reason": "The chunk contains the unadjusted operating income figures for FY2018 and FY2019, which are necessary to calculate the change in operating income % margin for W"
+    },
+    {
+      "fb_id": "financebench_id_04784",
+      "chunk_id": "f5e29cc4-7883-445c-b5ca-747a75ab0336",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income, interest, and other financial metrics but does not provide any information about operating income or its margin, which is specif"
+    },
+    {
+      "fb_id": "financebench_id_06741",
+      "chunk_id": "86e056de-d392-49d5-9f4e-fe26a58fd5c6",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses net income and related figures but does not provide any information about unadjusted EBITDA, operating income, or depreciation and amortizat"
+    },
+    {
+      "fb_id": "financebench_id_06741",
+      "chunk_id": "97c0421d-ee7b-4235-8858-31c124631616",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the operating income for FY2018, FY2019, and FY2020, which is necessary for calculating unadjusted EBITDA. It also includes total revenues an"
+    },
+    {
+      "fb_id": "financebench_id_06741",
+      "chunk_id": "e8da8834-864b-45ba-a5a3-be829eb3f7a9",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flow activities and financing activities, which are not directly related to the calculation of unadjusted EBITDA % margin from the P&L "
+    },
+    {
+      "fb_id": "financebench_id_06741",
+      "chunk_id": "b66e52b8-9338-4748-ba13-8e4f80ec7f9f",
+      "grader_relevant": true,
+      "grader_reason": "The chunk provides the depreciation and amortization figures for FY2018, FY2019, and FY2020, which are necessary components for calculating unadjusted EBITDA as"
+    },
+    {
+      "fb_id": "financebench_id_06741",
+      "chunk_id": "dddd9958-d0de-4143-815c-c39d4955eb1d",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses cash flows from investing and financing activities, but does not provide any information related to the unadjusted EBITDA or the P&L stateme"
+    },
+    {
+      "fb_id": "financebench_id_06247",
+      "chunk_id": "2cc74958-42ab-4c2a-9323-399a5f091700",
+      "grader_relevant": false,
+      "grader_reason": "The chunk discusses the consolidated balance sheets of Walmart, focusing on assets and liabilities, but does not provide any information about accounts payable,"
+    }
+  ]
+}

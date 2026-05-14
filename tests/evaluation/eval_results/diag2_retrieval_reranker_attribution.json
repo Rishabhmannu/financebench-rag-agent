@@ -1,0 +1,1405 @@
+{
+  "summary": {
+    "n_total": 147,
+    "by_bucket": {
+      "RERANKER_HIT": 108,
+      "RETRIEVAL_MISS": 25,
+      "RERANKER_MISS": 14
+    },
+    "by_bucket_x_pass": {
+      "RERANKER_HIT": {
+        "pass": 88,
+        "fail": 20
+      },
+      "RETRIEVAL_MISS": {
+        "pass": 11,
+        "fail": 14
+      },
+      "RERANKER_MISS": {
+        "pass": 7,
+        "fail": 7
+      }
+    },
+    "failing_by_bucket": {
+      "RETRIEVAL_MISS": 14,
+      "RERANKER_HIT": 20,
+      "RERANKER_MISS": 7
+    },
+    "n_downstream_failures": 20,
+    "n_upstream_failures": 21
+  },
+  "failing_fb_ids_by_bucket": {
+    "RERANKER_HIT": [
+      "financebench_id_00807",
+      "financebench_id_07966",
+      "financebench_id_04735",
+      "financebench_id_10420",
+      "financebench_id_05718",
+      "financebench_id_04417",
+      "financebench_id_00460",
+      "financebench_id_00005",
+      "financebench_id_00790",
+      "financebench_id_04171",
+      "financebench_id_01911",
+      "financebench_id_04980",
+      "financebench_id_01328",
+      "financebench_id_03620",
+      "financebench_id_01482",
+      "financebench_id_00283",
+      "financebench_id_02419",
+      "financebench_id_00746",
+      "financebench_id_00521",
+      "financebench_id_00601"
+    ],
+    "RETRIEVAL_MISS": [
+      "financebench_id_00499",
+      "financebench_id_00540",
+      "financebench_id_00799",
+      "financebench_id_01079",
+      "financebench_id_01028",
+      "financebench_id_00585",
+      "financebench_id_10130",
+      "financebench_id_01107",
+      "financebench_id_00651",
+      "financebench_id_02119",
+      "financebench_id_00080",
+      "financebench_id_00216",
+      "financebench_id_00215",
+      "financebench_id_06247"
+    ],
+    "RERANKER_MISS": [
+      "financebench_id_01319",
+      "financebench_id_01936",
+      "financebench_id_00476",
+      "financebench_id_01902",
+      "financebench_id_02416",
+      "financebench_id_00605",
+      "financebench_id_00606"
+    ]
+  },
+  "per_record": [
+    {
+      "fb_id": "financebench_id_03029",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2346
+    },
+    {
+      "fb_id": "financebench_id_04672",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.7654
+    },
+    {
+      "fb_id": "financebench_id_00499",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01226",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01865",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00807",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6509
+    },
+    {
+      "fb_id": "financebench_id_00941",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6309
+    },
+    {
+      "fb_id": "financebench_id_01858",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6053
+    },
+    {
+      "fb_id": "financebench_id_02987",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3904
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 6,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4935
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 11,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.1265
+    },
+    {
+      "fb_id": "financebench_id_07507",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_03856",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 7,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4123
+    },
+    {
+      "fb_id": "financebench_id_00438",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00591",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01319",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00540",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 7,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2247
+    },
+    {
+      "fb_id": "financebench_id_06655",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3904
+    },
+    {
+      "fb_id": "financebench_id_08135",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_08286",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_03882",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3585
+    },
+    {
+      "fb_id": "financebench_id_01935",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 33,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2961
+    },
+    {
+      "fb_id": "financebench_id_00799",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01079",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01148",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6797
+    },
+    {
+      "fb_id": "financebench_id_00684",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_01936",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01928",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2641
+    },
+    {
+      "fb_id": "financebench_id_01930",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_03069",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4144
+    },
+    {
+      "fb_id": "financebench_id_00222",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_00995",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6309
+    },
+    {
+      "fb_id": "financebench_id_01198",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4307
+    },
+    {
+      "fb_id": "financebench_id_00917",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6309
+    },
+    {
+      "fb_id": "financebench_id_01279",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.7039
+    },
+    {
+      "fb_id": "financebench_id_00563",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00757",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5
+    },
+    {
+      "fb_id": "financebench_id_00476",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01028",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00723",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00720",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01351",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_01964",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.1815
+    },
+    {
+      "fb_id": "financebench_id_01981",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_05718",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2346
+    },
+    {
+      "fb_id": "financebench_id_04254",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 7,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4483
+    },
+    {
+      "fb_id": "financebench_id_00070",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.8772
+    },
+    {
+      "fb_id": "financebench_id_02608",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.1815
+    },
+    {
+      "fb_id": "financebench_id_04417",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_00685",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01077",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6934
+    },
+    {
+      "fb_id": "financebench_id_01275",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3693
+    },
+    {
+      "fb_id": "financebench_id_00288",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00460",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5438
+    },
+    {
+      "fb_id": "financebench_id_01902",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_03838",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_07661",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3904
+    },
+    {
+      "fb_id": "financebench_id_00517",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_01091",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00678",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01290",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00464",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00494",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00585",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_03473",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 7,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.7597
+    },
+    {
+      "fb_id": "financebench_id_09724",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.8772
+    },
+    {
+      "fb_id": "financebench_id_06272",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.467
+    },
+    {
+      "fb_id": "financebench_id_10130",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_02981",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_01346",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00005",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_04209",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.8175
+    },
+    {
+      "fb_id": "financebench_id_00790",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3066
+    },
+    {
+      "fb_id": "financebench_id_01107",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01244",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00839",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5
+    },
+    {
+      "fb_id": "financebench_id_00822",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_04103",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4693
+    },
+    {
+      "fb_id": "financebench_id_03471",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_04854",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.1301
+    },
+    {
+      "fb_id": "financebench_id_10136",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2773
+    },
+    {
+      "fb_id": "financebench_id_00956",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00669",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00711",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_00651",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01484",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_01488",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3911
+    },
+    {
+      "fb_id": "financebench_id_01490",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4982
+    },
+    {
+      "fb_id": "financebench_id_01491",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6508
+    },
+    {
+      "fb_id": "financebench_id_01487",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00299",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_02119",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00206",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.8316
+    },
+    {
+      "fb_id": "financebench_id_00394",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_02049",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_10499",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3854
+    },
+    {
+      "fb_id": "financebench_id_04412",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5087
+    },
+    {
+      "fb_id": "financebench_id_03031",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_03718",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_04171",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_03849",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 7,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4123
+    },
+    {
+      "fb_id": "financebench_id_01254",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3562
+    },
+    {
+      "fb_id": "financebench_id_00382",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4307
+    },
+    {
+      "fb_id": "financebench_id_01911",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6257
+    },
+    {
+      "fb_id": "financebench_id_01912",
+      "bucket": "RERANKER_MISS",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00407",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_04700",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_00552",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3066
+    },
+    {
+      "fb_id": "financebench_id_04458",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5856
+    },
+    {
+      "fb_id": "financebench_id_03282",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_04302",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5
+    },
+    {
+      "fb_id": "financebench_id_03531",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_04080",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4693
+    },
+    {
+      "fb_id": "financebench_id_01163",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4693
+    },
+    {
+      "fb_id": "financebench_id_00080",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_04980",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2961
+    },
+    {
+      "fb_id": "financebench_id_01009",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 7,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2749
+    },
+    {
+      "fb_id": "financebench_id_00735",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_01328",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2346
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4704
+    },
+    {
+      "fb_id": "financebench_id_04481",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3836
+    },
+    {
+      "fb_id": "financebench_id_01482",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00705",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 3,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.7654
+    },
+    {
+      "fb_id": "financebench_id_00882",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 6,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.7751
+    },
+    {
+      "fb_id": "financebench_id_01474",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_01476",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00302",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00702",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_02416",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00283",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00724",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4307
+    },
+    {
+      "fb_id": "financebench_id_02419",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 1.0
+    },
+    {
+      "fb_id": "financebench_id_00746",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2044
+    },
+    {
+      "fb_id": "financebench_id_00521",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.2044
+    },
+    {
+      "fb_id": "financebench_id_00601",
+      "bucket": "RERANKER_HIT",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.4307
+    },
+    {
+      "fb_id": "financebench_id_00603",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5
+    },
+    {
+      "fb_id": "financebench_id_00605",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00606",
+      "bucket": "RERANKER_MISS",
+      "pass": false,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00859",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 1,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6309
+    },
+    {
+      "fb_id": "financebench_id_02024",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_00216",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00215",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_00566",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.6131
+    },
+    {
+      "fb_id": "financebench_id_06247",
+      "bucket": "RETRIEVAL_MISS",
+      "pass": false,
+      "n_gold": 4,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.0
+    },
+    {
+      "fb_id": "financebench_id_04784",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 2,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.3869
+    },
+    {
+      "fb_id": "financebench_id_06741",
+      "bucket": "RERANKER_HIT",
+      "pass": true,
+      "n_gold": 5,
+      "n_top50": 50,
+      "n_top8": 8,
+      "ndcg_at_8": 0.5531
+    }
+  ]
+}

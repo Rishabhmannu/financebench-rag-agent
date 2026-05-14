@@ -1,0 +1,472 @@
+{
+  "manifest": {
+    "input": "tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.rejudged_sonnet_v2.correctness.json",
+    "n_failed_audited": 41,
+    "audit_model": "claude-sonnet-4-6",
+    "wall_time_s": 151.0
+  },
+  "summary": {
+    "n_total_failed": 41,
+    "n_pass_revealed (judge_was_wrong)": 6,
+    "n_dataset_suspect (gold_may_be_wrong)": 8,
+    "n_real_failure": 27
+  },
+  "by_category": {
+    "PASS_JUDGE_BUG": 0,
+    "PASS_NUMERIC_ROUNDING": 3,
+    "PASS_OTHER": 3,
+    "REFUSAL": 13,
+    "WRONG_NUMBER": 6,
+    "WRONG_DIRECTION": 2,
+    "PARTIAL_ANSWER": 5,
+    "DATASET_SUSPECT": 8,
+    "OTHER_FAIL": 1
+  },
+  "by_question_type": {
+    "domain-relevant": {
+      "PASS_JUDGE_BUG": 0,
+      "PASS_NUMERIC_ROUNDING": 0,
+      "PASS_OTHER": 3,
+      "REFUSAL": 5,
+      "WRONG_NUMBER": 2,
+      "WRONG_DIRECTION": 1,
+      "PARTIAL_ANSWER": 4,
+      "DATASET_SUSPECT": 1,
+      "OTHER_FAIL": 1
+    },
+    "metrics-generated": {
+      "PASS_JUDGE_BUG": 0,
+      "PASS_NUMERIC_ROUNDING": 2,
+      "PASS_OTHER": 0,
+      "REFUSAL": 5,
+      "WRONG_NUMBER": 3,
+      "WRONG_DIRECTION": 0,
+      "PARTIAL_ANSWER": 0,
+      "DATASET_SUSPECT": 0,
+      "OTHER_FAIL": 0
+    },
+    "novel-generated": {
+      "PASS_JUDGE_BUG": 0,
+      "PASS_NUMERIC_ROUNDING": 1,
+      "PASS_OTHER": 0,
+      "REFUSAL": 3,
+      "WRONG_NUMBER": 1,
+      "WRONG_DIRECTION": 1,
+      "PARTIAL_ANSWER": 1,
+      "DATASET_SUSPECT": 7,
+      "OTHER_FAIL": 0
+    }
+  },
+  "audits": [
+    {
+      "fb_id": "financebench_id_00499",
+      "question_type": "domain-relevant",
+      "company": "3M",
+      "category": "PARTIAL_ANSWER",
+      "reason": "The generated answer reaches a broadly compatible conclusion (\"not heavily capital-intensive\") but uses different metrics (capex as % of operating cash flow ~31%) rather than the gold's specific metrics (CAPEX/Revenue 5.1%, Fixed Assets/Total Assets 20%, ROA 12.4%), and its framing of \"moderate capital intensity\" is softer than the gold's definitive \"No,\" making it a partial match rather than a clear pass or a clear wrong-direction failure.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The gold answer concludes \"No, 3M is NOT capital-intensive\" based on CAPEX/Revenue of 5.1%, Fixed Assets/Total Assets of 20%, and ROA of 12.4%, while the system answer uses different metrics (capex as % of operating cash flow ~31%) and reaches a different conclusion of \"moderate capital intensity,\" failing to match the gold's key metrics or its definitive \"No\" verdict."
+    },
+    {
+      "fb_id": "financebench_id_00807",
+      "question_type": "domain-relevant",
+      "company": "3M",
+      "category": "WRONG_NUMBER",
+      "reason": "The generated answer computes a quick ratio of ~0.85x versus the gold's 0.96, a material numeric discrepancy (not a rounding issue), and additionally reaches the opposite qualitative conclusion (\"reasonably healthy in practice\" vs. gold's \"No, needs improvement\"), making this a genuine system failure on both the numeric and directional dimensions.",
+      "extracted_system_value": "0.85",
+      "extracted_gold_value": "0.96",
+      "original_judge_reason": "The system calculates a quick ratio of ~0.85x, which materially differs from the gold answer's 0.96, and the system's bottom-line conclusion (\"reasonably healthy liquidity profile in practice\") contradicts the gold answer's conclusion of \"No\" (not reasonably healthy, needs improvement to reach 1x)."
+    },
+    {
+      "fb_id": "financebench_id_07966",
+      "question_type": "metrics-generated",
+      "company": "Activision Blizzard",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly refuses to provide a final numeric answer due to missing capex data in the retrieved context, making this a genuine refusal rather than a judge artifact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": "1.9%",
+      "original_judge_reason": "The system explicitly refuses to provide a final numeric answer, stating it \"cannot calculate\" the result due to missing data, whereas the gold answer provides a definite answer of 1.9%."
+    },
+    {
+      "fb_id": "financebench_id_04735",
+      "question_type": "metrics-generated",
+      "company": "Adobe",
+      "category": "REFUSAL",
+      "reason": "The system explicitly declined to answer due to missing context (incomplete cash flow statement and no balance sheet retrieved), while the gold answer provides a definite value of 0.66 \u2014 a genuine refusal failure, not a judge artifact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": "0.66",
+      "original_judge_reason": "The system refused to answer, stating it lacked sufficient information, while the gold answer provides a definite value of 0.66."
+    },
+    {
+      "fb_id": "financebench_id_01319",
+      "question_type": "domain-relevant",
+      "company": "AES Corporation",
+      "category": "REFUSAL",
+      "reason": "The system refused to answer rather than stating the correct value of 0, making this a genuine refusal failure rather than a judge artifact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": "0",
+      "original_judge_reason": "The system refused to answer by saying it couldn't find relevant information, whereas the gold answer provides a definite answer of 0."
+    },
+    {
+      "fb_id": "financebench_id_00540",
+      "question_type": "domain-relevant",
+      "company": "AES Corporation",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly refuses to compute a numeric result (\"a numerical result cannot be provided here\") and instead argues the metric is not meaningful, while the gold answer provides a definitive calculated value of 9.5 times \u2014 this is a real system failure (refusal/avoidance) rather than a judge artifact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": "9.5",
+      "original_judge_reason": "The gold answer provides a definite numeric answer of 9.5 times, but the system refuses to compute the ratio and instead claims conventional inventory management is not meaningful, which contradicts the gold answer's definitive calculation."
+    },
+    {
+      "fb_id": "financebench_id_10420",
+      "question_type": "metrics-generated",
+      "company": "AES Corporation",
+      "category": "PASS_NUMERIC_ROUNDING",
+      "reason": "The generated answer explicitly mentions \"approximately -1.38%\" as the proper consolidated ROA (using ~$40B consolidated assets and $(546)M net loss), which rounds to -0.01 or -0.02 depending on exact asset figures \u2014 and the gold answer is -0.02 (i.e., -2%), making the system's internally-computed consolidated estimate essentially a rounding match to the gold value, even though the system flagged it as unverified.",
+      "extracted_system_value": "-0.0138",
+      "extracted_gold_value": "-0.02",
+      "original_judge_reason": "The system's bottom-line asserted answer of -7.23% (or the mentioned proxy of -1.38%) differs materially from the gold answer of -0.02 (i.e., -2%), and the system explicitly states it cannot reliably compute the consolidated ROA from the retrieved data."
+    },
+    {
+      "fb_id": "financebench_id_00799",
+      "question_type": "domain-relevant",
+      "company": "Amcor",
+      "category": "WRONG_NUMBER",
+      "reason": "The generated answer correctly identifies the direction of improvement but produces materially different quick ratio values (0.53x\u21920.57x) versus gold (0.67x\u21920.69x), likely because it excluded inventory or other current assets that should be included, or used different balance sheet line items \u2014 this is a genuine numeric discrepancy, not a rounding issue.",
+      "extracted_system_value": "0.53 (FY2022) \u2192 0.57 (FY2023)",
+      "extracted_gold_value": "0.67 (FY2022) \u2192 0.69 (FY2023)",
+      "original_judge_reason": "The system's bottom-line quick ratio values (0.53x FY2022 \u2192 0.57x FY2023) differ materially from the gold answer (0.67x FY2022 \u2192 0.69x FY2023), even though both correctly identify an improvement in direction."
+    },
+    {
+      "fb_id": "financebench_id_01079",
+      "question_type": "domain-relevant",
+      "company": "Amcor",
+      "category": "PARTIAL_ANSWER",
+      "reason": "The generated answer correctly identifies one of the three FY2023 acquisitions (Shanghai medical device packaging) and acknowledges three bolt-on acquisitions occurred, but misses the Czech Republic flexibles manufacturer and the New Zealand protein packaging machine manufacturer, and provides no information for FY2022 or FY2021 \u2014 a genuine partial failure, not a judge bug.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system only identifies one of the three FY2023 acquisitions (the Shanghai medical device packaging company) and fails to mention the Czech Republic flexibles manufacturing company or the New Zealand-based protein packaging machine manufacturer, and provides no information for FY2022 or FY2021, making it an incomplete answer when all items are required."
+    },
+    {
+      "fb_id": "financebench_id_01936",
+      "question_type": "novel-generated",
+      "company": "Amcor",
+      "category": "PARTIAL_ANSWER",
+      "reason": "The generated answer correctly identifies employee-related expenses as a component of the restructuring liability but fails to quantify the key fact that 87% of the total restructuring liability is employee-related, making it a substantively incomplete answer.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system answer does not assert the key fact from the gold answer \u2014 that 87% of the total restructuring liability is related to employee liabilities \u2014 and instead provides general descriptions of restructuring plans and components without quantifying the employee-related proportion."
+    },
+    {
+      "fb_id": "financebench_id_00476",
+      "question_type": "domain-relevant",
+      "company": "American Express",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly refuses to answer due to missing context, while the gold answer definitively states \"there are none\" \u2014 a real failure mode where the system couldn't locate the relevant cover page section of the 10-K.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system refuses to answer (\"I don't have enough information\"), whereas the gold answer definitively states there are none."
+    },
+    {
+      "fb_id": "financebench_id_01028",
+      "question_type": "domain-relevant",
+      "company": "American Express",
+      "category": "PASS_OTHER",
+      "reason": "The generated answer covers all four geographic segments (US, EMEA, APAC, and LACC/Americas ex-US) with detailed country-level breakdowns that clearly map to each segment; the judge incorrectly penalized the answer for using country names rather than the segment labels, even though all segments are substantively represented.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The gold answer specifies four geographic segments (United States, EMEA, APAC, and LACC), but the system's bottom-line answer lists individual countries rather than these segment groupings, and notably omits LACC (Latin America, Canada & Caribbean) as a named segment while also failing to mention EMEA as a unified segment."
+    },
+    {
+      "fb_id": "financebench_id_05718",
+      "question_type": "metrics-generated",
+      "company": "American Water Works",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly refuses to provide a value, citing insufficient context, while the gold answer is a definite $0.40 billion \u2014 this is a real system failure due to retrieval/context limitations, not a judge artifact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": "0.40",
+      "original_judge_reason": "The system explicitly refuses to answer, stating it lacks sufficient information, while the gold answer provides a definite value of $0.40 billion."
+    },
+    {
+      "fb_id": "financebench_id_04417",
+      "question_type": "metrics-generated",
+      "company": "Best Buy",
+      "category": "REFUSAL",
+      "reason": "The system explicitly refused to answer by stating it couldn't find relevant information, rather than providing any numeric value, making this a genuine refusal failure.",
+      "extracted_system_value": null,
+      "extracted_gold_value": "5409.00",
+      "original_judge_reason": "The system refused to answer, stating it couldn't find relevant information, while the gold answer provides a definite value of $5409.00 million."
+    },
+    {
+      "fb_id": "financebench_id_00460",
+      "question_type": "novel-generated",
+      "company": "Best Buy",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer cites specific page references from the actual 10-Q filing with internally consistent store-count tables (domestic + international breakdowns), arriving at totals that differ substantially from the gold answer's 982\u2192969 figures, suggesting the gold label may be using incorrect or differently-scoped store counts rather than the system being wrong.",
+      "extracted_system_value": "907 domestic + 128 international = 1035 (Q2 FY2024); 930 domestic + 127 international = 1057 (Q2 FY2023) \u2014 net change of -23 domestic, +1 international",
+      "extracted_gold_value": "969 stores (Q2 FY2024), 982 stores (Q2 FY2023), decline of 13 stores (~1.32%)",
+      "original_judge_reason": "The system's bottom-line answer reports a decline of 23 domestic stores (930\u2192907) and a 1-store international increase, but the gold answer states a total decline of 13 stores (982\u2192969, or ~1.32%), reflecting materially different store counts and a different net change."
+    },
+    {
+      "fb_id": "financebench_id_01902",
+      "question_type": "novel-generated",
+      "company": "Best Buy",
+      "category": "WRONG_DIRECTION",
+      "reason": "The question asks which category \"performed the best by top line\" \u2014 which most naturally means highest revenue (top line = revenue), and the generated answer correctly identifies Computing and Mobile Phones at $3,674M; however, the gold answer interprets \"top line\" as highest *growth* (Entertainment at +9%), making this a genuine ambiguity where the gold label appears to use a non-standard interpretation of \"top line\" (which literally means revenue, not growth rate), suggesting the gold answer may be wrong or the question is poorly worded \u2014 but since the generated answer directly contradicts the gold's stated winner, this is best classified as a dataset suspect case where the gold's interpretation of \"top line\" as growth rate is questionable.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The gold answer asks for the best-performing category by growth (Entertainment at +9%), while the system answers by absolute revenue (Computing and Mobile Phones at $3,674M) \u2014 these are different metrics, and the system's answer contradicts the gold's factual claim about Entertainment being the top performer."
+    },
+    {
+      "fb_id": "financebench_id_00585",
+      "question_type": "novel-generated",
+      "company": "Boeing",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer cites specific figures from the 10-K (pre-tax loss ~$5B both years, $743M tax benefit in FY2021, $31M tax expense in FY2022) that are internally consistent and support its conclusion that FY2021 had a positive 14.8% effective rate (tax benefit / pre-tax loss = +14.8%) and FY2022 had a negative (0.6)% rate (tax expense / pre-tax loss = -0.6%), which is the arithmetically correct interpretation \u2014 the gold answer appears to have the signs of both years inverted (swapping which year is positive vs. negative).",
+      "extracted_system_value": "FY2022: -0.6%, FY2021: 14.8%",
+      "extracted_gold_value": "FY2022: 0.62%, FY2021: -14.76%",
+      "original_judge_reason": "The system reports FY2021 effective tax rate as 14.8% (positive), but the gold answer states it was -14.76% (negative), which is a materially different value with opposite sign \u2014 the system has the FY2021 rate wrong in both sign and direction."
+    },
+    {
+      "fb_id": "financebench_id_10130",
+      "question_type": "metrics-generated",
+      "company": "Corning",
+      "category": "WRONG_NUMBER",
+      "reason": "The generated answer arrives at 29.66 days versus the gold of 63.86 days, a material difference driven by incorrect AP figures (using ~$559M/$569M instead of the correct values that would yield ~$1,200M average AP), making this a genuine system failure.",
+      "extracted_system_value": "29.66",
+      "extracted_gold_value": "63.86",
+      "original_judge_reason": "The system's final asserted answer of 29.66 days differs materially from the gold answer of 63.86 days, indicating incorrect input values (particularly the AP figures used)."
+    },
+    {
+      "fb_id": "financebench_id_00005",
+      "question_type": "domain-relevant",
+      "company": "Corning",
+      "category": "PARTIAL_ANSWER",
+      "reason": "The generated answer correctly identifies positive working capital but uses a broader definition (all current assets/liabilities including cash and financial items) rather than the gold's narrower operating-only definition, resulting in a materially different figure ($2,278M vs $831M) \u2014 this is a real methodological difference, not a rounding issue, though the directional answer (positive) is correct.",
+      "extracted_system_value": "2278",
+      "extracted_gold_value": "831",
+      "original_judge_reason": "While both answers agree that Corning has positive working capital (correct directional answer), the system's bottom-line value of +$2,278 million materially differs from the gold answer of $831 million, as the gold answer explicitly uses only operating current assets and liabilities clearly shown on the balance sheet, whereas the system includes all current assets and liabilities (including cash and financial items), resulting in a significantly different figure."
+    },
+    {
+      "fb_id": "financebench_id_00790",
+      "question_type": "domain-relevant",
+      "company": "CVS Health",
+      "category": "WRONG_DIRECTION",
+      "reason": "The generated answer explicitly concludes CVS Health is NOT capital-intensive, directly contradicting the gold answer's conclusion that it IS capital-intensive (supported by its low ROA and large asset base), making this a genuine directional failure rather than an eval artifact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The gold answer says CVS Health IS capital-intensive (evidenced by a low ROA of 1.82% and a large asset base), while the system's bottom-line answer asserts the opposite \u2014 that CVS is NOT capital-intensive \u2014 making this a direct contradiction of the gold's yes/no conclusion."
+    },
+    {
+      "fb_id": "financebench_id_01107",
+      "question_type": "domain-relevant",
+      "company": "CVS Health",
+      "category": "PARTIAL_ANSWER",
+      "reason": "The generated answer provides extensive detail on opioid/controlled substances litigation but omits two of the three key legal dispute areas cited in the gold answer (usual and customary pricing litigation and PBM litigation/investigations), and does not mention the specific $4.3 billion remediation and $625 million attorneys/fees figures, making this a genuine partial answer failure.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system answer covers opioid/controlled substances litigation and mentions some financial figures, but fails to address two of the three required legal dispute areas from the gold answer: (1) usual and customary pricing litigation (overcharging for prescription drugs) and (2) PBM litigation and investigations (rebate agreements causing inflated drug prices), and also does not mention the specific $4.3 billion remediation and $625 million attorneys/fees figures from the gold answer."
+    },
+    {
+      "fb_id": "financebench_id_00651",
+      "question_type": "novel-generated",
+      "company": "Johnson & Johnson",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer is detailed, internally consistent, and cites specific J&J filings (including an August 2023 8-K) showing ~12.5% guided EPS growth \u2014 a fundamentally different figure from the gold's 3.5\u20133.6% range \u2014 suggesting the gold answer may be based on a different time period, a different EPS definition (e.g., consensus estimates vs. management guidance), or an outdated/incorrect label rather than a system error.",
+      "extracted_system_value": "Yes, acceleration to ~12.5%",
+      "extracted_gold_value": "No, deceleration from 3.6% to 3.5%",
+      "original_judge_reason": "The system's bottom-line answer asserts \"Yes\" with ~12.5% growth acceleration, while the gold answer states \"No\" with a slight deceleration from 3.6% to 3.5% \u2014 opposite conclusion and materially different numeric values."
+    },
+    {
+      "fb_id": "financebench_id_02119",
+      "question_type": "novel-generated",
+      "company": "JPMorgan",
+      "category": "WRONG_NUMBER",
+      "reason": "The generated answer arrives at ~$78.57 per share versus the gold answer of $66.56 per share \u2014 a material ~18% difference \u2014 because it derived share count from EPS (~3,171M shares) rather than using the actual shares outstanding figure that would yield the correct result (~3,743M shares implied by $249,151M \u00f7 $66.56).",
+      "extracted_system_value": "78.57",
+      "extracted_gold_value": "66.56",
+      "original_judge_reason": "The system's final asserted answer of ~$78.57 per share differs materially from the gold answer of $66.56 per share, likely due to using an incorrect share count derived from EPS rather than the actual shares outstanding figure."
+    },
+    {
+      "fb_id": "financebench_id_04171",
+      "question_type": "metrics-generated",
+      "company": "MGM Resorts",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly states it cannot confirm the consolidated MGM Resorts International FY2018 accounts payable figure because the consolidated balance sheet was not retrieved, making this effectively a refusal/inability to answer the actual question asked.",
+      "extracted_system_value": "25.8",
+      "extracted_gold_value": "303.00",
+      "original_judge_reason": "The system's bottom-line answer of ~$25.8 million differs materially from the gold answer of $303.00 million, and the system explicitly states it cannot confirm the consolidated MGM Resorts International figure."
+    },
+    {
+      "fb_id": "financebench_id_01911",
+      "question_type": "novel-generated",
+      "company": "MGM Resorts",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer cites GAAP Operating Income of $1,439,372K (positive) and Adjusted EBITDAR of $3,497,254K (also positive), making it internally inconsistent with the gold claim that Adjusted EBIT is negative \u2014 suggesting the gold label may be incorrect or based on a different/non-standard adjustment methodology.",
+      "extracted_system_value": "2.4x",
+      "extracted_gold_value": "0 (negative EBIT)",
+      "original_judge_reason": "The gold answer states that Adjusted EBIT is negative, making the coverage ratio zero, while the system's bottom-line answer asserts approximately 2.4x using GAAP Operating Income as a proxy \u2014 a materially different value and metric."
+    },
+    {
+      "fb_id": "financebench_id_00080",
+      "question_type": "domain-relevant",
+      "company": "Paypal",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer cites specific balance sheet line items from PayPal's 2022 10-K (Total Current Assets $57,517M, Total Current Liabilities $45,101M) with page references and arrives at +$12.4B working capital in a detailed, internally consistent way, strongly suggesting the gold answer of $1.6B is incorrect or based on a different (possibly adjusted/non-standard) calculation methodology not disclosed in the gold label.",
+      "extracted_system_value": "12,416 million",
+      "extracted_gold_value": "1.6 billion",
+      "original_judge_reason": "The system's final asserted working capital figure is +$12,416 million, which materially differs from the gold answer of $1.6 billion \u2014 a difference far exceeding the 2% rounding tolerance."
+    },
+    {
+      "fb_id": "financebench_id_04980",
+      "question_type": "metrics-generated",
+      "company": "PepsiCo",
+      "category": "WRONG_NUMBER",
+      "reason": "The generated answer consistently asserts $4.5 billion as the final capex figure, which differs from the gold answer of $4.60 billion by ~2.2%, exceeding standard rounding tolerance, and the discrepancy likely stems from the model using a rounded \"net capital spending\" narrative figure from the MD&A rather than the precise line-item total from the statement of cash flows itself.",
+      "extracted_system_value": "4.5",
+      "extracted_gold_value": "4.60",
+      "original_judge_reason": "The system's bottom-line answer of $4.5 billion differs materially from the gold answer of $4.60 billion, exceeding the ~2% rounding tolerance (the difference is ~2.2%)."
+    },
+    {
+      "fb_id": "financebench_id_01328",
+      "question_type": "domain-relevant",
+      "company": "PepsiCo",
+      "category": "PASS_OTHER",
+      "reason": "The question explicitly asks for restructuring costs \"directly outlined in the income statement\" and instructs \"if not explicitly outlined then state 0\" \u2014 the generated answer correctly identifies that $411M is not a standalone income statement line item (it's embedded in CoS and SG&A) and therefore answers $0 per the question's own instructions, making this a judge/gold-label error rather than a system failure.",
+      "extracted_system_value": "0",
+      "extracted_gold_value": "411",
+      "original_judge_reason": "The system's bottom-line answer is $0, asserting restructuring costs are not explicitly outlined on the income statement, while the gold answer states $411 million \u2014 a material factual disagreement regardless of the system's acknowledgment of the $411M figure in supporting text."
+    },
+    {
+      "fb_id": "financebench_id_03620",
+      "question_type": "metrics-generated",
+      "company": "PepsiCo",
+      "category": "WRONG_NUMBER",
+      "reason": "The system's best-effort estimate of $9,650M (using $14,275M EBITDA minus $4,625M capex) differs materially from the gold answer of $9,068M \u2014 likely because the system used incorrect capex or operating income figures \u2014 and the judge's failure classification is correct.",
+      "extracted_system_value": "9650",
+      "extracted_gold_value": "9068",
+      "original_judge_reason": "The system's bottom-line answer of $9,650M (using unverified capex of $4,625M) differs materially from the gold answer of $9,068M, and the system explicitly refuses to provide a confirmed final answer, making this a FAIL on both grounds."
+    },
+    {
+      "fb_id": "financebench_id_01482",
+      "question_type": "novel-generated",
+      "company": "PepsiCo",
+      "category": "REFUSAL",
+      "reason": "The system refused to answer the question entirely, citing it as outside its scope, while the gold answer clearly states the proposal was defeated.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system refused to answer the question, whereas the gold answer provides a definite outcome (the proposal was defeated)."
+    },
+    {
+      "fb_id": "financebench_id_02416",
+      "question_type": "novel-generated",
+      "company": "Pfizer",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly declines to answer due to missing context (only subsidiary listing pages were retrieved), while the gold answer definitively names three acquired companies (Trillium, Array, and Therachon) \u2014 a real retrieval/system failure, not a judge bug.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system refuses to answer, stating it lacks sufficient information, while the gold answer definitively identifies three companies (Trillium, Array, and Therachon) acquired by Pfizer."
+    },
+    {
+      "fb_id": "financebench_id_00283",
+      "question_type": "novel-generated",
+      "company": "Pfizer",
+      "category": "PASS_NUMERIC_ROUNDING",
+      "reason": "The system's answer of ~$70M is derived from an approximation (10% of $700M rounded), while the gold of $77.78M is the precise figure (likely 10% of ~$777.8M or an exact filing figure); the system explicitly notes it is computing a proxy/approximation rather than reading an exact number, and the gold value of $77.78M rounds to approximately 10% of the total \u2014 this is a rounding/approximation artifact rather than a substantively wrong answer, as both reflect the same ~10% remaining fraction of total separation costs.",
+      "extracted_system_value": "70",
+      "extracted_gold_value": "77.78",
+      "original_judge_reason": "The system's bottom-line answer of ~$70 million materially differs from the gold answer of $77.78 million (a ~10% discrepancy beyond the allowable ~2% rounding tolerance)."
+    },
+    {
+      "fb_id": "financebench_id_02419",
+      "question_type": "novel-generated",
+      "company": "Pfizer",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer is well-sourced and internally consistent, correctly noting that the Upjohn spin-off was completed in November 2020 (not ongoing as of Q2 2023), which strongly suggests the gold label is factually wrong or outdated \u2014 the gold answer appears to describe a historical event as if it were current.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The gold answer states Pfizer is spinning off Upjohn (yes), while the system's bottom-line answer asserts the opposite \u2014 that Pfizer is NOT spinning off any large business segments as of Q2 2023, noting the Upjohn spin-off was already completed in 2020."
+    },
+    {
+      "fb_id": "financebench_id_00746",
+      "question_type": "domain-relevant",
+      "company": "Ulta Beauty",
+      "category": "REFUSAL",
+      "reason": "The generated answer refused to provide information rather than stating \"none,\" which is a real system failure \u2014 the correct answer (no debt securities registered) was determinable from the filing but the system declined to answer.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system refused to answer (\"I couldn't find relevant information\"), whereas the gold answer provides a definite answer of \"none.\""
+    },
+    {
+      "fb_id": "financebench_id_00521",
+      "question_type": "domain-relevant",
+      "company": "Ulta Beauty",
+      "category": "REFUSAL",
+      "reason": "The generated answer refused to provide information rather than confirming (as the gold answer states) that Ulta Beauty made no acquisitions in FY2023 and FY2022, making this a real failure mode where the system declined to answer instead of retrieving the relevant fact.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system refused to answer by saying it couldn't find relevant information, whereas the gold answer definitively states that Ulta Beauty made no acquisitions in FY2023 and FY2022."
+    },
+    {
+      "fb_id": "financebench_id_00601",
+      "question_type": "novel-generated",
+      "company": "Ulta Beauty",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer is internally consistent and well-sourced (citing Amcor's 10-K), while the gold answer describes drivers (lower marketing expenses, incentive compensation leverage) that belong to a different company entirely \u2014 suggesting the gold label was applied to the wrong company/filing, making this a dataset mismatch rather than a system failure.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system answer attributes the SG&A reduction to Amcor's favorable foreign exchange rate movements, while the gold answer states the drivers were lower marketing expenses and leverage of incentive compensation due to higher sales \u2014 these are entirely different companies and different drivers."
+    },
+    {
+      "fb_id": "financebench_id_00605",
+      "question_type": "novel-generated",
+      "company": "Ulta Beauty",
+      "category": "REFUSAL",
+      "reason": "The generated answer explicitly refuses to answer due to missing retrieved context, while the gold answer provides a definite value of 36%, making this a genuine refusal failure (a retrieval/context issue, not a knowledge gap per se).",
+      "extracted_system_value": null,
+      "extracted_gold_value": "36%",
+      "original_judge_reason": "The system refuses to answer (\"I don't have enough information\"), whereas the gold answer provides a definite answer of 36%."
+    },
+    {
+      "fb_id": "financebench_id_00606",
+      "question_type": "novel-generated",
+      "company": "Ulta Beauty",
+      "category": "DATASET_SUSPECT",
+      "reason": "The generated answer provides detailed, internally consistent financial data showing SG&A as % of net sales decreased from 23.9% to 23.5% in FY2023, and explicitly notes Ulta Beauty does not separately disclose wages expense \u2014 suggesting the gold answer may rely on a specific wages line item not visible in the retrieved filings, or the fiscal year labeling convention (FY2022 vs. FY2023) creates a mismatch, making this a plausible dataset/gold label issue rather than a clear system error.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system's bottom-line answer asserts that wages expense as a percent of net sales decreased in FY2023, while the gold answer states it increased, making this a direct contradiction of the factual claim."
+    },
+    {
+      "fb_id": "financebench_id_00216",
+      "question_type": "domain-relevant",
+      "company": "Verizon",
+      "category": "OTHER_FAIL",
+      "reason": "The generated answer correctly computes the quick ratio as ~0.54x (matching gold) but then reaches the opposite conclusion from gold \u2014 arguing Verizon's liquidity is \"reasonably healthy\" and that the quick ratio is the wrong tool \u2014 which is a genuine analytical disagreement with the gold answer's conclusion that Verizon does NOT have a healthy liquidity profile, making this a real failure in answering the yes/no question as posed, though it doesn't fit neatly into WRONG_DIRECTION (the number is right, the directional conclusion is opposite) or DATASET_SUSPECT (no data contradiction).",
+      "extracted_system_value": "0.54",
+      "extracted_gold_value": "0.54",
+      "original_judge_reason": "The system correctly computes the quick ratio as ~0.54x but then contradicts the gold answer's conclusion by asserting that Verizon's liquidity profile is \"reasonably healthy\" and that the quick ratio is \"the wrong tool to assess it,\" whereas the gold answer clearly states the quick ratio is ~0.54 and that Verizon does NOT have a healthy liquidity profile."
+    },
+    {
+      "fb_id": "financebench_id_00215",
+      "question_type": "domain-relevant",
+      "company": "Verizon",
+      "category": "PASS_OTHER",
+      "reason": "The generated answer reaches the same correct conclusion (Yes, Verizon is capital intensive) using valid alternative capital intensity metrics (CapEx/Revenue ~16.9%, CapEx/OCF ~62%), and the judge's failure reason is that it didn't use the specific Total Assets/Revenue ratio (~2.77) \u2014 but the question only asks for a yes/no conclusion, not a specific ratio, so the answer is substantively correct.",
+      "extracted_system_value": null,
+      "extracted_gold_value": null,
+      "original_judge_reason": "The system correctly concludes Verizon is capital intensive, but uses a different metric (CapEx/Revenue ~16.9% and CapEx/Operating Cash Flow ~62%) rather than the capital intensity ratio (Total Assets/Revenue \u2248 2.77) specified in the gold answer, and never reports the ~2.77 ratio that the gold answer requires."
+    },
+    {
+      "fb_id": "financebench_id_06247",
+      "question_type": "metrics-generated",
+      "company": "Walmart",
+      "category": "PASS_NUMERIC_ROUNDING",
+      "reason": "The difference of 0.07 days between 42.76 and 42.69 is attributable to a minor discrepancy in the inventory change figure used (the system used $140M from the cash flow statement while the gold likely uses slightly different balance-sheet-derived inventory figures), which is a standard rounding/input-sourcing tolerance issue rather than a substantive error \u2014 the two values are within ~0.16% of each other and effectively equivalent.",
+      "extracted_system_value": "42.76",
+      "extracted_gold_value": "42.69",
+      "original_judge_reason": "The system's bottom-line answer of 42.76 days differs from the gold answer of 42.69 days by more than the allowable rounding tolerance, indicating a slightly different input value (likely inventory change) was used."
+    }
+  ]
+}

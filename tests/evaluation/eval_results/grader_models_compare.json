@@ -1,0 +1,164 @@
+{
+  "bge-reranker-v2-m3 + LoRA-FT v1 (experiment C, free)": {
+    "name": "bge-reranker-v2-m3 + LoRA-FT v1 (experiment C, free)",
+    "pricing_key": "bge-reranker-v2-m3",
+    "balanced_100": {
+      "precision": 1.0,
+      "recall": 0.54,
+      "f1": 0.7013,
+      "accuracy": 0.77,
+      "tp": 27,
+      "fp": 0,
+      "fn": 23,
+      "tn": 50,
+      "wall_s": 6.5,
+      "mean_latency_ms": 65.0,
+      "n_errors": 0
+    },
+    "gold_363": {
+      "gold_chunk_recall": 0.4518,
+      "n_accepted": 164,
+      "n_total": 363,
+      "n_full_recall_qs": 46,
+      "n_partial_recall_qs": 59,
+      "n_zero_recall_qs": 42,
+      "wall_s": 20.5,
+      "n_errors": 0
+    },
+    "est_cost_per_eval_usd": 0.0,
+    "balanced_error_sample": [],
+    "gold_error_sample": []
+  },
+  "gpt-4o-mini (control)": {
+    "name": "gpt-4o-mini (control)",
+    "pricing_key": "gpt-4o-mini",
+    "balanced_100": {
+      "precision": 0.9048,
+      "recall": 0.76,
+      "f1": 0.8261,
+      "accuracy": 0.84,
+      "tp": 38,
+      "fp": 4,
+      "fn": 12,
+      "tn": 46,
+      "wall_s": 153.4,
+      "mean_latency_ms": 1533.7,
+      "n_errors": 0
+    },
+    "gold_363": {
+      "gold_chunk_recall": 0.6997,
+      "n_accepted": 254,
+      "n_total": 363,
+      "n_full_recall_qs": 85,
+      "n_partial_recall_qs": 55,
+      "n_zero_recall_qs": 7,
+      "wall_s": 576.1,
+      "n_errors": 0
+    },
+    "est_cost_per_eval_usd": 1.8562,
+    "balanced_error_sample": [],
+    "gold_error_sample": []
+  },
+  "claude-haiku-4-5 (experiment A)": {
+    "name": "claude-haiku-4-5 (experiment A)",
+    "pricing_key": "claude-haiku-4-5",
+    "balanced_100": {
+      "precision": 0.9722,
+      "recall": 0.7,
+      "f1": 0.814,
+      "accuracy": 0.84,
+      "tp": 35,
+      "fp": 1,
+      "fn": 15,
+      "tn": 49,
+      "wall_s": 217.7,
+      "mean_latency_ms": 2177.2,
+      "n_errors": 0
+    },
+    "gold_363": {
+      "gold_chunk_recall": 0.719,
+      "n_accepted": 261,
+      "n_total": 363,
+      "n_full_recall_qs": 85,
+      "n_partial_recall_qs": 52,
+      "n_zero_recall_qs": 10,
+      "wall_s": 786.7,
+      "n_errors": 0
+    },
+    "est_cost_per_eval_usd": 12.6,
+    "balanced_error_sample": [],
+    "gold_error_sample": []
+  },
+  "groq llama-3.3-70b (experiment B)": {
+    "name": "groq llama-3.3-70b (experiment B)",
+    "pricing_key": "groq-llama-3.3-70b",
+    "balanced_100": {
+      "precision": 1.0,
+      "recall": 0.06,
+      "f1": 0.1132,
+      "accuracy": 0.53,
+      "tp": 3,
+      "fp": 0,
+      "fn": 47,
+      "tn": 50,
+      "wall_s": 630.7,
+      "mean_latency_ms": 6307.1,
+      "n_errors": 89
+    },
+    "gold_363": {
+      "gold_chunk_recall": 0.0028,
+      "n_accepted": 1,
+      "n_total": 363,
+      "n_full_recall_qs": 0,
+      "n_partial_recall_qs": 1,
+      "n_zero_recall_qs": 146,
+      "wall_s": 2382.7,
+      "n_errors": 361
+    },
+    "est_cost_per_eval_usd": 6.948,
+    "balanced_error_sample": [
+      {
+        "fb_id": "financebench_id_04784",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_00460",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_00995",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_00552",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_00995",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      }
+    ],
+    "gold_error_sample": [
+      {
+        "fb_id": "financebench_id_03029",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_03029",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_03029",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_04672",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      },
+      {
+        "fb_id": "financebench_id_04672",
+        "err": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kmtvc7gkfjw8x9324sqdk2dy` service tier `o"
+      }
+    ]
+  }
+}

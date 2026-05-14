@@ -1,0 +1,44 @@
+{
+  "base_minilm": {
+    "gold_chunk_recall": 0.1956,
+    "n_accepted": 71,
+    "n_total": 363,
+    "wall_s": 2.2
+  },
+  "hard_r8": {
+    "gold_chunk_recall": 0.2314,
+    "n_accepted": 84,
+    "n_total": 363,
+    "n_full_recall_questions": 30,
+    "n_partial_recall_questions": 33,
+    "n_zero_recall_questions": 84,
+    "wall_s": 2.7
+  },
+  "mixed_r8": {
+    "gold_chunk_recall": 0.2287,
+    "n_accepted": 83,
+    "n_total": 363,
+    "n_full_recall_questions": 28,
+    "n_partial_recall_questions": 34,
+    "n_zero_recall_questions": 85,
+    "wall_s": 2.8
+  },
+  "random_r8": {
+    "gold_chunk_recall": 0.3278,
+    "n_accepted": 119,
+    "n_total": 363,
+    "n_full_recall_questions": 40,
+    "n_partial_recall_questions": 39,
+    "n_zero_recall_questions": 68,
+    "wall_s": 2.7
+  },
+  "_baseline_llama_grader": {
+    "gold_chunk_recall": 0.6997,
+    "n_accepted": 254,
+    "n_total": 363,
+    "n_zero_recall_questions": 8,
+    "n_partial_recall_questions": 55,
+    "n_full_recall_questions": 84,
+    "note": "Llama-3.3-70b via Groq, prompt-based \u2014 current production grader"
+  }
+}

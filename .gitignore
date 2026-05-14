@@ -69,6 +69,14 @@ tests/evaluation/eval_results/*.json
 !tests/evaluation/eval_results/validation_antirefusal_nudge.json
 !tests/evaluation/eval_results/validation_enumerate_fully.json
 !tests/evaluation/eval_results/validation_directional_clause9.json
+# Sprint 7.16 diagnostic artifacts (audit refresh + retrieval/reranker attribution + grader-on-gold)
+!tests/evaluation/eval_results/audit_failed_qs_gen_v2.json
+!tests/evaluation/eval_results/diag2_retrieval_reranker_attribution.json
+!tests/evaluation/eval_results/diag3_grader_on_gold_chunks.json
+# Sprint 7.17 grader-architecture experiment results
+!tests/evaluation/eval_results/grader_ft_v1_component_eval.json
+!tests/evaluation/eval_results/grader_models_compare.json
+!tests/evaluation/eval_results/grader_haiku_max2048.json
 # Methodology artifacts referenced in docs/engineering-log.md
 !tests/evaluation/eval_results/audit_failed_qs_v1_grader.json
 !tests/evaluation/eval_results/audit_failed_qs_4fix.json
