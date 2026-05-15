@@ -130,6 +130,11 @@ def retrieval_node(state: RAGState) -> dict:
         fallback_info = f" [FALLBACK from {initial_count}]" if retrieval_fallback_used else ""
         hyde_info = " [multi-HyDE]" if settings.ENABLE_MULTI_HYDE else ""
         logger.info(f"Retrieved {len(chunks)} hybrid candidates ({filter_info}){fallback_info}{hyde_info} for: {query[:60]}...")
+        from src.services.event_log import emit
+        emit("retrieval", target_company=target_company, target_fiscal_year=target_fiscal_year,
+             n_candidates=len(chunks), initial_count=initial_count,
+             fallback_used=retrieval_fallback_used, multi_hyde=bool(settings.ENABLE_MULTI_HYDE),
+             query_preview=query[:120])
         return {
             "retrieved_chunks": chunks,
             "retrieval_fallback_used": retrieval_fallback_used,

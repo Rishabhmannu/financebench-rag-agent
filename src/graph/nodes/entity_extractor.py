@@ -155,6 +155,9 @@ def entity_extractor_node(state: RAGState) -> dict:
         normalized = canonical_company_slug(slug)
         slug = normalized
 
+    from src.services.event_log import emit
+    emit("entity_extractor", target_company=slug, target_fiscal_year=year, ambiguous=ambiguous)
+
     return {
         "target_company": slug,
         "target_fiscal_year": year,

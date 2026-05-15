@@ -20,6 +20,13 @@ async def lifespan(app: FastAPI):
     # Set env-specific LangSmith project name before any LLM calls
     os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project_name
 
+    # Sprint 7.19 logging Tier 1: structured event log + boot banner.
+    # Attaches a FileHandler so logger.info from all 17 graph nodes ends up in
+    # logs/run_<ts>.log, and prints "what's actually loaded" to stderr.
+    from src.services.event_log import attach_file_handler, log_runtime_components
+    attach_file_handler()
+    log_runtime_components()
+
     # Startup validation
     if not settings.OPENAI_API_KEY:
         logger.error("OPENAI_API_KEY is not set! Embeddings and generation will fail.")

@@ -29,4 +29,9 @@ def reranker_node(state: RAGState) -> dict:
         f"Reranked {len(candidates)} -> {len(reranked)} chunks "
         f"(top score: {reranked[0]['rerank_score']:.3f} | bottom: {reranked[-1]['rerank_score']:.3f})"
     )
+    from src.services.event_log import emit
+    emit("reranker", n_input=len(candidates), n_kept=len(reranked),
+         top_score=reranked[0]["rerank_score"] if reranked else None,
+         bottom_score=reranked[-1]["rerank_score"] if reranked else None,
+         top_k=top_k)
     return {"reranked_chunks": reranked}

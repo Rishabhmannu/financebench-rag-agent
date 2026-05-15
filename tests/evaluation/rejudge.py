@@ -28,6 +28,13 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 from tests.evaluation.judge_eval import IMPROVED_PROMPT, _make_anthropic_judge
 
+# Sprint 7.19 logging Tier 1: capture rejudge events to logs/run_*.jsonl + .log.
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+from src.services.event_log import attach_file_handler, log_runtime_components
+attach_file_handler()
+log_runtime_components()
+
 JUDGE_MODEL = "claude-sonnet-4-6"
 JUDGE_PROMPT_VERSION = "improved_v2"
 DEFAULT_PARALLELISM = 8

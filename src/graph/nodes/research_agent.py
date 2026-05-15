@@ -454,6 +454,10 @@ def research_agent_node(state: RAGState) -> dict:
         f"Agent decomposed into {len(sub_questions)} sub-questions; "
         f"qualifiers={decomp.qualifiers}; required={decomp.required_quantities}"
     )
+    from src.services.event_log import emit
+    emit("research_agent.decompose", n_sub_questions=len(sub_questions),
+         qualifiers=list(decomp.qualifiers), required_quantities=list(decomp.required_quantities),
+         sub_questions=list(sub_questions))
 
     # Turns 2..(2+K): retrieve + grade per sub-question
     chunks_by_id: dict[tuple, dict] = {}
@@ -478,11 +482,18 @@ def research_agent_node(state: RAGState) -> dict:
         })
         if verdict.decision == "sufficient":
             logger.info(f"Agent: sufficient after round {round_idx} ({verdict.reason})")
+            emit("research_agent.sufficiency", decision="sufficient", round=round_idx,
+                 reason=verdict.reason, n_chunks_so_far=len(chunks_by_id))
             break
         if not verdict.follow_up_question:
             logger.info(f"Agent: 'need_more' but no follow-up — exiting loop")
+            emit("research_agent.sufficiency", decision="need_more_no_followup",
+                 round=round_idx, reason=verdict.reason, n_chunks_so_far=len(chunks_by_id))
             break
         logger.info(f"Agent follow-up [{round_idx}]: {verdict.follow_up_question} ({verdict.reason})")
+        emit("research_agent.sufficiency", decision="need_more", round=round_idx,
+             follow_up=verdict.follow_up_question, missing=verdict.missing_quantity,
+             reason=verdict.reason)
         for c in _retrieve_and_grade_for_subq(state, verdict.follow_up_question):
             cid = _chunk_id(c)
             if cid not in chunks_by_id:
@@ -503,6 +514,10 @@ def research_agent_node(state: RAGState) -> dict:
         f"sub_questions={sub_questions}, "
         f"calc_invoked={calc_diagnostics['calculator_invoked']}"
     )
+    emit("research_agent.synthesize", n_chunks=len(relevant_chunks), turns_used=turns_used,
+         calculator_invoked=calc_diagnostics.get("calculator_invoked", False),
+         calculator_value=calc_diagnostics.get("calculator_value"),
+         synthesis_chars=len(synthesis) if synthesis else 0)
 
     # Mark grading_results so the main grader path doesn't re-grade.
     grading_results = [{"agent_curated": True} for _ in relevant_chunks]

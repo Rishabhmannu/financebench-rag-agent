@@ -121,6 +121,11 @@ def generator_node(state: RAGState) -> dict:
         ])
         _log_cache_stats(result)
         logger.info(f"Generated answer: {len(result.content)} chars")
+        from src.services.event_log import emit
+        from src.config.settings import settings as _settings
+        emit("generator", answer_chars=len(result.content),
+             n_context_chunks=len(chunks) if chunks else 0,
+             model=_settings.GENERATOR_MODEL)
         return {
             "generated_answer": result.content,
             "messages": [AIMessage(content=result.content)],

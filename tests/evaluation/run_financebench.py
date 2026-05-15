@@ -90,6 +90,14 @@ warnings.filterwarnings("ignore", category=UserWarning, module="qdrant_client")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+# Sprint 7.19 logging Tier 1: attach a file handler so the 46 logger.info calls
+# across the 17 graph nodes get captured to logs/run_<timestamp>.log in addition
+# to stderr. Print the runtime-components boot banner immediately so any silent-
+# fallback bug (Sprint 7.19 reranker class) is visible at line 5 of every eval.
+from src.services.event_log import attach_file_handler, log_runtime_components, current_fb_id
+attach_file_handler()
+log_runtime_components()
+
 FB_DATA_DIR = Path("data/raw/financebench")
 FB_QA_PATH = FB_DATA_DIR / "financebench_open_source.jsonl"
 FB_COLLECTION_DEFAULT = "financebench_corpus"
@@ -442,6 +450,9 @@ def run_pipeline_phase(
                 "configurable": {"thread_id": f"fb_{rec['financebench_id']}"},
                 "metadata": {"hitl_enabled": False},
             }
+            # Set the ContextVar so event_log.emit() in graph nodes auto-tags
+            # every event with the current question's fb_id — no plumbing needed.
+            fb_id_token = current_fb_id.set(rec["financebench_id"])
             try:
                 result = graph.invoke(state, config=config)
                 ans = result.get("final_response", "")
@@ -451,6 +462,8 @@ def run_pipeline_phase(
                 tqdm.write(f"  [FAIL {failures}] Q{i + 1} {rec['financebench_id']}: {type(e).__name__}: {str(e)[:100]}")
                 ans = ""
                 chunks = []
+            finally:
+                current_fb_id.reset(fb_id_token)
 
             # Quota-failure detection: catches the LLM-node-level fallback that
             # would otherwise silently corrupt the cache for resume.

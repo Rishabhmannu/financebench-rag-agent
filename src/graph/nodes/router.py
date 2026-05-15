@@ -28,6 +28,8 @@ def router_node(state: RAGState) -> dict:
         logger.info(
             f"Router decision: intent={result.intent}, complexity={result.complexity}, reason={result.reason}"
         )
+        from src.services.event_log import emit
+        emit("router", intent=result.intent, complexity=result.complexity, reason=result.reason)
         return {
             "query_intent": result.intent,
             "query_complexity": result.complexity,

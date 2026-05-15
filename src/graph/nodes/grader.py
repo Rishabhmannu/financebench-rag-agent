@@ -242,6 +242,11 @@ def grader_node(state: RAGState) -> dict:
         f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}{cache_msg}, "
         f"{len(pending_indices)} sent to LLM in parallel){fallback_msg}"
     )
+    from src.services.event_log import emit
+    emit("grader", n_input=len(chunks), n_relevant=len(relevant_chunks),
+         n_rejected_entity=rejected_by_entity, n_cache_hit=cache_hits,
+         n_sent_to_llm=len(pending_indices), fallback_used=grader_fallback_used,
+         grader_model=grader_model, parallelism=_GRADER_PARALLELISM)
 
     return {
         "relevant_chunks": relevant_chunks,
