@@ -19,7 +19,8 @@ The headline pass rate moved through three regimes:
 | Sprint 7.16 (generator anti-refusal + enumerate-fully) | **73.3% → 72.7%** | −1 net at full-eval scope; validation-cohort wins washed out by pipeline stochasticity + one absence-as-answer misfire on incomplete retrieval (Signal 11) |
 | Sprint 7.17 (grader architecture experiments — LoRA-FT + 4-way model swap + Llama-3.3-70B follow-ups #1-3) | **72.7%** (no change shipped) | Null on shipped pass rate. LoRA-FT MiniLM failed (Signal 12). Follow-up #1 (Haiku w/ SystemMessage split) regressed Haiku → falsified Caveat B. Follow-up #2: Llama-3.3-70B via Fireworks dominated grader benchmarks (+16pp gold-recall, +4.5pp F1). Follow-up #3 (full 150-Q FinanceBench w/ Llama-3.3-70B grader through OpenRouter, κ=0.932 rejudged): **68.0% — REGRESSED −4.7pp** vs the gpt-4o-mini baseline. 14 regressions / 7 rescues, regressions cluster on focused-lookup / superlative / enumeration questions where Llama's lower precision (0.863 vs 0.905) dilutes the generator. **Signal 14: sub-component metric wins don't propagate to system metrics.** Do not ship. |
 | Sprint 7.18a (retrieval k-bump 50 → 200 to recover RETRIEVAL_MISS bucket) | **72.7%** (no change shipped) | Diagnostic measured gold reachable for 11/14 at dense k=200 + 10/14 at hybrid k=200 (vs 1/14 at hybrid k=50). FT v1 reranker pushed 6/10 in-pool cases to top-8 from broader pool. Full eval result: **57.3% — REGRESSED −15.33pp** vs baseline under κ=0.932 judge. Only 2/14 RETRIEVAL_MISS cases newly pass; 25 previously-passing cases regress because broader retrieval pool introduces distractor chunks containing plausible-but-wrong numbers that crash downstream comprehension. **Signal 15: same Signal-14 shape, ~3× worse magnitude.** Reverted RETRIEVAL_TOP_K=50. FT v2 not pursued — would not fix the distractor mechanism that broke. |
-| Sprint 7.19 (code-level audit + pipeline walk) | **72.7%** baseline status unchanged — but **the baseline is on the STOCK BGE reranker, not FT v1.** | Audit findings: (1) **CRITICAL BUG** — `RERANKER_ADAPTER_PATH` env var added at Sprint 7.9 but never propagated to `.env` or `.env.example`; the LoRA-FT v1 adapter has been silently inactive in every eval since (the 72.7% baseline included). The "biggest single win in the campaign" is dormant. (2) Pipeline walk on 5 baseline failure cases: 3 of 5 had gold reaching the generator (RERANKER_HIT), so the residual failures are at the **synthesis/computation** level, not retrieval. (3) Diagnostic-completeness audit: 80% covered; the two gaps that bit us are "what's actually loaded at startup" banner + per-question structured event log. Tier 1 logging plan sized (~7-8 hrs). No code change shipped yet. |
+| Sprint 7.19 (code-level audit + pipeline walk) | **72.7%** baseline status unchanged — and the baseline is **on the STOCK BGE reranker, not FT v1.** | Audit findings: (1) **CRITICAL BUG** — `RERANKER_ADAPTER_PATH` env var added at Sprint 7.9 but never propagated to `.env` or `.env.example`; the LoRA-FT v1 adapter has been silently inactive in every eval since (the 72.7% baseline included). (2) Pipeline walk on 5 baseline failure cases: 3 of 5 had gold reaching the generator (RERANKER_HIT), so the residual failures are at the **synthesis/computation** level, not retrieval. (3) Tier 1 logging shipped: structured event log + boot banner + `scripts/show_run.py` — the banner now emits `ft_adapter_loaded: <bool>` on every boot. |
+| Sprint 7.19 Step 0 (enable FT v1 reranker, re-baseline) | **67.33%** (101/150) under κ=0.932 — **−5.34pp REGRESSION** vs the 72.7% baseline. | The "biggest single win in the campaign" is **falsified** under the current downstream stack + calibrated judge. 2 rescues / 10 regressions. **8 of 10 regressions overlap with the Sprint 7.17 Llama-grader regression set** — same structural pipeline failure mode (multi-component formulas + trend/qualitative judgments). The 72.7% baseline IS the production state. **Signal 17 banked**: a historical component win that was attributed under a stale eval framework (gpt-4o-mini judge + old hallu Haiku + pre-Sprint-7.15 prompt stack) does not survive re-validation under the current downstream stack + κ=0.932 judge. Component fine-tunes must be re-validated on every downstream-stack upgrade. Reverted RERANKER_ADAPTER_PATH; stock BGE is production. |
 
 Per-eval cost dropped **46% ($9.70 → $5.28)** through Sprint 7.9 model tiering; Sprint 7.15's hallu upgrade restored Sonnet 4.6 on the verification path (+$1.35/eval). Refusal rate halved (14.0% → 7.3%) across the original campaign and now sits at 6.7%. The multi-hop slice — stuck at 4/13 across three retrieval interventions — moved to 11/13 (84.6%) by Sprint 7.16 cumulative.
 
@@ -1320,6 +1321,96 @@ No code changes shipped in Sprint 7.19. The audit produced three actionable outp
 The reranker bug itself is a one-line fix. The methodological signal is more durable:
 
 **Signal 16 (banked)**: *A configuration that depends on multiple sources (settings.py + .env + .env.example + os.environ + docker-compose) creates failure modes that escape settings_snapshot review.* The FT v1 reranker was loaded conditionally on `os.environ.get("RERANKER_ADAPTER_PATH")` — a path that bypasses pydantic-settings entirely, so the standard `_settings_snapshot()` audit trail in every pipeline cache never recorded it. Five sprints of measurements were taken with the adapter silently off, and the audit trail showed nothing wrong. Fix: any runtime-loadable component (model, adapter, cache, provider) must emit a "loaded as X" log line at startup AND have its identity captured in the settings snapshot — not just the pydantic-typed config. Echoes Signal 6 (per-stage diagnostics measure stage-vs-judge gaps, not stage-vs-truth gaps): the right metric existed but wasn't being collected.
+
+---
+
+## Sprint 7.19 Step 0 — enable the FT v1 reranker, re-baseline — the campaign's "biggest single win" is falsified
+
+The Sprint 7.19 audit identified that `RERANKER_ADAPTER_PATH` had been silently unset since Sprint 7.9, so the FT v1 reranker — characterised in the engineering log as the campaign's biggest single win (multi-hop slice 4/13 → 11/13) — was never actually loaded in any eval since. Step 0 was the cheapest possible test: add `RERANKER_ADAPTER_PATH=data/models/reranker_ft_v1` to `.env`, re-run the full FinanceBench eval under the unchanged downstream stack + κ=0.932 judge.
+
+### Boot-banner verification — the bug it was designed to catch
+
+The Tier 1 logging shipped in [`src/services/event_log.py:log_runtime_components`](src/services/event_log.py) prints the actually-loaded reranker class at process boot. Before .env edit:
+
+```
+reranker:    {'class': 'CrossEncoder', 'ft_adapter_loaded': False, 'adapter_path': '(unset, falling back to stock)'}
+```
+
+After .env edit:
+
+```
+reranker:    {'class': '_FtReranker', 'ft_adapter_loaded': True, 'adapter_path': 'data/models/reranker_ft_v1'}
+```
+
+If this banner had existed at Sprint 7.9 (or any sprint between then and Sprint 7.19), the silent-fallback bug would have been visible at line 5 of every eval log. Five sprints of measurements were taken without it.
+
+### Result
+
+Pipeline ran clean: 150/150 questions, 0 errors, 6730s wall (1hr 52min — slightly slower than baseline's 2hr 22min, consistent with FT-v1 reranker's slightly heavier forward pass on CPU).
+
+| Config | Pass rate under κ=0.932 | Δ vs Sprint 7.16 baseline |
+|---|---:|---:|
+| Sprint 7.16 baseline (stock BGE reranker, the actual production state) | 72.7% (109/150) | — |
+| Sprint 7.19 Step 0 (FT v1 reranker active) | **67.33% (101/150)** | **−5.34pp** |
+
+Per-Q diff: **2 rescues, 10 regressions**, 99 unchanged-pass, 39 unchanged-fail.
+
+### Mechanism — same structural failure mode
+
+**8 of the 10 FT v1 regressions overlap with the Sprint 7.17 Llama-grader regression set** (Adobe FCF conversion, JnJ gross margin drivers, AWW working capital, 3M segment growth, Activision fixed-asset turnover, AMD quick ratio, Best Buy gross margin consistency, financial-approximation calc). The same questions regress under multiple sub-component interventions — this is not random noise but a **structural pipeline failure mode at the generator/synthesizer level**.
+
+Diag 2 bucket breakdown of the 10 regressions:
+- **RERANKER_HIT: 6** (gold WAS in stock-reranker top-8; FT v1 ranking shuffled it out)
+- **RETRIEVAL_MISS: 4** (gold not in top-50 in either state; FT v1's different chunk choices interacted with the generator differently)
+
+The mechanism is consistent with Signal 14 (Llama-grader regression) and Signal 15 (k-bump regression): **any sub-component change shifts the final top-8 composition; the displaced chunks tend to be plausible-but-numerically-distinct line items that confuse the synthesizer on multi-component-formula / qualitative-judgment questions.** Three independent intervention sites (grader model, retrieval pool size, reranker adapter) have now reproduced the same regression pattern.
+
+### Reinterpretation — what was the Sprint 7.9 "biggest single win" actually measuring?
+
+Three possibilities, ranked by likelihood:
+
+1. **Co-occurring changes attribution** (most likely): the Sprint 7.9 commit `0d758b9` bundled (a) the LoRA reranker FT, (b) the Day 3 heterogeneous-tier mapping, (c) voyage-finance-2 embeddings, and (d) the 4-7 day campaign close. The multi-hop slice gain (4/13 → 11/13) measured at the end of that sprint was attributed to the FT, but the attribution was never isolated. The credibility-rule didn't exist yet (it was added at Sprint 7.13). The actual driver may have been the tier-mapping + embedding swap, with the FT contributing little or nothing.
+
+2. **Judge artifact**: the Sprint 7.9 gain was measured under the gpt-4o-mini judge, which Sprint 7.14 audit later found over-penalised ~47% of system outputs. The FT v1 may have produced chunk orderings that were rewarded by the legacy judge's idiosyncrasies but don't survive κ=0.932 scoring.
+
+3. **Downstream-stack erosion**: FT v1 was a genuine win at Sprint 7.9 but has been eroded by Sprint 7.15 (hallucination Sonnet 4.6 upgrade + decomposer fixes) and Sprint 7.16 (generator clauses 7-8). The newer downstream components may handle the stock reranker's chunk choices better than FT v1's.
+
+Without re-running the Sprint 7.9-era pipeline against the κ=0.932 judge, the three can't be cleanly separated. The practical answer is the same: **FT v1 is net-negative on the current pipeline. Stock BGE is production.**
+
+### Signal 17 (banked)
+
+*A historical component win that was attributed under a stale eval framework does not survive re-validation under the current downstream stack + calibrated judge.* The Sprint 7.9 reranker FT was the canonical "validated component win" in the engineering log — and now its silent-deactivation has revealed that loading it actively regresses the headline by 5.34pp. **Component fine-tunes have to be re-validated on every downstream-stack change or judge-framework upgrade.** Echoes and extends Signal 8 (47% of failures in the prior campaign were eval-framework artifacts): component-level "wins" can also be eval-framework artifacts.
+
+### Campaign-narrative implications
+
+The TL;DR section of this doc still credits the Sprint 7.9 reranker FT with unsticking the multi-hop slice. That claim cannot stand without re-measurement under the κ=0.932 judge — and the present finding makes the claim probably-wrong as stated. The four "winning" interventions banked across the campaign were:
+
+| Intervention | Status post-Sprint 7.19 Step 0 |
+|---|---|
+| κ=0.932 Sonnet 4.6 + IMPROVED_PROMPT v2 judge build (Sprint 7.14) | ✓ STILL VALID — methodology contribution |
+| Sprint 7.15 four-fix wave (year-regex + decomposer prompt+cap + hallu Sonnet 4.6 + router prompt) | ✓ STILL VALID — measured under κ=0.932 |
+| Sprint 7.15 Fix 2 + Fix 3 (decomposer YoY rule + quick-ratio guard) | ✓ STILL VALID — measured under κ=0.932 |
+| Sprint 7.9 reranker LoRA-FT v1 ("biggest single win") | ✗ **FALSIFIED** under current stack — −5.34pp when re-enabled |
+
+The 72.7% headline is fully attributable to the three remaining wins. The campaign is still a +25pp move (47.3% → 72.7%) under the *re-calibrated* lens, but the largest single component of that lift now belongs to the **judge recalibration unmask (Sprint 7.14)** at +20.7pp, not the reranker FT.
+
+### Decision
+
+Stock BGE reranker is production. RERANKER_ADAPTER_PATH stays unset in `.env`. Path forward:
+
+- **Step 1 (now actually interesting)**: a properly-trained FT v2 reranker with hard negatives drawn from the current pipeline state, validated against κ=0.932 BEFORE shipping. The Sprint 7.9 training-data construction was outcome-conditioned on the Sprint 7.9-era pass/fail labels; redoing it against the current 109/150 PASSING set + 41 FAILING set is the natural next experiment. Effort estimate: ~1 day work, ~$5-10 LLM.
+- **Step 2 (independent path)**: contextual chunk metadata injection (the Ragie pattern). Doesn't depend on reranker quality. Same effort estimate.
+- **Step 3 (later)**: generator-side intervention on the 8 structural-failure questions that consistently regress under every sub-component change. These are the hard ones.
+
+### Sprint 7.19 Step 0 cost
+
+| Step | Cost |
+|---|---:|
+| Full 150-Q eval (Sonnet generator + hallu, gpt-4o-mini grader, voyage-finance-2 embeddings) | ~$4 |
+| κ=0.932 Sonnet rejudge | ~$0.50 |
+| **Sprint 7.19 Step 0 total** | **~$4.50** |
+
+Cumulative campaign total: **~$175**.
 
 ---
 

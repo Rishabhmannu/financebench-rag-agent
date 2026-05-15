@@ -99,6 +99,11 @@ tests/evaluation/eval_results/*.json
 !tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.correctness.json
 !tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.rejudged_sonnet_v2.correctness.json
 !tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.rejudged_sonnet_v2.diff.json
+# Sprint 7.19 Step 0: FT v1 reranker re-enabled (RERANKER_ADAPTER_PATH bug fix)
+!tests/evaluation/eval_results/financebench_ft_v1_reranker_active_v1.json
+!tests/evaluation/eval_results/financebench_ft_v1_reranker_active_v1.correctness.json
+!tests/evaluation/eval_results/financebench_ft_v1_reranker_active_v1.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_ft_v1_reranker_active_v1.rejudged_sonnet_v2.diff.json
 # Methodology artifacts referenced in docs/engineering-log.md
 !tests/evaluation/eval_results/audit_failed_qs_v1_grader.json
 !tests/evaluation/eval_results/audit_failed_qs_4fix.json
