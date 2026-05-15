@@ -41,6 +41,15 @@ qdrant_data/
 # Postgres local data
 pg_data/
 
+# Sprint 7.17 grader LoRA-FT v1 exploratory artifacts (Signal 12 failure — base
+# model 45× below the validated capacity floor). Kept locally for ablation
+# reproducibility; not tracked because the experiment is documented in
+# docs/engineering-log.md Sprint 7.17 and the adapter outputs aren't reusable.
+data/models/grader_ft_v1_hard_r8/
+data/models/grader_ft_v1_mixed_r8/
+data/models/grader_ft_v1_random_r8/
+data/training/grader_ft_v1/
+
 # Evaluation results (regenerated)
 tests/evaluation/eval_results/*.json
 # ...except committed baselines, sprint milestone snapshots, and final results
@@ -77,6 +86,19 @@ tests/evaluation/eval_results/*.json
 !tests/evaluation/eval_results/grader_ft_v1_component_eval.json
 !tests/evaluation/eval_results/grader_models_compare.json
 !tests/evaluation/eval_results/grader_haiku_max2048.json
+# Sprint 7.17 follow-up: Caveat B falsification + Llama 3.3 70B via Fireworks
+!tests/evaluation/eval_results/grader_haiku_system_split.json
+!tests/evaluation/eval_results/grader_fireworks_llama33_70b.json
+# Sprint 7.17 follow-up #3: full 150-Q FinanceBench eval w/ Llama-3.3-70B grader (OpenRouter)
+!tests/evaluation/eval_results/financebench_openrouter_llama_grader_v1.json
+!tests/evaluation/eval_results/financebench_openrouter_llama_grader_v1.correctness.json
+!tests/evaluation/eval_results/financebench_openrouter_llama_grader_v1.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_openrouter_llama_grader_v1.rejudged_sonnet_v2.diff.json
+# Sprint 7.18a: RETRIEVAL_TOP_K=50→200 to recover RETRIEVAL_MISS bucket
+!tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.json
+!tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.correctness.json
+!tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.rejudged_sonnet_v2.diff.json
 # Methodology artifacts referenced in docs/engineering-log.md
 !tests/evaluation/eval_results/audit_failed_qs_v1_grader.json
 !tests/evaluation/eval_results/audit_failed_qs_4fix.json

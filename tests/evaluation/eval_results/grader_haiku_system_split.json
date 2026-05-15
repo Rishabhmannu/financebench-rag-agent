@@ -1,0 +1,35 @@
+{
+  "name": "claude-haiku-4-5 (system+user split)",
+  "experiment": "Haiku 4.5 with GRADER_PROMPT role+policy text in SystemMessage",
+  "max_tokens": 512,
+  "balanced_100": {
+    "precision": 0.9714,
+    "recall": 0.68,
+    "f1": 0.8,
+    "accuracy": 0.83,
+    "tp": 34,
+    "fp": 1,
+    "fn": 16,
+    "tn": 49,
+    "wall_s": 214.6,
+    "mean_latency_ms": 2146.1,
+    "n_errors": 0
+  },
+  "gold_363": {
+    "gold_chunk_recall": 0.6749,
+    "n_accepted": 245,
+    "n_total": 363,
+    "n_full_recall_qs": 75,
+    "n_partial_recall_qs": 59,
+    "n_zero_recall_qs": 13,
+    "wall_s": 869.9,
+    "n_errors": 0
+  },
+  "est_cost_per_eval_usd": 12.6,
+  "baseline_haiku_humanmessage_only": {
+    "balanced_f1": 0.814,
+    "balanced_prec": 0.972,
+    "balanced_rec": 0.7,
+    "gold_recall": 0.719
+  }
+}

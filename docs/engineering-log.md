@@ -17,7 +17,9 @@ The headline pass rate moved through three regimes:
 | Sprint 7.15 (per-node diagnostic + 4 interventions) | 68.0% → 72.0% | Year-regex fix + decomposer prompt/cap + hallu Sonnet 4.6 upgrade + router prompt |
 | Sprint 7.15 follow-up (Fix 2 — YoY rule) | **72.0% → 73.3%** | Decomposer "is X improving as of FY Y → strictly YoY" rule, +2 net cases |
 | Sprint 7.16 (generator anti-refusal + enumerate-fully) | **73.3% → 72.7%** | −1 net at full-eval scope; validation-cohort wins washed out by pipeline stochasticity + one absence-as-answer misfire on incomplete retrieval (Signal 11) |
-| Sprint 7.17 (grader architecture experiments — LoRA-FT + 4-way model swap) | **72.7%** (no change) | Null on pass rate; 5 methodology bugs caught and fixed mid-run; LoRA-FT MiniLM failed (base model 45× below validated minimum size — Signal 12); published 2026 best-practice "Haiku 4.5 for binary classification" doesn't transfer to FinanceBench — gpt-4o-mini wins on F1 + cost (Signal 13); Groq free tier operationally unusable. No production change. |
+| Sprint 7.17 (grader architecture experiments — LoRA-FT + 4-way model swap + Llama-3.3-70B follow-ups #1-3) | **72.7%** (no change shipped) | Null on shipped pass rate. LoRA-FT MiniLM failed (Signal 12). Follow-up #1 (Haiku w/ SystemMessage split) regressed Haiku → falsified Caveat B. Follow-up #2: Llama-3.3-70B via Fireworks dominated grader benchmarks (+16pp gold-recall, +4.5pp F1). Follow-up #3 (full 150-Q FinanceBench w/ Llama-3.3-70B grader through OpenRouter, κ=0.932 rejudged): **68.0% — REGRESSED −4.7pp** vs the gpt-4o-mini baseline. 14 regressions / 7 rescues, regressions cluster on focused-lookup / superlative / enumeration questions where Llama's lower precision (0.863 vs 0.905) dilutes the generator. **Signal 14: sub-component metric wins don't propagate to system metrics.** Do not ship. |
+| Sprint 7.18a (retrieval k-bump 50 → 200 to recover RETRIEVAL_MISS bucket) | **72.7%** (no change shipped) | Diagnostic measured gold reachable for 11/14 at dense k=200 + 10/14 at hybrid k=200 (vs 1/14 at hybrid k=50). FT v1 reranker pushed 6/10 in-pool cases to top-8 from broader pool. Full eval result: **57.3% — REGRESSED −15.33pp** vs baseline under κ=0.932 judge. Only 2/14 RETRIEVAL_MISS cases newly pass; 25 previously-passing cases regress because broader retrieval pool introduces distractor chunks containing plausible-but-wrong numbers that crash downstream comprehension. **Signal 15: same Signal-14 shape, ~3× worse magnitude.** Reverted RETRIEVAL_TOP_K=50. FT v2 not pursued — would not fix the distractor mechanism that broke. |
+| Sprint 7.19 (code-level audit + pipeline walk) | **72.7%** baseline status unchanged — but **the baseline is on the STOCK BGE reranker, not FT v1.** | Audit findings: (1) **CRITICAL BUG** — `RERANKER_ADAPTER_PATH` env var added at Sprint 7.9 but never propagated to `.env` or `.env.example`; the LoRA-FT v1 adapter has been silently inactive in every eval since (the 72.7% baseline included). The "biggest single win in the campaign" is dormant. (2) Pipeline walk on 5 baseline failure cases: 3 of 5 had gold reaching the generator (RERANKER_HIT), so the residual failures are at the **synthesis/computation** level, not retrieval. (3) Diagnostic-completeness audit: 80% covered; the two gaps that bit us are "what's actually loaded at startup" banner + per-question structured event log. Tier 1 logging plan sized (~7-8 hrs). No code change shipped yet. |
 
 Per-eval cost dropped **46% ($9.70 → $5.28)** through Sprint 7.9 model tiering; Sprint 7.15's hallu upgrade restored Sonnet 4.6 on the verification path (+$1.35/eval). Refusal rate halved (14.0% → 7.3%) across the original campaign and now sits at 6.7%. The multi-hop slice — stuck at 4/13 across three retrieval interventions — moved to 11/13 (84.6%) by Sprint 7.16 cumulative.
 
@@ -1027,21 +1029,299 @@ All 5 fixed in the v2 re-run. Groq paced at 6s/call to stay under 18K tokens/min
 | Claude Haiku 4.5 @ max_tokens=2048 (control) | 0.814 | 0.972 | 0.70 | 0.714 | 10 | 0 | 2.1s | $12.60 |
 | Groq Llama-3.3-70b (free tier) | 0.113 | 1.000 | 0.06 | 0.003 (1/363) | **146** | **89 / 361** | 6.3s | n/a |
 
-### Three findings
+### Three findings — and a correction
 
 **1. Haiku@512 vs Haiku@2048 control settled the max_tokens question.** When the user (correctly) noted that production Anthropic calls use `max_tokens=2048` (with an explicit "Sprint 7.6 Day 4 fix" comment), we suspected Bug 1 might have been silently truncating Haiku's structured-output reasoning at 512 tokens. The control re-run at 2048 returned **identical results** (balanced F1=0.814, gold-recall=0.714). The Sprint 7.6 Day 4 lesson applies to *long-form generation* tasks (research-agent synthesis, hallu-checker reasoning), not short structured-output binary classification.
 
-**2. The published 2026 best-practice claim doesn't transfer.** Multiple sources recommended Haiku 4.5 as the cost-effective binary-classification choice. On our FinanceBench task, gpt-4o-mini beats Haiku 4.5 on F1 by 1.2pp. Haiku's only edge is +1.9pp gold-chunk recall, at **6.8× higher cost ($12.60 vs $1.86 per eval)**. The [Lightweight Relevance Grader paper's](https://arxiv.org/abs/2506.14084) similar claim (gpt-4o-mini < FT'd llama-3.2-1b) also doesn't transfer — gpt-4o-mini is competitive with all four tested alternatives on this domain.
+**2. The gpt-4o-mini-vs-Haiku comparison is inconclusive at this measurement budget.** First-pass framing called gpt-4o-mini "the winner" on F1; the user pushed back, and a re-audit found the framing was selective. The honest read of the same JSON:
 
-**Signal 13 (banked)**: *Published 2026 best-practice for binary classification doesn't always transfer to domain-specific tasks.* The 2026 web guidance and the [Lightweight Relevance Grader paper](https://arxiv.org/abs/2506.14084) both claimed gpt-4o-mini was suboptimal for relevance grading; on FinanceBench, gpt-4o-mini outperforms Haiku 4.5 (cited as "the cost-effective choice") on F1 by 1.2pp at 6.8× lower cost. The cleanest single experimental measure on your specific task can directly invalidate a cited claim. Empirical validation is required before swapping a production component on the basis of published research alone.
+| Metric (same run) | gpt-4o-mini | Haiku 4.5 | Winner |
+|---|---:|---:|---|
+| F1 (balanced-100) | **0.826** | 0.814 | gpt-4o-mini by 1.2pp |
+| Precision (balanced-100) | 0.905 | **0.972** | Haiku by 6.7pp |
+| Recall (balanced-100) | **0.760** | 0.700 | gpt-4o-mini by 6.0pp |
+| Gold-chunk recall (363) | 0.700 | **0.719** | Haiku by 1.9pp |
+| False positives on balanced-100 | 4 | **1** | Haiku |
 
-**3. Groq Llama-3.3-70b free tier is operationally unusable at any sustained throughput.** Even with 6s/call pacing (= 10 req/min, well under both the 30 req/min and 18K tokens/min documented free-tier limits), Groq returned errors on **89-99% of calls** during both benchmarks. The few successful calls scored well directionally (precision=1.0 when working) but the reliability is disqualifying. We can't ship a grader that fails 90%+ of the time. Either pay for the Groq dev tier or rule out.
+The two models trade off precision vs recall. On the metric most aligned with downstream pass rate (gold-chunk recall on the 363-pair set), Haiku wins. The 1.2pp F1 gap is within plausible single-run variance for Haiku at temperature=0 — `ChatAnthropic` does not accept a `seed` parameter, so Haiku's output is "near-deterministic" but not bit-stable, whereas gpt-4o-mini is seeded at 42 via [`src/services/llm_factory.py:72`](src/services/llm_factory.py#L72). Three additional methodology caveats remain that could legitimately shift the picture further:
+
+  - **Provider-specific structured-output mechanics.** `with_structured_output(GradeResult)` at [`scripts/eval_grader_models_compare.py:89`](scripts/eval_grader_models_compare.py#L89) resolves to OpenAI's native `json_schema` (strict=True) for gpt-4o-mini, but Anthropic tool-use for Haiku. The two mechanisms inject different overhead into the prompt and enforce schema differently. This is what production uses, so the comparison is fair to production — but it is *not* a same-prompt comparison of the two models.
+  - **Role text in `HumanMessage`, not `SystemMessage`.** `GRADER_PROMPT` at [`src/config/prompts.py:188`](src/config/prompts.py#L188) begins *"You are a relevance grader…"* and is wrapped in `HumanMessage` at [`scripts/eval_grader_models_compare.py:92`](scripts/eval_grader_models_compare.py#L92). Anthropic's documented best practice puts persona text in the `system` field; OpenAI is more flexible. ~~Likely understates Haiku.~~ **Falsified by Sprint 7.17 follow-up**: re-ran Haiku with role text routed to `SystemMessage`; gold-chunk recall dropped −4.4pp (0.719 → 0.675), balanced F1 dropped −1.4pp (0.814 → 0.800). The production prompt shape is already optimal for Claude on this `with_structured_output` path. Haiku has no hidden capability we were leaving on the table.
+  - **Same-doc negatives may be too easy.** [`build_balanced_sample`](scripts/eval_grader_models_compare.py#L225-L264) picks negatives as "any chunk in the same doc not in the gold list," which in a 10-K includes structurally trivial chunks (signature pages, exhibit lists). Inflates precision relative to production where the reranker has already filtered to topically-similar chunks.
+
+Cost ratio is real: Haiku is 6.8× more expensive per eval at parity of pass-rate impact. But "the published 2026 best-practice for Haiku-as-grader doesn't transfer" — the earlier framing of this finding — is **not what the evidence supports** at this measurement budget. The evidence supports "the gap is below our single-run noise floor, with split signals across metrics."
+
+**3. Groq Llama-3.3-70b free tier is operationally unusable at any sustained throughput.** Even with 6s/call pacing (= 10 req/min, well under both the 30 req/min and 18K tokens/min documented free-tier limits), Groq returned errors on **89-99% of calls** during both benchmarks. The few successful calls scored well directionally (precision=1.0 when working) but the reliability is disqualifying for batch evaluation. This isn't a model verdict — it's a hosting verdict. Two follow-ups planned (see "Decision" below): rehost Llama 3.3 70B on Cerebras (60K TPM vs Groq's 18K, no rate-limit churn) and re-run Haiku with the role text correctly routed to `SystemMessage`.
 
 ### Decision
 
-**No production change. Keep gpt-4o-mini as the grader.** Sprint 7.17 is a null result on pass rate — the 4 candidate alternatives don't dominate the current production grader on F1 + cost + reliability. The +1.9pp recall edge Haiku 4.5 offers doesn't justify 6.8× cost given that neither variant clears the strict ship gate (recall ≥ 0.80).
+**No production change. Keep gpt-4o-mini as the grader for now.** Sprint 7.17 is a null result on pass rate, and the only candidate that might dominate gpt-4o-mini in a fair re-test is Haiku — and that re-test hasn't been run yet. Two cheap follow-up experiments will close the question rather than leave it ambiguous:
 
-The grader stage appears to be at its **prompt-only LLM ceiling** — the remaining ~30pp gold-chunk recall gap to a perfect grader isn't a model-choice problem. Diag 2's attribution analysis (51% of failures are upstream-bound; only ~2 of 41 are pure grader-zero-recall) confirms that fixing the grader wouldn't move the headline much anyway. The next architectural lever, if pursued, is retrieval improvements (the 14 RETRIEVAL_MISS cases).
+- **Follow-up 1 — RUN: Haiku with system+user split (~$0.50, 18 min wall).** Re-ran Haiku grader with `GRADER_PROMPT`'s role text routed to `SystemMessage`. **Result: regression.** Balanced F1 0.814 → 0.800 (−1.4pp), gold-chunk recall 0.719 → 0.675 (−4.4pp), zero-recall Qs 10 → 13. Caveat B falsified. Haiku's original 0.719 gold-recall stands as its ceiling on this `with_structured_output` path; no prompt-engineering pass closes the residual gap to gpt-4o-mini.
+- **Follow-up 2 — RUN: Llama-3.3-70B-Instruct via Fireworks AI free tier ($0 actual cost from $6 signup credit, 60 min wall on 463 calls).** Original plan was Cerebras, but Cerebras free tier doesn't list Llama-3.3-70B (only `gpt-oss-120b`, `llama3.1-8b`, `qwen-3-235b-a22b-instruct-2507`, `zai-glm-4.7` per [the official rate-limits doc](https://inference-docs.cerebras.ai/support/rate-limits) — earlier 3rd-party blog cited Llama-3.3-70b on free tier, but the authoritative source contradicts it). Pivoted to **Fireworks AI free tier** (~10 RPM, no payment method required) routing `accounts/fireworks/models/llama-v3p3-70b-instruct`. **Result: decisive win on grader benchmarks.**
+
+  | Backend | F1 (balanced) | Precision | Recall | Gold-chunk recall (363) | Zero-recall Qs |
+  |---|---:|---:|---:|---:|---:|
+  | BGE+LoRA-FT v1 | 0.701 | 1.000 | 0.540 | 0.452 | 42 |
+  | Haiku 4.5 (system+user split, Exp 1) | 0.800 | 0.971 | 0.680 | 0.675 | 13 |
+  | Haiku 4.5 (HumanMessage only) | 0.814 | 0.972 | 0.700 | 0.719 | 10 |
+  | gpt-4o-mini (production control) | 0.826 | 0.905 | 0.760 | 0.700 | 7 |
+  | **Llama-3.3-70B via Fireworks (Exp 2)** | **0.871** | 0.863 | **0.880** | **0.860** | **2** |
+
+  Llama 3.3 70B beats gpt-4o-mini by **+16pp on gold-chunk recall** (0.700 → 0.860), drops zero-recall Qs from 7 → 2 (out of 147), and lifts balanced F1 by +4.5pp. Precision regresses slightly (0.863 vs gpt-4o-mini 0.905) — Llama is more permissive — so the downstream generator absorbs ~7 extra false-positive chunks per 100 calls. Cost per 150-Q eval: $10.53 (5.5× gpt-4o-mini, comparable to Haiku's 6.8×). Wall-time penalty in production: ~5s latency vs gpt-4o-mini's 1.5s. 0 errors out of 463 calls — Fireworks is operationally healthy at the free-tier 10 RPM, unlike Groq.
+
+  This is the **first grader candidate in Sprint 7.17 that materially dominates the production control**. The earlier framing — that gpt-4o-mini and Haiku were near-equal and the grader stage was at its prompt-only LLM ceiling — was correct *within the gpt-4o-mini-and-Haiku pair* but missed Llama-3.3-70B's much higher recall floor. Open-weight 70B-class models are a real grader option that the 4-way comparison's broken Groq backend hid.
+
+**Follow-up #3 — RAN: full 150-Q FinanceBench eval w/ Llama-3.3-70B grader (~$3, 2hr 51min wall).** Wired `LLMFactory.get_grader_llm()` to dispatch to Llama-3.3-70B-Instruct via OpenRouter (Fireworks free tier was too rate-limit-bursty for batch usage; OpenRouter paid at $0.04/M tokens has no burst penalty). Six wiring issues caught in the smoke pass before launching the full run (each one would have silently corrupted the result, so each was its own credibility-rule win):
+
+1. **`os.environ.get("FIREWORKS_API_KEY")` returns None** — pydantic-settings reads `.env` for typed fields but doesn't side-effect into `os.environ`. Switched to `settings.FIREWORKS_API_KEY`.
+2. **Redis connection refused** — docker-compose maps the rag-cache redis container to host port 6380, not the default 6379. Added `RESULT_CACHE_REDIS_PORT=6380` to `.env`.
+3. **`.env` keys not visible to modules that read os.environ directly** — added `load_dotenv()` at the top of `run_financebench.py` and `rejudge.py`.
+4. **Wrong Qdrant collection** — eval default was `financebench_corpus` (payload `company="unknown"` for most chunks, breaking the entity_match filter); the canonical 72.7% baseline used `financebench_corpus_pypdf_voyage_finance2` (real company slugs).
+5. **Wrong embedding provider** — settings default was `EMBEDDING_PROVIDER=openai` (1536-dim), but the canonical collection was indexed with voyage-finance-2 (1024-dim). Qdrant rejected every query with a dimension-mismatch 400.
+6. **OpenRouter auto-routing to providers with broken structured-output** — initial smoke had dozens of `LengthFinishReasonError` and "no parsed field" errors per question because OpenRouter sent some requests to providers (e.g. Venice) that don't reliably emit valid JSON for the GradeResult schema. Pinned via `extra_body={"provider": {"order": ["fireworks", "together", "deepinfra"], "allow_fallbacks": False}}` — 0 grader failures across the full 150-Q run.
+
+**Result (rejudged with κ=0.932 Sonnet 4.6 + v2):**
+
+| Config | Pass rate | Δ vs gpt-4o-mini baseline |
+|---|---:|---:|
+| Sprint 7.16 baseline (gpt-4o-mini grader) | 72.7% (109/150) | — |
+| Sprint 7.17.#3 (Llama-3.3-70B grader via OpenRouter) | **68.0% (102/150)** | **−4.7pp** |
+
+Per-Q diff: 14 regressions, 7 rescues, 95 unchanged-pass, 34 unchanged-fail. Pattern is consistent across the failure axis:
+
+- **Llama's 7 rescues** are multi-component-formula / qualitative-judgment questions (Ulta repurchases multi-step, MGM interest coverage, Verizon/Paypal/Corning working capital, AES restructuring, generic financial-position). More chunks accepted = more evidence for multi-step reasoning.
+- **Llama's 14 regressions** are focused-lookup / superlative / list-enumeration questions (JnJ gross margin drivers, 3M debt securities list, AmEx largest liability, JPM lowest revenue segment, Best Buy consistent gross margins, CVS fixed asset turnover, Pfizer biggest regional drop, Adobe op-cash-flow ratio, AMD customer concentration, PepsiCo legal battles, AMCOR EBITDA, 3M segment drag, Verizon retiree payments, 3M capex). More chunks accepted = generator distracted from the one chunk holding the answer.
+
+The benchmark precision delta (Llama 0.863 vs gpt-4o-mini 0.905) is the proximate cause. Llama's lower precision = more borderline chunks survive grading → generator gets noisier context → focused-lookup answers drift / get diluted.
+
+**Signal 14 (banked)**: *Sub-component metric wins don't always propagate to system-level metrics — and can actively regress them through second-order effects.* Llama-3.3-70B was unambiguously better on the grader benchmark (gold-recall +16pp, balanced-F1 +4.5pp). Under the κ=0.932 judge, the same intervention regressed FinanceBench pass-rate by 4.7pp. The precision/recall trade-off that looks neutral at the component level had asymmetric downstream consequences: extra true-positive chunks help on a minority of questions but extra false-positive chunks hurt on a larger majority. Echoes Signal 11 (validation-cohort wins washing out at full-eval) with a cleaner mechanism: when a sub-component metric only captures one axis (recall) and the system rewards another (precision-driven focus), the sub-component win can be a system-level loss. **Lesson: even when a sub-component win is real and measured, the only definitive test is the end-to-end full eval.**
+
+### Decision
+
+**Do not ship Llama-3.3-70B as grader.** Sprint 7.17 closes as a fully null result on pass rate, with three signals banked (12, 13—deferred, 14). Production stays on gpt-4o-mini.
+
+### Open question — retrieval, not grader
+
+Sprint 7.16 Diag 2's attribution already pointed here: ~51% of residual failures are upstream-bound (retrieval miss / reranker rejection). The grader sub-tree of the failure budget is small enough that even a perfect grader couldn't move the headline much. Sprint 7.18 (when it exists) should attack the 14 RETRIEVAL_MISS cases, not the grader.
+
+---
+
+## Sprint 7.18a — retrieval k-bump 50 → 200 — null with the largest regression measured
+
+After Sprint 7.17 closed with the grader at its system ceiling, the next architectural lever was retrieval. Diag 2 attribution (Sprint 7.16) measured 51% of residual failures as upstream-bound: gold chunks lost at retrieval or reranker before reaching the grader/generator. The 14 RETRIEVAL_MISS cases were the largest single bucket.
+
+### Pre-flight diagnostic (45 min, $0)
+
+Per the credibility rule + Signal 14 lesson, ran two cheap diagnostics before committing to any intervention:
+
+**Diagnostic 1 — k-sweep on the 14 RETRIEVAL_MISS cases.** For each case, ran dense / sparse / hybrid retrieval at k=50, 200, 500, 1000 on the canonical `financebench_corpus_pypdf_voyage_finance2` collection and measured whether the gold chunks were present in each candidate pool.
+
+| Retrieval config | Cases with gold present (of 14) |
+|---|---:|
+| Hybrid top-50 (current production) | **1/14** |
+| Sparse top-200 (BM25 alone) | 5/14 |
+| Hybrid top-200 | **10/14** |
+| Dense top-200 | 11/14 |
+| Dense top-500 | 13/14 |
+| Dense top-1000 (no filter) | 13/14 |
+
+Only 1/14 cases (JPM hypothetical bankruptcy `02119`) was unreachable even at k=1000. The other 13 had gold within reach of broader top-K — the embedding was good enough; the candidate pool was too tight.
+
+**Categorization by failure mode** (manual coding of the 14 questions + gold chunks):
+
+| Pattern | Count | Example | Gold chunk shape |
+|---|---:|---|---|
+| RATIO_CONCEPT_MISMATCH | 8/14 | "Does Paypal have positive working capital?" | Balance sheet / income statement / cash flow with raw line items — query has the ratio name, doc doesn't |
+| LIST_OR_ENUMERATION | 3/14 | "What are AMCOR's acquisitions in FY23/22/21?" | Deep footnote pages (e.g. acquisitions note at page 64×4) |
+| MULTI_YEAR_COMPARISON | 1/14 | "Boeing tax rate FY22 vs FY21" | Income statement with prior-year columns |
+| NOVEL_HYPOTHETICAL | 2/14 | "If JPM went bankrupt..." | Press-release / cover page; one is unreachable |
+
+**Diagnostic 2 — FT v1 reranker behavior on k=200 hybrid pool.** For each case, retrieved 200 candidates and scored every one with the production FT v1 reranker (`BAAI/bge-reranker-v2-m3` + LoRA adapter at `data/models/reranker_ft_v1`).
+
+| Stage | Of 14 cases |
+|---|---:|
+| Gold in k=200 hybrid pool | **10/14** |
+| Gold ranks in TOP-8 after FT v1 rerank | **6/14** |
+| Gold in pool but stuck at rank 13-41 | **4/14** |
+
+FT v1's training data (per `data/models/reranker_ft_v1/training_metadata.json` + `data/training/reranker_ft_v1/manifest.json`) was 1779 (query, chunk) pairs from 67 PASSING FinanceBench questions, hard negatives drawn from top-30 retrieval. The 14 RETRIEVAL_MISS cases were excluded by construction; chunks ranked 31-200 were never in the training distribution.
+
+Despite that, FT v1 actually surfaced the gold to top-8 for 5/5 in-pool RATIO_CONCEPT_MISMATCH cases (ranks 1-6). It failed on LIST / MULTI_YEAR / NOVEL cases (ranks 13-41). A diagnostic-justified FT v2 candidate sprint was sized at +1-3pp incremental on top of whatever k-bump delivered.
+
+### Full eval result
+
+Set `RETRIEVAL_TOP_K=200`, left everything else identical to the Sprint 7.16 baseline. Smoke 5-Q ran clean (60s/q wall, vs baseline 65s/q — reranker latency penalty at k=200 was negligible). Full 150-Q eval: 7170s wall (47.8s/q), 0 pipeline errors.
+
+**Rejudged under κ=0.932 Sonnet 4.6 + IMPROVED_PROMPT v2:**
+
+| Config | Pass rate | Δ vs Sprint 7.16 baseline |
+|---|---:|---:|
+| Sprint 7.16 baseline (RETRIEVAL_TOP_K=50) | 72.7% (109/150) | — |
+| Sprint 7.18a (RETRIEVAL_TOP_K=200) | **57.3% (86/150)** | **−15.33pp** |
+
+Per-Q diff: **2 rescues, 25 regressions, 84 unchanged-pass, 39 unchanged-fail.** Of the 14 RETRIEVAL_MISS cases the intervention targeted, only 2 newly passed (Verizon capital-intensive `00215` and Walmart DPO `06247`).
+
+### Mechanism — distractor chunks crash comprehension
+
+The 25 regressions span every question type — not concentrated. Examples:
+
+- `00757` AMD customer concentration (yes/no with evidence) — passed at k=50, failed at k=200
+- `01198` AMD revenue drivers (MD&A) — passed → failed
+- `05915` CVS fixed asset turnover (multi-component formula) — passed → failed
+- `00302` Pfizer PPNE growth (yes/no) — passed → failed
+- `03856` Adobe op-cash-flow ratio (formula) — passed → failed
+- `01964` AmEx largest liability (superlative lookup) — passed → failed
+- `03029` 3M FY18 capex (specific number) — passed → failed
+
+The smoke 5-Q already telegraphed the mechanism: the k=200 answer for 3M FY2018 capex cited "$27 million" (an environmental-capex footnote line) instead of the gold "$1,577 million" (Purchases of PP&E from the cash flow statement). Both chunks are 3M FY2018 chunks; both contain the phrase "capital expenditure"; the broader pool surfaced the wrong one and the generator chose it.
+
+Mechanistic explanation: even though the reranker's final output is still top-8, its COMPOSITION shifts when drawn from a 200-chunk pool vs a 50-chunk pool. For queries where gold is at rank 8-30 in the smaller pool (passing baseline), broader retrieval brings in OTHER high-similarity chunks from ranks 51-200 that displace correct ones — same number of slots, different occupants. The displaced occupants tend to be plausible-but-wrong-number distractors (e.g. environmental capex, segment-specific capex, prior-year capex) because financial filings contain many such adjacent line items.
+
+**Signal 15 (banked)**: *Broadening a retrieval candidate pool to recover a missed-recall subset can crash system pass rate at a higher rate than the gain.* The signal-14 mechanism but ~3× worse in magnitude: sub-component metric (Recall@200) +50pp on the failing bucket → system metric (pass rate) −15.33pp on the headline. The mechanism this time is at the reranker-output composition level, not the grader's chunk-acceptance level. The fix space is therefore different: FT v2 (which would have improved reranker discrimination) wouldn't help — it would still rank the high-similarity distractors as relevant, because they ARE topically relevant; their failure is at the numerical-distinction level the reranker doesn't model.
+
+### Decision
+
+**Do not ship k-bump. Do not pursue FT v2 (Experiment 7.18b).** The mechanism that broke isn't fixable by reranker improvement alone — broader candidate pools structurally introduce more distractors regardless of how good the reranker is. The reranker can rank topical relevance, not numerical-fact correctness.
+
+Reverted `RETRIEVAL_TOP_K=50` in `.env`. Production state is unchanged.
+
+### Cost / time
+
+| Step | Cost |
+|---|---:|
+| Diagnostics (k-sweep + FT v1 rerank probe) | $0 (local) |
+| Smoke 5-Q with k=200 | ~$0.20 |
+| Full 150-Q eval with k=200 | ~$4 |
+| Sonnet 4.6 + v2 rejudge | ~$0.50 |
+| **Sprint 7.18a total** | **~$5** |
+
+Cumulative campaign total: ~$170.
+
+### Reflection — three intervention sites tested, all null
+
+| Sprint | Site | Sub-component effect | System effect |
+|---|---|---:|---:|
+| 7.16 | Generator (anti-refusal + enumerate-fully) | Targeted-cohort validation +4 net | Full eval −0.7pp (null) |
+| 7.17 #3 | Grader (Llama-3.3-70B swap) | Grader benchmark +16pp gold-recall, +4.5pp F1 | Full eval −4.7pp (Signal 14) |
+| 7.18a | Retrieval (k-bump 50→200) | Recall@200 +50pp on miss bucket | Full eval −15.33pp (Signal 15) |
+
+Three different stages, three failures. The pipeline as currently composed appears to be at a **system-level local optimum at 72.7%**. Each component is near its own ceiling; the failure modes are now at the orchestration / cross-component interaction level, not at any single component's capability.
+
+What this implies for next steps is in the "Roadmap" section below — the surviving options are now:
+
+- **Sprint 7.12 (parked)**: external benchmarks (ConvFinQA + TAT-QA) — does NOT move the FinanceBench headline but adds generalization breadth for the portfolio narrative
+- **Generator FT** (Sprint 7.13 "if reasoning is dominant" branch): generator-side QLoRA — only justified if reasoning is the residual bottleneck, which Diag 2 didn't conclusively show
+- **Accept 72.7% as the ceiling**: rebrand the work around stability, methodology, and signals banked (8 documented signals at this point), not pass-rate climbing
+
+The credibility-rule pattern from this sprint stands as the strongest meta-finding: the diagnostic correctly predicted gold reachability, but failed to predict the distractor-crash mechanism. **Sub-component metrics are necessary but not sufficient — only the full-eval pass rate under the calibrated judge is decisive.**
+
+---
+
+## Sprint 7.19 — code-level audit + pipeline walk
+
+After three consecutive null/regression interventions (7.16 generator prompt, 7.17 #3 grader swap, 7.18a retrieval k-bump), I ran a code-level audit before committing to any further experiments. The user explicitly framed it: *"see if there were changes which should have been there in the code but were either not implemented properly or were not implemented at all"* — modelled on the Sprint 7.17 audit that surfaced 5 silent methodology bugs (max_tokens=256 on Haiku, silent exception → False verdict, Groq token-rate-limit miss, BGE base loaded without LoRA adapter, gpt-4o-mini missing seed=42).
+
+### Critical finding: the FT v1 reranker has been silently INACTIVE since Sprint 7.9
+
+The Sprint 7.9 LoRA-FT'd BGE reranker — characterised in the campaign trajectory as "the most informative sprint" and credited with unstucking the multi-hop slice from 4/13 → 11/13 — is **not being loaded in any current eval**.
+
+Evidence chain:
+
+1. [`src/services/reranker_service.py:92-94`](src/services/reranker_service.py#L92-L94) loads the LoRA adapter only when `os.environ.get("RERANKER_ADAPTER_PATH")` is set; otherwise falls through to a stock `CrossEncoder(BAAI/bge-reranker-v2-m3)`.
+2. `.env` does **not** contain `RERANKER_ADAPTER_PATH` (only `RERANKER_DEVICE=cpu`).
+3. `.env.example` does **not** document `RERANKER_ADAPTER_PATH` either — so any clean install would also miss it.
+4. Direct probe via `_load_reranker()` under current env returned class `CrossEncoder`, not `_FtReranker`. Log line: `Loading reranker: BAAI/bge-reranker-v2-m3 on device=cpu (stock; first run downloads ~568MB)`.
+5. The adapter files at [`data/models/reranker_ft_v1/`](data/models/reranker_ft_v1/) DO exist on disk — they're just never being loaded.
+
+**Implications:**
+
+- The 72.7% baseline (Sprint 7.16 final) was achieved on the **stock** BGE reranker, not FT v1.
+- Sprint 7.17 follow-up #3 (Llama-grader −4.7pp) and Sprint 7.18a (k=200 −15.33pp) were both measured against this same stock-reranker baseline.
+- The earlier Sprint 7.18a diagnostic that scored "FT v1 reranker on k=200 pool" — where FT v1 surfaced 6/10 in-pool cases to top-8 — **was scoring the actual adapter** (because I loaded it explicitly via `PeftModel.from_pretrained()` in the diag script). The production pipeline running the full eval did NOT use this same adapter.
+- Therefore: **we have a free experiment available.** Setting `RERANKER_ADAPTER_PATH=data/models/reranker_ft_v1` and re-running could move the headline up (or stay flat — which would invalidate the "biggest single win" attribution from Sprint 7.9). Either outcome is decision-useful.
+
+This is the same shape of bug as the Sprint 7.17 audit's Bug 4 (BGE base loaded without LoRA adapter) — but at the production runtime rather than at an eval harness. The bug evaded detection for five sprints because no scripted boot output emitted "what's actually loaded" alongside the settings snapshot.
+
+### Pipeline walk on 5 baseline failure cases
+
+Traced one case from each failure category in [`audit_failed_qs_gen_v2.json`](tests/evaluation/eval_results/audit_failed_qs_gen_v2.json) through the baseline pipeline cache + Diag 2 attribution:
+
+| Case | Category | Diag 2 bucket | NDCG@8 | Real contexts | Failure stage |
+|---|---|---|---:|---:|---|
+| `07966` Activision capex 3y avg | REFUSAL | RERANKER_HIT | 0.49 | 3 | Generator refusal — could not extract capex from chunks that reached top-8 |
+| `00807` 3M quick ratio Q2'23 | WRONG_NUMBER | RERANKER_HIT | 0.65 | 9 | Generator computation error — picked wrong line items (decomposer has quick-ratio guard, synthesizer doesn't) |
+| `01902` Best Buy product category Q2 FY24 | WRONG_DIRECTION | RERANKER_MISS | 0.00 | 8 (no gold) | **Judge bug** — audit notes system answer is correct ("by top line" = revenue, system identified "Computing and Mobile Phones") |
+| `00499` 3M capital-intensive FY22 | PARTIAL_ANSWER | RETRIEVAL_MISS | 0.00 | 5 (no gold) | RATIO_CONCEPT_MISMATCH; generator used capex/OCF instead of gold's capex/revenue |
+| `00460` Best Buy stores Q2 FY24 | DATASET_SUSPECT | RERANKER_HIT | 0.54 | 4 | **Gold may be wrong** — audit notes system answer matches actual 10-Q better than gold |
+
+**Pattern**: 3 of 5 baseline failures have gold in top-8 (RERANKER_HIT with NDCG > 0). The reranker and retrieval correctly delivered the right chunks. The failures are at **generator + research-agent computation/synthesis** — refusal despite partial evidence (07966), formula-application errors (00807), concept-to-metric mismatch (00499). This matches Diag 2's 49% downstream-bound attribution and aligns with the Mafin/PageIndex (98.7%) + DANA (94.3%) observation that the residual ceiling in production-grade FinanceBench systems sits at the reasoning level, not retrieval.
+
+### Diagnostic-completeness audit
+
+Existing diagnostic surface across [`tests/evaluation/phase_eval_results/`](tests/evaluation/phase_eval_results/) and the Diag 2 / Diag 3 attribution artifacts:
+
+| Metric | Coverage | Source |
+|---|---|---|
+| Chunk-preservation IoU (parsing quality) | ✓ mean 0.46, only 14.8% chunks ≥0.7 IoU | phase_eval_v2 |
+| Retrieval Recall@5/10/20/50 | ✓ standing | phase_eval_v2 |
+| Reranker NDCG@8 + Precision@8 | ✓ standing | phase_eval_v2 |
+| Grader benchmark (P/R/F1) | ✓ 100-pair balanced | phase_eval_v2 |
+| Per-question retrieval/reranker bucketing | ✓ | Diag 2 |
+| Per-question correctness with judge reasoning | ✓ | κ=0.932 rejudge files |
+| **Recall@k for k > 50** | ✗ ad-hoc only (Sprint 7.18a 14-case probe) | gap |
+| **Distractor-chunk detection at reranker output** | ✗ no metric | gap — exactly the failure mode that crashed Sprint 7.18a |
+| **Hallucination-checker F1 (standing)** | ✗ measured once Sprint 7.9 on 75 labels, not standing | gap |
+| **Generator faithfulness per-question** | ✗ aggregates only via RAGAS/DeepEval | gap |
+| **Question-type stratification** (domain-relevant / novel-generated / metrics-generated) | ✗ | gap |
+| Router F1 | ✗ deferred per Sprint 7.11 Day 4 note | gap |
+
+**The big-impact gap is interaction-level metrics.** Signal 11/14/15 keep firing because we measure per-component health but not cross-component drift. Specifically: when the broader k=200 pool changed the reranker output's composition, no metric flagged the new arrivals as "topically relevant but numerically wrong." A distractor-chunk detector at the reranker output (regex check on financial number formats vs gold-answer's expected value, where labelled) would have caught the 7.18a regression before launch.
+
+### Logging-infrastructure audit
+
+Inventory of what's already captured:
+
+| Asset | Captures | Gap |
+|---|---|---|
+| **46 `logger.info/warning` calls** across 17 graph nodes | Decision points: retrieval result counts, fallback paths, grader verdicts, agent decompose/sufficiency outcomes, calculator results, errors | Goes to stderr only. No file handler. Free-form strings, not structured fields. |
+| **Langfuse self-hosted stack** (Sprint 8) at `localhost:3000` | Every LLM call with model/tokens/latency/cost/userId | LLM calls only — misses graph-level decisions (router intent, target_company, fallback flags, cache hits, entity-match rejections) |
+| **Pipeline cache JSONs** for eval runs | Per-question: query, answer, contexts (final relevant_chunks) | Doesn't capture intermediate state |
+| **`run_metadata` in pipeline cache** | Effective settings + git SHA + qdrant collection info | Pydantic-typed settings only — doesn't capture os.environ-only vars (which is where `RERANKER_ADAPTER_PATH` lives) |
+
+**The two missing pieces that hid the reranker bug:**
+
+1. **A "what's actually loaded" startup banner.** If pipeline boot printed `Reranker: BAAI/bge-reranker-v2-m3 (STOCK — adapter not loaded)` along with the loaded grader model, embedding provider, collection name, and Redis connection status, the FT v1 silence would have been visible from line 1 of every eval log.
+
+2. **A central JSONL event log with structured fields.** The 46 existing logger calls fire but their content is free-form text mixed with library output. No way to grep "what happened to `financebench_id_03029` across all stages" or `jq`-query "all questions where reranker NDCG=0 but generator succeeded."
+
+### Tier 1 logging plan (sized for ~7-8 hours, deferred to next sprint)
+
+Three small additions:
+
+1. **`src/services/event_log.py`** — single module exposing `emit(stage, **fields)` that writes JSONL events to `logs/run_<timestamp>.jsonl`. Configured via `EVENT_LOG_PATH` env var or auto-named.
+2. **Startup banner** — function `log_runtime_components()` introspects the actually-loaded reranker class, grader LLM `model_name + base_url`, full settings + os.environ snapshot, Qdrant collection metadata, and Redis ping result. Called from [`src/api/main.py`](src/api/main.py) on FastAPI startup and at the top of [`tests/evaluation/run_financebench.py`](tests/evaluation/run_financebench.py) + [`tests/evaluation/rejudge.py`](tests/evaluation/rejudge.py).
+3. **File handler** wired into `logging.basicConfig` writes the existing 46 `logger.info` strings to `logs/run_<timestamp>.log` in addition to stderr. No call-site rewrites needed for the v1.
+4. **Enrich ~15 critical existing log calls** with `extra={"fb_id": ..., "stage": ..., "n_relevant": ...}` so the JSONL records carry structured fields without rewriting message strings.
+5. **`scripts/show_run.py <run_id> [<fb_id>]`** — renders any JSONL log as a human-readable per-question timeline.
+
+Tier 2 (Langfuse custom spans per node, per-question audit JSON dumps, diff_runs script) deferred until Tier 1 produces evidence the logger is actually helping catch bugs.
+
+### Decision
+
+No code changes shipped in Sprint 7.19. The audit produced three actionable outputs:
+
+1. **Step 0** for the next sprint: set `RERANKER_ADAPTER_PATH=data/models/reranker_ft_v1` and re-run the full FinanceBench eval. Every measurement we have is anchored to a baseline with the FT v1 adapter silently disabled — we don't actually know what our "real" baseline is. ~$5, ~3hr wall.
+2. **Tier 1 logging plan** ready to implement after Step 0 lands.
+3. **Cleanup**: untracked exploratory artifacts at [`data/models/grader_ft_v1_hard_r8/`](data/models/grader_ft_v1_hard_r8/) and [`data/models/grader_ft_v1_mixed_r8/`](data/models/grader_ft_v1_mixed_r8/) from the Sprint 7.17 grader LoRA failure (Signal 12) added to `.gitignore`.
+
+### Methodological signal — banking the gap, not the bug
+
+The reranker bug itself is a one-line fix. The methodological signal is more durable:
+
+**Signal 16 (banked)**: *A configuration that depends on multiple sources (settings.py + .env + .env.example + os.environ + docker-compose) creates failure modes that escape settings_snapshot review.* The FT v1 reranker was loaded conditionally on `os.environ.get("RERANKER_ADAPTER_PATH")` — a path that bypasses pydantic-settings entirely, so the standard `_settings_snapshot()` audit trail in every pipeline cache never recorded it. Five sprints of measurements were taken with the adapter silently off, and the audit trail showed nothing wrong. Fix: any runtime-loadable component (model, adapter, cache, provider) must emit a "loaded as X" log line at startup AND have its identity captured in the settings snapshot — not just the pydantic-typed config. Echoes Signal 6 (per-stage diagnostics measure stage-vs-judge gaps, not stage-vs-truth gaps): the right metric existed but wasn't being collected.
+
+---
 
 ### Sprint 7.17 cost
 
@@ -1052,15 +1332,21 @@ The grader stage appears to be at its **prompt-only LLM ceiling** — the remain
 | 4-way fair comparison v1 (with 5 methodology bugs) | ~$1.50 |
 | 4-way fair comparison v2 (post-fixes) | ~$2.50 |
 | Haiku @ max_tokens=2048 control run | ~$1.50 |
-| **Sprint 7.17 total** | **~$5.50** |
+| Follow-up 1: Haiku w/ SystemMessage split (Caveat B falsification) | ~$0.50 |
+| Follow-up 2: Llama-3.3-70B via Fireworks free tier ($6 signup credit) | $0 (free) |
+| Follow-up 3: Full 150-Q FinanceBench eval via OpenRouter Llama-3.3-70B + Sonnet rejudge | ~$3 |
+| **Sprint 7.17 total** | **~$9.00** |
 
 Cumulative campaign total: ~$165.
 
 ### Confidence labels (per credibility rule)
 
-- **Measured**: BGE+LoRA, gpt-4o-mini, Haiku@512, Haiku@2048 all evaluated under identical conditions on the same 100-pair + 363-gold-chunk benchmarks. 0 errors in any of those four runs.
-- **Reasonable inference**: Groq's poor result is operational, not model-quality — the 11 calls that succeeded had precision=1.0. With a paid Groq tier, Llama-3.3-70b could match Haiku's level, but cost-per-eval would be ~$6.95 (still 3.7× gpt-4o-mini).
-- **Speculation, pending measurement**: That the 30pp gold-chunk recall gap is a prompt-level ceiling rather than a model-level one. A prompt rewrite test on gpt-4o-mini under the κ=0.932 judge (Sprint 7.13 V1 retry) would settle this — deferred since the cost-benefit no longer looks favorable given Diag 2's attribution that only ~2 failures are pure grader-zero-recall in the residual set.
+- **Measured**: BGE+LoRA, gpt-4o-mini, Haiku@512, Haiku@2048, Haiku-w/-SystemMessage-split, Llama-3.3-70B-via-Fireworks all evaluated under identical conditions on the same 100-pair + 363-gold-chunk benchmarks. 0 errors across all six runs (after the Groq backend was retired).
+- **Measured (decisive)**: Llama-3.3-70B beats gpt-4o-mini by +16pp on gold-chunk recall (0.860 vs 0.700), +4.5pp on balanced F1 at the grader benchmark. Llama is more permissive — 7 FP vs 4 — but on this corpus's same-doc-negative distribution that translates to higher recall without collapsing precision below a usable floor.
+- **Measured (negative)**: Caveat B falsified. Routing GRADER_PROMPT's role text to SystemMessage *regresses* Haiku by 4.4pp gold-recall. Production prompt shape is optimal for Claude on the `with_structured_output` path.
+- **Measured (decisive, follow-up #3)**: Llama-3.3-70B as grader **regressed** FinanceBench pass-rate by 4.7pp (72.7% → 68.0%) under the κ=0.932 judge. The +16pp grader-benchmark gold-recall win did **not** translate. Net: 14 regressions, 7 rescues. Regressions cluster on focused-lookup / superlative / list-enumeration questions where extra false-positive chunks dilute the generator's focus. Sub-component metrics ≠ system metrics (Signal 14).
+- **Reasonable inference**: The grader stage is not the rate-limiting bottleneck for further pass-rate improvement. Both directions (more-strict gpt-4o-mini and more-permissive Llama) have been measured; neither moves the headline materially. Combined with Diag 2 attribution (51% upstream-bound failures), retrieval is the next architectural lever.
+- **Speculation**: That a higher-precision Llama path (e.g. prompt engineering toward stricter binary verdicts, OR threshold-tuned BGE+LoRA-FT v2 with more training data) could yield a precision-recall sweet spot that beats gpt-4o-mini on both axes simultaneously. Untested.
 
 ---
 

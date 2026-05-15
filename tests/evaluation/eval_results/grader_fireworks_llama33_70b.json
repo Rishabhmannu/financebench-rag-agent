@@ -1,0 +1,41 @@
+{
+  "name": "llama-3.3-70b-instruct via Fireworks AI",
+  "experiment": "Llama-3.3-70B-Instruct via Fireworks AI free tier (replaces the Sprint 7.17 Groq backend that errored on 90%+ of calls)",
+  "model_id": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+  "max_tokens": 512,
+  "pacing_seconds": 5.0,
+  "balanced_100": {
+    "precision": 0.8627,
+    "recall": 0.88,
+    "f1": 0.8713,
+    "accuracy": 0.87,
+    "tp": 44,
+    "fp": 7,
+    "fn": 6,
+    "tn": 43,
+    "wall_s": 713.0,
+    "mean_latency_ms": 7130.0,
+    "n_errors": 0
+  },
+  "gold_363": {
+    "gold_chunk_recall": 0.8595,
+    "n_accepted": 312,
+    "n_total": 363,
+    "n_full_recall_qs": 113,
+    "n_partial_recall_qs": 32,
+    "n_zero_recall_qs": 2,
+    "wall_s": 2690.4,
+    "n_errors": 0
+  },
+  "est_cost_per_eval_usd": 10.53,
+  "comparison_baselines": {
+    "gpt-4o-mini_balanced_F1": 0.826,
+    "gpt-4o-mini_gold_recall": 0.7,
+    "haiku-4-5_balanced_F1": 0.814,
+    "haiku-4-5_gold_recall": 0.719
+  },
+  "n_balanced_errors": 0,
+  "n_gold_errors": 0,
+  "balanced_error_sample": [],
+  "gold_error_sample": []
+}
