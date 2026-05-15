@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    FIREWORKS_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
     VOYAGE_API_KEY: str = ""
     ABACI_NLP_API_KEY: str = ""
 
@@ -170,6 +172,19 @@ class Settings(BaseSettings):
     RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"  # KEPT (Haiku regression)
     # Legacy OpenAI fallback model — used when Anthropic fails or FORCE_OPENAI_ONLY is on
     OPENAI_FALLBACK_MODEL: str = "gpt-4o-mini"
+
+    # Sprint 7.17 follow-up: opt-in route the grader through Llama-3.3-70B-Instruct
+    # at an OpenAI-compatible provider. Default off — production stays on
+    # gpt-4o-mini until a full-eval pass-rate confirms the +16pp grader-benchmark
+    # gold-recall lift translates to FinanceBench headline.
+    #
+    # USE_LLAMA_GRADER turns it on; LLAMA_GRADER_PROVIDER picks the backend:
+    #   - "openrouter" (default, paid $0.04/M tokens, no free-tier rate burst penalty)
+    #   - "fireworks"  (free tier is bursty — full eval drops chunks on 429s)
+    USE_LLAMA_GRADER: bool = False
+    LLAMA_GRADER_PROVIDER: str = "openrouter"  # "openrouter" | "fireworks"
+    LLAMA_GRADER_MODEL_OPENROUTER: str = "meta-llama/llama-3.3-70b-instruct"
+    LLAMA_GRADER_MODEL_FIREWORKS: str = "accounts/fireworks/models/llama-v3p3-70b-instruct"
 
     @property
     def langchain_project_name(self) -> str:

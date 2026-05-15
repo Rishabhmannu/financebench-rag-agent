@@ -50,6 +50,15 @@ import time
 import warnings
 from pathlib import Path
 
+# Load .env into os.environ BEFORE any module imports that read os.environ.get()
+# directly (e.g. src/services/result_cache.py reading RESULT_CACHE_REDIS_PORT).
+# pydantic-settings on the Settings class populates settings.* fields from .env
+# but does NOT side-effect into os.environ — so any code reading raw env vars
+# would see defaults (Redis 6379 instead of the host-mapped 6380, breaking the
+# result cache and forcing retrieval through the FALLBACK path).
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
 from langchain_core.messages import HumanMessage
 from tqdm import tqdm
 
@@ -143,6 +152,10 @@ def _settings_snapshot() -> dict:
         "HALLUCINATION_MODEL",
         "ROUTER_MODEL",
         "GRADER_MODEL",
+        "USE_LLAMA_GRADER",
+        "LLAMA_GRADER_PROVIDER",
+        "LLAMA_GRADER_MODEL_OPENROUTER",
+        "LLAMA_GRADER_MODEL_FIREWORKS",
     ):
         snap[k] = getattr(settings, k, None)
     # Env-only knobs (the MPS-stability patches don't go through Settings).

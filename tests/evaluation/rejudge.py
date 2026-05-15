@@ -21,6 +21,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+# Load .env into os.environ — judge_eval._make_anthropic_judge reads
+# ANTHROPIC_API_KEY via os.environ.get, which is empty unless we populate it.
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
 from tests.evaluation.judge_eval import IMPROVED_PROMPT, _make_anthropic_judge
 
 JUDGE_MODEL = "claude-sonnet-4-6"

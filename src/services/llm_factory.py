@@ -28,6 +28,7 @@ avoid Groq free-tier rate limits.
 """
 
 import logging
+import os
 
 from langchain_anthropic import ChatAnthropic
 from langchain_groq import ChatGroq
@@ -213,6 +214,73 @@ class LLMFactory:
     @staticmethod
     def get_grader_llm():
         """Binary classification LLM — called once per chunk. Groq for throughput."""
+        if settings.USE_LLAMA_GRADER:
+            # Sprint 7.17 follow-up #3 — Llama-3.3-70B-Instruct via OpenAI-compatible
+            # endpoint. Pick provider by LLAMA_GRADER_PROVIDER setting; default
+            # OpenRouter (paid, $0.04/M tokens, no free-tier burst penalty).
+            provider = settings.LLAMA_GRADER_PROVIDER.lower()
+            if provider == "openrouter":
+                key = settings.OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")
+                if not key:
+                    raise RuntimeError(
+                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=openrouter "
+                        "requires OPENROUTER_API_KEY in env"
+                    )
+                _warn_once(
+                    "grader_openrouter_llama",
+                    f"Grader: OpenRouter {settings.LLAMA_GRADER_MODEL_OPENROUTER} "
+                    f"(Sprint 7.17 follow-up #3 — full-eval test of +16pp gold-recall lift)",
+                )
+                return ChatOpenAI(
+                    model=settings.LLAMA_GRADER_MODEL_OPENROUTER,
+                    temperature=0.0,
+                    # Smoke v8 found OpenRouter's default auto-routing sends some
+                    # requests to providers (e.g. Venice) that produce verbose
+                    # streaming output (overflows max_tokens) OR return content
+                    # langchain can't parse against the GradeResult schema.
+                    # `require_parameters: true` filters routing to providers
+                    # that genuinely support the structured output schema; the
+                    # `order` list prefers Fireworks first (confirmed reliable
+                    # in the standalone benchmark), then Together / DeepInfra.
+                    max_tokens=1024,
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=key,
+                    max_retries=3,
+                    extra_body={
+                        "provider": {
+                            "order": ["fireworks", "together", "deepinfra"],
+                            "allow_fallbacks": False,
+                        }
+                    },
+                    callbacks=[get_cost_handler()],
+                    **_attribution_kwargs(),
+                )
+            if provider == "fireworks":
+                key = settings.FIREWORKS_API_KEY or os.environ.get("FIREWORKS_API_KEY")
+                if not key:
+                    raise RuntimeError(
+                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=fireworks "
+                        "requires FIREWORKS_API_KEY in env"
+                    )
+                _warn_once(
+                    "grader_fireworks_llama",
+                    f"Grader: Fireworks {settings.LLAMA_GRADER_MODEL_FIREWORKS} "
+                    f"(Sprint 7.17 follow-up #3 — full-eval test of +16pp gold-recall lift)",
+                )
+                return ChatOpenAI(
+                    model=settings.LLAMA_GRADER_MODEL_FIREWORKS,
+                    temperature=0.0,
+                    max_tokens=512,
+                    base_url="https://api.fireworks.ai/inference/v1",
+                    api_key=key,
+                    max_retries=3,
+                    callbacks=[get_cost_handler()],
+                    **_attribution_kwargs(),
+                )
+            raise ValueError(
+                f"Unknown LLAMA_GRADER_PROVIDER={settings.LLAMA_GRADER_PROVIDER!r} "
+                f"(expected 'openrouter' or 'fireworks')"
+            )
         if settings.FORCE_OPENAI_ONLY or not settings.USE_GROQ_FAST_PATH:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
         if settings.GROQ_API_KEY:

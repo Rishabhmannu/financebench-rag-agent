@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 # (or however many survived stages 1+2) overlap. OpenAI tier-1 in-flight cap
 # comfortably absorbs this for our eval workload (one query at a time, 8
 # in-flight grader calls = well under tier limits).
-_GRADER_PARALLELISM = 8
+# Sprint 7.17 follow-up: env-overridable so Fireworks free-tier evals can drop
+# the burst rate when grader is routed to Llama-3.3-70B (free-tier RPM limit).
+import os as _os
+_GRADER_PARALLELISM = int(_os.environ.get("GRADER_PARALLELISM", "8"))
 
 
 def _entity_match(chunk: dict, target_company: str | None) -> bool:
