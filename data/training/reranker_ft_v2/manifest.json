@@ -1,0 +1,43 @@
+{
+  "version": "v2",
+  "policy": "gold-anchored positives + top-K=200 hard negatives + Sprint 7.18a distractor negatives + question-type stratified split",
+  "differences_from_v1": [
+    "positives are gold-chunk labels (judge-independent), not outcome-conditioned",
+    "includes FAILING questions' gold chunks as positives",
+    "top-K=200 hard-negative pool (v1 was top-30)",
+    "explicit distractor-negative category from Sprint 7.18a regressions",
+    "train/val split stratified by FinanceBench question_type"
+  ],
+  "source": {
+    "gold_jsonl": "tests/evaluation/phase_eval_data/v1/gold_chunks.jsonl",
+    "fb_dataset_jsonl": "data/raw/financebench/financebench_open_source.jsonl",
+    "baseline_correctness_for_distractor_diff": "tests/evaluation/eval_results/financebench_pypdf_voyage_tiered_ft_litellm_gen_v2.rejudged_sonnet_v2.correctness.json",
+    "distractor_source_pipeline": "tests/evaluation/eval_results/financebench_retrieval_topk_200_v1.pipeline.json",
+    "qdrant_collection": "financebench_corpus_pypdf_voyage_finance2",
+    "embedding_provider": "voyage",
+    "embedding_model": "voyage-finance-2",
+    "embedding_dim": 1024
+  },
+  "params": {
+    "top_k": 200,
+    "val_frac": 0.15,
+    "seed": 42
+  },
+  "stats": {
+    "n_questions_used": 147,
+    "n_train_questions": 124,
+    "n_val_questions": 23,
+    "n_train_pos": 310,
+    "n_train_neg": 1912,
+    "n_train_total": 2222,
+    "n_val_pos": 53,
+    "n_val_neg": 352,
+    "n_val_total": 405,
+    "n_pos_global": 363,
+    "n_hard_neg_global": 2205,
+    "n_distractor_neg_global": 59,
+    "skipped_no_negatives": 0,
+    "skipped_qdrant_miss": 0,
+    "global_pos_neg_ratio": "1:6.2"
+  }
+}

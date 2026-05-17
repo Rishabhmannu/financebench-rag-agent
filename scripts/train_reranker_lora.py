@@ -36,6 +36,9 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 BASE_MODEL = "BAAI/bge-reranker-v2-m3"
+# Default to v1 paths for backward-compat with the Sprint 7.9 reproduction
+# command in this file's docstring. The Sprint 7.19 Step 1 v2 trainer overrides
+# via --data-version v2 (or explicit --train-path / --val-path / --out-dir).
 TRAIN_PATH = Path("data/training/reranker_ft_v1/train.jsonl")
 VAL_PATH = Path("data/training/reranker_ft_v1/val.jsonl")
 OUT_DIR = Path("data/models/reranker_ft_v1")
@@ -147,10 +150,32 @@ def main() -> int:
     parser.add_argument("--patience", type=int, default=DEFAULT_PATIENCE)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", choices=["mps", "cpu", "cuda"], default="mps")
+    parser.add_argument("--data-version", choices=["v1", "v2"], default="v1",
+                        help="Convenience shortcut: v1 = Sprint 7.9 paths, v2 = Sprint 7.19 paths")
+    parser.add_argument("--train-path", type=Path, default=None,
+                        help="Override train.jsonl path (takes priority over --data-version)")
+    parser.add_argument("--val-path", type=Path, default=None,
+                        help="Override val.jsonl path")
+    parser.add_argument("--out-dir", type=Path, default=None,
+                        help="Override adapter output directory")
+    # Declare globals BEFORE any reference so we can override the v1 defaults
+    # from --data-version v2 (or explicit --train-path / --val-path / --out-dir).
+    global TRAIN_PATH, VAL_PATH, OUT_DIR
+
     args = parser.parse_args()
 
+    # Resolve data paths
+    if args.data_version == "v2":
+        TRAIN_PATH = args.train_path or Path("data/training/reranker_ft_v2/train.jsonl")
+        VAL_PATH = args.val_path or Path("data/training/reranker_ft_v2/val.jsonl")
+        OUT_DIR = args.out_dir or Path("data/models/reranker_ft_v2")
+    else:
+        TRAIN_PATH = args.train_path or TRAIN_PATH
+        VAL_PATH = args.val_path or VAL_PATH
+        OUT_DIR = args.out_dir or OUT_DIR
+
     print("=" * 90)
-    print("Sprint 7.9 Day 5 — BGE reranker LoRA fine-tune")
+    print(f"BGE reranker LoRA fine-tune ({'Sprint 7.9 v1' if args.data_version == 'v1' else 'Sprint 7.19 v2'})")
     print("=" * 90)
     print(f"  base:           {BASE_MODEL}")
     print(f"  train:          {TRAIN_PATH}")
@@ -165,7 +190,7 @@ def main() -> int:
     torch.manual_seed(args.seed)
 
     if not TRAIN_PATH.exists() or not VAL_PATH.exists():
-        print(f"ABORT: training data missing — run scripts/build_reranker_training_data.py first")
+        print(f"ABORT: training data missing — run scripts/build_reranker_training_data{('_v2' if args.data_version == 'v2' else '')}.py first")
         return 1
 
     device = torch.device(args.device)

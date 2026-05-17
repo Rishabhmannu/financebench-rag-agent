@@ -1,0 +1,61 @@
+{
+  "base_model": "BAAI/bge-reranker-v2-m3",
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.1,
+  "target_modules": [
+    "query",
+    "value"
+  ],
+  "epochs_run": 3,
+  "best_epoch": 1,
+  "best_val_loss": 0.2694677884196058,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.3981624916329993,
+      "val_loss": 0.2694677884196058,
+      "val_acc": 0.9012345671653748,
+      "val_mean_pos_prob": 0.39911895990371704,
+      "val_mean_neg_prob": 0.09371399879455566,
+      "elapsed_s": 527.614531993866,
+      "saved": true
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.23531841070237833,
+      "val_loss": 0.3489619516066195,
+      "val_acc": 0.8987654447555542,
+      "val_mean_pos_prob": 0.6141080856323242,
+      "val_mean_neg_prob": 0.07620031386613846,
+      "elapsed_s": 527.1145527362823,
+      "saved": false
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.20610256584714948,
+      "val_loss": 0.3027540505323329,
+      "val_acc": 0.9012345671653748,
+      "val_mean_pos_prob": 0.6402737498283386,
+      "val_mean_neg_prob": 0.09135354310274124,
+      "elapsed_s": 524.0379765033722,
+      "saved": false
+    }
+  ],
+  "args": {
+    "epochs": 5,
+    "batch_size": 8,
+    "grad_accum": 2,
+    "lr": 0.0002,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.1,
+    "patience": 2,
+    "seed": 42,
+    "device": "cuda",
+    "data_version": "v2",
+    "train_path": null,
+    "val_path": null,
+    "out_dir": null
+  }
+}

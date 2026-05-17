@@ -147,3 +147,14 @@ Untitled.txt
 
 # Cost tracker — internal LLM spend audit trail, kept locally only
 cost_logs/
+
+# Sprint 7.19 Step 1: FT v2 reranker full FinanceBench eval (the actual gate)
+!tests/evaluation/eval_results/financebench_ft_v2_reranker_active_v1.json
+!tests/evaluation/eval_results/financebench_ft_v2_reranker_active_v1.correctness.json
+!tests/evaluation/eval_results/financebench_ft_v2_reranker_active_v1.rejudged_sonnet_v2.correctness.json
+!tests/evaluation/eval_results/financebench_ft_v2_reranker_active_v1.rejudged_sonnet_v2.diff.json
+!tests/evaluation/eval_results/eval_reranker_stratified_v2.json
+
+# Sprint 7.19 Step 1 partial-adapter backups (kept locally for ablation, not pushed)
+data/models/reranker_ft_v2_local_partial/
+data/models/reranker_ft_v2_partial_epoch1/

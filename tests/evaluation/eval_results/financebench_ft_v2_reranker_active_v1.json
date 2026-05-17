@@ -1,0 +1,60 @@
+{
+  "pipeline_time_seconds": 7086.4,
+  "num_samples": 150,
+  "correctness": {
+    "pass_rate": 0.44666666666666666,
+    "n_samples": 150,
+    "n_pass": 67,
+    "n_errors": 0,
+    "judge_model": "gpt-4o-mini",
+    "output_file": "tests/evaluation/eval_results/financebench_ft_v2_reranker_active_v1.correctness.json"
+  },
+  "correctness_time_seconds": 39.7,
+  "diagnostics": {
+    "refusal_rate": 0.08,
+    "refusal_count": 12,
+    "pass_when_answered": 0.4855072463768116,
+    "slice_summary": {
+      "lookup": {
+        "n": 86,
+        "refusals": 8,
+        "passes": 40,
+        "answered": 78,
+        "answered_passes": 40,
+        "refusal_rate": 0.09302325581395349,
+        "pass_rate": 0.46511627906976744,
+        "pass_when_answered": 0.5128205128205128
+      },
+      "multi_hop": {
+        "n": 13,
+        "refusals": 0,
+        "passes": 4,
+        "answered": 13,
+        "answered_passes": 4,
+        "refusal_rate": 0.0,
+        "pass_rate": 0.3076923076923077,
+        "pass_when_answered": 0.3076923076923077
+      },
+      "calc": {
+        "n": 51,
+        "refusals": 4,
+        "passes": 23,
+        "answered": 47,
+        "answered_passes": 23,
+        "refusal_rate": 0.0784313725490196,
+        "pass_rate": 0.45098039215686275,
+        "pass_when_answered": 0.48936170212765956
+      }
+    },
+    "contamination": {
+      "counts": {
+        "empty_context": 9,
+        "wrong_entity": 1
+      },
+      "rates": {
+        "empty_context": 0.06,
+        "wrong_entity": 0.006666666666666667
+      }
+    }
+  }
+}
