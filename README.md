@@ -6,7 +6,7 @@
 [![FinanceBench](https://img.shields.io/badge/FinanceBench-72.7%25%20pass-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **72.7% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a LoRA-fine-tuned reranker, and a self-hosted LLM observability stack.
+A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **72.7% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a BGE cross-encoder reranker, and a self-hosted LLM observability stack.
 
 ## Architecture
 
@@ -33,7 +33,7 @@ A router classifies each query as a simple lookup or research-required. Simple l
 - **Backend** — FastAPI · LangGraph · Qdrant · PostgreSQL · Redis · PyJWT
 - **Frontend** — Next.js 16 · React 19 · Tailwind · shadcn/ui  *(in progress; Gradio is the current usable UI)*
 - **LLMs** — Claude Sonnet 4.6 · gpt-4o-mini · Llama 3.3 (via Groq)
-- **Retrieval** — voyage-finance-2 embeddings · LoRA-fine-tuned BGE-reranker-v2-m3
+- **Retrieval** — voyage-finance-2 embeddings · BGE-reranker-v2-m3 cross-encoder
 - **Observability** — self-hosted LiteLLM proxy + Langfuse v3 + Redis semantic cache
 - **Safety** — Microsoft Presidio PII detection · LLM Guard · LLM classifier (3-layer cascade)
 - **Evaluation** — RAGAS · DeepEval · custom LLM correctness judge
