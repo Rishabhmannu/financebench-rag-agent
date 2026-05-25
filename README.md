@@ -52,13 +52,27 @@ Evaluated on the FinanceBench benchmark (150 questions across 32 companies):
 
 Per-slice pass rate: **lookup 68.6%** (n=86), **multi-hop 84.6%** (n=13), **calc 76.5%** (n=51).
 
-The correctness judge is a Claude Sonnet 4.6 + structured-prompt setup calibrated to Cohen's κ = 0.932 against an 89-question hand-labeled set with an adversarial leniency guard. The evaluation pipeline uses three judges in parallel (RAGAS, DeepEval, custom correctness), per-question diagnostics, reproducibility-metadata snapshots on every run, and a decision-gated approach in which each candidate intervention must clear an empirically-measured noise floor before shipping. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](docs/evaluation.md).
+The correctness judge is a Claude Sonnet 4.6 + structured-prompt setup calibrated to Cohen's κ = 0.932 against an 89-question hand-labeled set with an adversarial leniency guard. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](docs/evaluation.md).
+
+## Comparison with published systems on FinanceBench
+
+| System | Approach | Accuracy |
+|---|---|---:|
+| [Mafin 2.5 / PageIndex](https://github.com/VectifyAI/Mafin2.5-FinanceBench) | Vectorless reasoning over hierarchical document tree | **98.7%** |
+| [DANA](https://arxiv.org/abs/2410.02823) | Domain-aware neurosymbolic agent with deterministic operators | 94.3% |
+| GPT-4-Turbo · long context (128k) | Whole-document prompting | ~79% |
+| Claude-2 · long context (100k) | Whole-document prompting | ~76% |
+| **This project** | Multi-agent RAG with selective research-agent subgraph + RBAC + HITL | **72.7%** |
+| [FinanceBench paper](https://arxiv.org/abs/2311.11944) baselines | Vector retrieval + GPT-4 / Llama-2 | 38–43% |
+| GPT-4-Turbo · top-k vector RAG | Standard retrieval, no agent | ~19% |
+
+Long-context approaches score higher but are not enterprise-deployable — 10-K filings frequently exceed 128k tokens, and whole-document prompting is impractical at scale due to latency and cost. The 72.7% here is measured on a production-shaped pipeline (fixed institutional corpus, batched retrieval, RBAC at the storage layer, HITL on high-stakes outputs).
 
 ## Known limitations
 
 - **Not deployed to production** — runs locally via `docker compose up -d`. No public URL or live traffic.
 - **Frontend is a vertical slice** — login + streaming chat work; sidebar, HITL UI, admin panel, citation PDF viewer are unbuilt.
-- **Below the top-published Mafin (~99%)** on FinanceBench, though above FinanceBench paper baselines (38–43%) and [FinGEAR EMNLP 2025](https://arxiv.org/abs/2410.18141) GraphRAG (~55%).
+- **Below the top-published systems** (Mafin 2.5 at 98.7%, DANA at 94.3%) — see comparison table above for context.
 
 ## Quick start
 
