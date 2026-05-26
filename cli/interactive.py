@@ -142,14 +142,20 @@ def _fetch_pending() -> list[dict] | None:
     return resp.get("approvals") or []
 
 
+_APPROVALS_HEADER = (
+    f"{'NAME':<16} {'ROLE':<8} {'DEPT':<10} {'AGE':>10}   {'AMOUNT':>16}   QUERY"
+)
+
+
 def _label_for_approval(a: dict) -> str:
     amount = a.get("max_amount")
     amt_str = f"${amount:>15,.0f}" if amount is not None else " " * 16
-    req = (a.get("requester_user_id") or "?")[:10]
+    name = (a.get("requester_name") or a.get("requester_user_id") or "?")[:16]
     role = (a.get("requester_role") or "?")[:8]
+    dept = (a.get("requester_department") or "")[:10]
     age = _format_age(a.get("submitted_at"))
     query = (a.get("query") or "(no query)")[:50]
-    return f"{req:10} | {role:8} | {age:>10} | {amt_str} | {query}"
+    return f"{name:<16} {role:<8} {dept:<10} {age:>10}   {amt_str}   {query}"
 
 
 def _show_detail(thread_id: str) -> dict | None:
@@ -331,7 +337,10 @@ def interactive_approvals_loop() -> None:
         choices = [(a["thread_id"], _label_for_approval(a)) for a in pending]
         selected = select_one(
             title=f"Pending approvals ({len(pending)})",
-            text="Arrow keys to navigate, Enter to review, Esc / q to exit.",
+            text=(
+                "Arrow keys to navigate, Enter to review, Esc / q to exit.\n\n"
+                f"    {_APPROVALS_HEADER}"
+            ),
             choices=choices,
         )
         if selected is None:
