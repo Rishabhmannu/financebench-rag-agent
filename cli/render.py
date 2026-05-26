@@ -107,19 +107,28 @@ def render_final_footer(payload: dict) -> None:
 
 
 def render_hitl_panel(payload: dict) -> None:
-    """Render the HITL pause panel. Phase 3: no answer_preview (the generator
-    already streamed the full answer to the user; preview was redundant + got
-    truncated mid-row). Panel shows reason + amount + threshold; the inline
-    [a]pprove/[r]eject prompt is driven by the chat REPL (cli/commands/chat.py)."""
+    """Render the HITL pause panel. Phase 3.5: the requester never sees the
+    draft answer. Panel shows reason + amount + threshold + the list of
+    approver roles whose attention is now required."""
     reason = payload.get("reason") or "Approval required"
     amount = payload.get("max_amount")
     threshold = payload.get("threshold")
+    approvers = payload.get("approvers") or []
     body = f"[bold]{reason}[/bold]"
     if amount is not None and threshold is not None:
-        body += f"\n\n[dim]Amount referenced:[/dim] ${amount:,.0f}\n[dim]Role threshold:[/dim]    ${threshold:,.0f}"
+        body += (
+            f"\n\n[dim]Amount referenced:[/dim] ${amount:,.0f}"
+            f"\n[dim]Role threshold:[/dim]    ${threshold:,.0f}"
+        )
+    if approvers:
+        body += (
+            f"\n\n[bold]Awaiting approval by:[/bold] {', '.join(approvers)}"
+            f"\n[dim](your draft answer is not shown — only an authorized "
+            f"approver sees it via `financebench approvals show <id>`)[/dim]"
+        )
     console.print(Panel(
         body,
-        title="Approval required (HITL)",
+        title="Pending approval (HITL)",
         border_style="yellow",
         title_align="left",
     ))

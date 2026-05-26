@@ -61,7 +61,23 @@ def render_chat_stream(events: Iterator[dict]) -> dict:
                     console.print()
                 console.print(content, end="", soft_wrap=True)
 
+            elif et == "pending_approval":
+                # Phase 3.5: requester is HITL-gated. Draft is suppressed.
+                # The yellow panel shows reason + amount + threshold + approver
+                # role list. The REPL caller polls /v1/chat/result for the
+                # released answer.
+                if not streaming_started:
+                    status_ctx.stop()
+                else:
+                    console.print()
+                render_hitl_panel(event)
+                terminal = event
+                return terminal
+
             elif et == "hitl_interrupt":
+                # Phase 3 legacy event. Backend no longer emits it (replaced by
+                # pending_approval) but keep the handler so older backends still
+                # render something sensible.
                 if not streaming_started:
                     status_ctx.stop()
                 else:
