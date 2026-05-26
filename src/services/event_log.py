@@ -208,17 +208,37 @@ def log_runtime_components() -> dict:
     except Exception as exc:
         banner["components_loaded"]["grader_llm"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
-    # Qdrant — collection existence + size
+    # Qdrant — collection existence + size + embedding-model fingerprint check
+    # (Deployment plan Section 18.3.4: detect silent embedding-model swaps that
+    # would otherwise return garbage from incompatible vector spaces.)
     try:
         from qdrant_client import QdrantClient
+
+        from src.services.vector_store import get_collection_fingerprint
         qc = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=5)
         info = qc.get_collection(settings.QDRANT_COLLECTION)
-        banner["external"]["qdrant"] = {
+        qdrant_info = {
             "endpoint": f"{settings.QDRANT_HOST}:{settings.QDRANT_PORT}",
             "collection": settings.QDRANT_COLLECTION,
             "points": info.points_count,
             "status": str(info.status),
         }
+
+        fp = get_collection_fingerprint(qc, settings.QDRANT_COLLECTION)
+        if fp is None:
+            qdrant_info["fingerprint"] = "unknown (collection pre-dates fingerprinting)"
+        else:
+            stored = (fp.get("embedding_provider"), fp.get("embedding_model"), fp.get("embedding_dim"))
+            live = (settings.EMBEDDING_PROVIDER, settings.EMBEDDING_MODEL, settings.EMBEDDING_DIMENSIONS)
+            if stored == live:
+                qdrant_info["fingerprint"] = f"match ({fp.get('embedding_provider')}/{fp.get('embedding_model')}, dim={fp.get('embedding_dim')})"
+            else:
+                qdrant_info["fingerprint"] = {
+                    "status": "MISMATCH",
+                    "stored": {"provider": stored[0], "model": stored[1], "dim": stored[2]},
+                    "live": {"provider": live[0], "model": live[1], "dim": live[2]},
+                }
+        banner["external"]["qdrant"] = qdrant_info
     except Exception as exc:
         banner["external"]["qdrant"] = {
             "endpoint": f"{settings.QDRANT_HOST}:{settings.QDRANT_PORT}",
@@ -269,5 +289,22 @@ def log_runtime_components() -> dict:
     ]
     for line in lines:
         logger.warning(line)
+
+    qdrant_state = banner["external"].get("qdrant", {})
+    fp = qdrant_state.get("fingerprint")
+    if isinstance(fp, dict) and fp.get("status") == "MISMATCH":
+        stored, live = fp["stored"], fp["live"]
+        logger.warning(sep)
+        logger.warning(
+            "WARNING: collection '%s' was created with %s/%s (dim=%s)",
+            qdrant_state.get("collection"), stored["provider"], stored["model"], stored["dim"],
+        )
+        logger.warning(
+            "WARNING: current EMBEDDING_PROVIDER is %s (%s, dim=%s)",
+            live["provider"], live["model"], live["dim"],
+        )
+        logger.warning("WARNING: queries will return garbage or fail with VectorDimensionError.")
+        logger.warning("WARNING: re-ingest the corpus with the new embedding to fix.")
+        logger.warning(sep)
 
     return banner

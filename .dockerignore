@@ -38,6 +38,7 @@ htmlcov/
 # Docs and course materials
 _course_materials/
 *.md
+!README.md
 
 # CI/CD and tooling configs
 .github/

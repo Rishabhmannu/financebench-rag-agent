@@ -1,6 +1,8 @@
 import logging
 import os
+import subprocess
 from contextlib import asynccontextmanager
+from functools import lru_cache
 
 import psycopg
 from fastapi import FastAPI
@@ -9,6 +11,8 @@ from psycopg_pool import AsyncConnectionPool
 
 from src.api.routes import admin, auth, chat, documents, health, hitl, ingest, threads
 from src.config.settings import settings
+
+API_VERSION = "1"
 
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL), format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -107,11 +111,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(chat.router)
-app.include_router(ingest.router)
-app.include_router(hitl.router)
-app.include_router(admin.router)
-app.include_router(threads.router)
-app.include_router(documents.router)
+@lru_cache(maxsize=1)
+def _git_sha() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        return out[:12]
+    except Exception:
+        return "unknown"
+
+
+@app.get("/version")
+def version() -> dict:
+    return {"api_version": API_VERSION, "semver": app.version, "git_sha": _git_sha()}
+
+
+_routers = [health, auth, chat, ingest, hitl, admin, threads, documents]
+
+# Canonical: /v1-prefixed routes. CLI declares it speaks v1.
+for r in _routers:
+    app.include_router(r.router, prefix=f"/v{API_VERSION}")
+
+# Deprecated unprefixed aliases — kept for one minor version so the Sprint 9
+# web frontend (which calls /auth/login etc.) keeps working during transition.
+for r in _routers:
+    app.include_router(r.router)

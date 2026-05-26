@@ -12,6 +12,7 @@ surface-form match; BM25 catches it.
 """
 
 import logging
+from datetime import datetime, timezone
 from functools import lru_cache
 
 from qdrant_client import QdrantClient
@@ -23,6 +24,7 @@ from qdrant_client.models import (
     FusionQuery,
     MatchAny,
     PayloadSchemaType,
+    PointStruct,
     Prefetch,
     SparseIndexParams,
     SparseVector,
@@ -37,6 +39,15 @@ logger = logging.getLogger(__name__)
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 BM25_MODEL_NAME = "Qdrant/bm25"
+
+# Deployment plan Section 18.3.4 — embedding-model fingerprint.
+# A reserved-UUID sentinel point holds the embedding config used at collection
+# create time, so the boot banner can detect silent embedding-model swaps that
+# would otherwise return garbage (incompatible vector dim or different latent
+# space). UUID is deterministic + out-of-band from the random UUIDs ingestion
+# uses (src/ingestion/qdrant_uploader.py:38).
+SENTINEL_POINT_ID = "00000000-0000-0000-0000-000000000001"
+META_PAYLOAD_KEY = "_meta"
 
 
 def get_qdrant_client() -> QdrantClient:
@@ -103,7 +114,69 @@ def ensure_collection(client: QdrantClient, collection_name: str | None = None) 
         )
     except Exception:
         pass
+
+    try:
+        upsert_collection_fingerprint(
+            client=client,
+            collection_name=target,
+            embedding_model=settings.EMBEDDING_MODEL,
+            embedding_dim=settings.EMBEDDING_DIMENSIONS,
+            embedding_provider=settings.EMBEDDING_PROVIDER,
+        )
+    except Exception as exc:
+        logger.warning("Failed to write embedding-model fingerprint to '%s': %s", target, exc)
+
     logger.info(f"Created hybrid collection '{target}' with dense + sparse vectors")
+
+
+def upsert_collection_fingerprint(
+    client: QdrantClient,
+    collection_name: str,
+    embedding_model: str,
+    embedding_dim: int,
+    embedding_provider: str,
+) -> None:
+    """Write/refresh the sentinel point with the embedding config used at
+    collection-create time. Zero dense vector + empty sparse vector so it
+    ranks near-bottom in any retrieval (never enters top-K of meaningful
+    queries). Boot banner reads this back to detect silent config drift.
+    """
+    client.upsert(
+        collection_name=collection_name,
+        points=[
+            PointStruct(
+                id=SENTINEL_POINT_ID,
+                vector={
+                    DENSE_VECTOR_NAME: [0.0] * embedding_dim,
+                    SPARSE_VECTOR_NAME: SparseVector(indices=[], values=[]),
+                },
+                payload={
+                    META_PAYLOAD_KEY: True,
+                    "embedding_model": embedding_model,
+                    "embedding_dim": embedding_dim,
+                    "embedding_provider": embedding_provider,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+        ],
+    )
+
+
+def get_collection_fingerprint(client: QdrantClient, collection_name: str) -> dict | None:
+    """Read back the sentinel payload. Returns None if absent (collection
+    pre-dates this feature — boot banner treats that as 'unknown', not error)."""
+    try:
+        result = client.retrieve(
+            collection_name=collection_name,
+            ids=[SENTINEL_POINT_ID],
+            with_payload=True,
+            with_vectors=False,
+        )
+        if not result:
+            return None
+        return dict(result[0].payload or {})
+    except Exception:
+        return None
 
 
 def build_rbac_filter(allowed_doc_types: list[str], allowed_confidentiality: list[str]) -> Filter | None:
