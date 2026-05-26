@@ -25,6 +25,35 @@ from src.services.llm_factory import LLMFactory
 logger = logging.getLogger(__name__)
 
 
+def _format_prior_qa(messages: list, max_turns: int = 2) -> str:
+    """Phase 3.8 conversation memory: format the most recent (human, ai) pairs
+    as plain text so the generator can resolve references like "compare to that"
+    or "in 2022 instead". Excludes the current turn (the latest HumanMessage
+    is the one being answered now).
+    """
+    if not messages:
+        return ""
+    pairs: list[tuple[str, str]] = []
+    last_human: str | None = None
+    for msg in messages[:-1]:  # skip the current-turn HumanMessage
+        cls_name = type(msg).__name__
+        content = (getattr(msg, "content", "") or "").strip()
+        if cls_name == "HumanMessage":
+            last_human = content
+        elif cls_name == "AIMessage" and last_human is not None:
+            pairs.append((last_human, content[:600]))
+            last_human = None
+    if not pairs:
+        return ""
+    recent = pairs[-max_turns:]
+    lines = []
+    for q, a in recent:
+        lines.append(f"User asked earlier: {q}")
+        lines.append(f"You answered: {a}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 def _format_context(chunks: list[dict]) -> str:
     """Format relevant chunks into a context string with source attribution."""
     parts = []
@@ -121,6 +150,17 @@ async def generator_node(state: RAGState) -> dict:
         )
     else:
         context = raw_context
+
+    # Phase 3.8 conversation memory: if this thread has prior turns, prepend the
+    # last (human, ai) pairs so the generator can resolve references in the
+    # current query ("compare to that", "in 2022 instead"). Skipped on first
+    # turn since there's nothing to add.
+    prior_qa = _format_prior_qa(state.get("messages") or [], max_turns=2)
+    if prior_qa:
+        context = (
+            f"## Recent conversation (for context):\n\n{prior_qa}\n\n"
+            f"---\n\n{context}"
+        )
     user_prompt = GENERATOR_USER_TEMPLATE.format(context=context, query=query)
 
     try:

@@ -83,14 +83,106 @@ _NODE_LABELS = {
 }
 
 
+# Phase 3.8 — conversation memory. When the thread has prior turns, "What
+# about MSFT?" / "How does that compare?" / "And in 2022?" need the previous
+# Q&A pair to resolve. We do a single cheap LLM call BEFORE invoking the graph
+# to rewrite the latest query into a self-contained question. If the LLM
+# returns the original (already self-contained) or fails for any reason, we
+# fall back to the user's text unchanged -- never block the chat path.
+_QUERY_RESOLVER_PROMPT = """You rewrite a user's latest question so it can be answered without seeing the prior conversation. The retrieval pipeline downstream has no memory; it needs a self-contained query.
+
+Conversation history (oldest first):
+{history}
+
+Latest user question: {latest}
+
+Rewrite the LATEST question as a self-contained question. Rules:
+- If the latest question is already self-contained (mentions all the entities/timeframe needed), return it unchanged.
+- If it uses pronouns or comparison ("what about X", "compare to Y", "and in 2022"), expand them using the prior conversation so a retrieval system can match without seeing the history.
+- Preserve the user's intent and tone. Do not add or remove substance.
+- Return ONLY the rewritten question, with no preamble, no quotes, no explanation."""
+
+
+def _format_prior_qa_for_resolver(messages: list, max_turns: int = 3) -> str:
+    """Format the last `max_turns` (human, ai) pairs as plain text for the
+    query-resolver prompt. Skips system / tool messages."""
+    from langchain_core.messages import AIMessage, HumanMessage
+    lines: list[str] = []
+    pair_count = 0
+    last_human = None
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            last_human = (getattr(msg, "content", "") or "").strip()
+        elif isinstance(msg, AIMessage) and last_human is not None:
+            ai_text = (getattr(msg, "content", "") or "").strip()
+            lines.append(f"USER: {last_human}")
+            lines.append(f"ASSISTANT: {ai_text[:500]}")
+            last_human = None
+            pair_count += 1
+    if pair_count <= max_turns:
+        return "\n".join(lines) if lines else "(no prior turns)"
+    keep_lines = pair_count - max_turns
+    # Each pair = 2 lines (USER + ASSISTANT). Skip the oldest pairs.
+    return "\n".join(lines[keep_lines * 2:])
+
+
+async def _resolve_query_with_history(
+    user_text: str, graph, config: dict
+) -> tuple[str, bool]:
+    """Pre-graph step: if this thread has prior turns, ask a cheap LLM to
+    expand pronouns/comparatives in the user's message into a self-contained
+    query. Returns (resolved_text, was_rewritten). Failures fall back to the
+    original text."""
+    try:
+        gs = await graph.aget_state(config)
+    except Exception:
+        return user_text, False
+    if gs is None or not gs.values:
+        return user_text, False
+    prior_messages = list(gs.values.get("messages") or [])
+    if len(prior_messages) < 2:
+        return user_text, False
+
+    history_text = _format_prior_qa_for_resolver(prior_messages, max_turns=3)
+    if history_text == "(no prior turns)":
+        return user_text, False
+
+    try:
+        from langchain_core.messages import HumanMessage as _Hm
+        from src.services.llm_factory import LLMFactory
+        llm = LLMFactory.get_router_llm()
+        prompt = _QUERY_RESOLVER_PROMPT.format(history=history_text, latest=user_text)
+        resp = await llm.ainvoke([_Hm(content=prompt)])
+        resolved = (getattr(resp, "content", "") or "").strip()
+        if not resolved:
+            return user_text, False
+        rewritten = resolved != user_text.strip()
+        if rewritten:
+            logger.info(
+                f"Query resolved with history: {user_text[:60]!r} -> {resolved[:80]!r}"
+            )
+        return resolved, rewritten
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Query-resolver call failed ({type(exc).__name__}): {exc}")
+        return user_text, False
+
+
 @router.post("", response_model=ChatResponse)
 async def chat(request: ChatRequest, user: User = Depends(get_current_user), http_request: Request = None):
     """Process a chat message through the RAG agent pipeline (non-streaming)."""
     thread_id = request.thread_id or str(uuid.uuid4())
-    initial_state = _build_initial_state(request.message, user)
 
     checkpointer = getattr(http_request.app.state, "checkpointer", None) if http_request else None
     graph = _get_graph(checkpointer=checkpointer)
+
+    resolved_message = request.message
+    if checkpointer is not None and request.thread_id:
+        resolver_config = {"configurable": {"thread_id": thread_id}}
+        resolved_message, _ = await _resolve_query_with_history(
+            request.message, graph, resolver_config
+        )
+
+    initial_state = _build_initial_state(resolved_message, user)
 
     req_cost = RequestScopedCostHandler()
     config = {
@@ -142,10 +234,18 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
 async def chat_stream(request: ChatRequest, user: User = Depends(get_current_user), http_request: Request = None):
     """Process a chat message with SSE streaming of progress and tokens."""
     thread_id = request.thread_id or str(uuid.uuid4())
-    initial_state = _build_initial_state(request.message, user)
 
     checkpointer = getattr(http_request.app.state, "checkpointer", None) if http_request else None
     graph = _get_graph(checkpointer=checkpointer)
+
+    resolved_message = request.message
+    if checkpointer is not None and request.thread_id:
+        resolver_config = {"configurable": {"thread_id": thread_id}}
+        resolved_message, _ = await _resolve_query_with_history(
+            request.message, graph, resolver_config
+        )
+
+    initial_state = _build_initial_state(resolved_message, user)
 
     req_cost = RequestScopedCostHandler()
     config = {
