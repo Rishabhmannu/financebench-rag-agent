@@ -7,10 +7,13 @@ import typer
 from cli import __version__
 from cli.commands.approvals import app as approvals_app
 from cli.commands.chat import chat
+from cli.commands.down import down
 from cli.commands.login import login
 from cli.commands.logout import logout
+from cli.commands.setup import setup
 from cli.commands.status import status
 from cli.commands.threads import app as threads_app
+from cli.commands.upgrade import upgrade
 
 app = typer.Typer(
     name="financebench",
@@ -20,10 +23,13 @@ app = typer.Typer(
     rich_markup_mode="rich",
 )
 
+app.command(name="setup")(setup)
 app.command(name="login")(login)
 app.command(name="chat")(chat)
 app.command(name="logout")(logout)
 app.command(name="status")(status)
+app.command(name="upgrade")(upgrade)
+app.command(name="down")(down)
 app.add_typer(threads_app, name="threads")
 app.add_typer(approvals_app, name="approvals")
 

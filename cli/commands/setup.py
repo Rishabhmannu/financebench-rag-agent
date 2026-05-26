@@ -1,0 +1,268 @@
+"""financebench setup — first-run wizard.
+
+Phase 4 deliverable per DEPLOYMENT_PLAN.md Section 12. Walks a new user
+through: choose/locate the repo, collect API keys, write `.env`, bring
+up the minimal docker stack, wait for health, pre-warm models, seed
+the sample corpus. Aims for ~5 min wall-clock on a warm Docker cache,
+~10 min cold.
+
+`setup --full` flips from `compose.minimal.yml` (4 services) to the
+canonical `docker-compose.yml` (11 services with the Langfuse stack)
+for users who want the observability UI.
+
+Idempotent: re-running just updates `.env` (if you say yes) and
+restarts the stack. Doesn't delete data volumes.
+"""
+
+from __future__ import annotations
+
+import os
+import shlex
+import shutil
+import subprocess
+import time
+from pathlib import Path
+
+import typer
+from prompt_toolkit import prompt as pt_prompt
+
+from cli.render import console, render_error, render_info, render_success
+
+# Where we clone the repo for users who installed via `pip install
+# financebench-rag-cli` and don't already have a local git checkout. M1
+# architecture per DEPLOYMENT_PLAN.md Section 18.4.
+DEFAULT_CLONE_PATH = Path.home() / ".financebench" / "repo"
+REPO_URL = "https://github.com/Rishabhmannu/financebench-rag-agent.git"
+
+_API_KEY_PROMPTS: list[tuple[str, str, bool]] = [
+    ("OPENAI_API_KEY",     "OpenAI API key (required — embeddings + gpt-4o-mini)", True),
+    ("ANTHROPIC_API_KEY",  "Anthropic API key (required — Claude Sonnet generator)", True),
+    ("VOYAGE_API_KEY",     "Voyage API key (optional — voyage-finance-2 embeddings)", False),
+    ("GROQ_API_KEY",       "Groq API key (optional — free tier; falls back to OpenAI)", False),
+]
+
+_HEALTHCHECK_TIMEOUT_S = 360  # cold BGE download can take a few minutes
+_HEALTHCHECK_INTERVAL_S = 5
+
+
+def setup(
+    full: bool = typer.Option(
+        False, "--full", help="Use the full docker-compose.yml (11 services with Langfuse). Default is the 4-service minimal stack."
+    ),
+    repo_dir: str = typer.Option(
+        None, "--repo-dir", help="Path to an existing repo checkout. Defaults to ~/.financebench/repo (cloned if missing) or the current directory if it looks like the project root."
+    ),
+    skip_seed: bool = typer.Option(
+        False, "--skip-seed", help="Don't run the sample corpus seed at the end (useful for re-runs)."
+    ),
+) -> None:
+    """Interactive first-run wizard: clones/locates the repo, collects keys,
+    brings up the stack, pre-warms, seeds. ~5 min on warm Docker cache."""
+    console.print("[bold]financebench setup[/bold] — one-time wizard.\n")
+
+    repo_path = _resolve_repo_dir(repo_dir)
+    console.print(f"[dim]Using repo at:[/dim] {repo_path}")
+
+    env_path = repo_path / ".env"
+    _wizard_env_file(env_path)
+
+    compose_file = "docker-compose.yml" if full else "compose.minimal.yml"
+    _ensure_compose_file_exists(repo_path, compose_file)
+
+    _bring_up_stack(repo_path, compose_file)
+    _wait_for_health()
+    _prewarm()
+
+    if not skip_seed:
+        _seed_sample_corpus(repo_path, compose_file)
+
+    console.print()
+    render_success("Setup complete. Try: financebench chat")
+    console.print(
+        "[dim]Tip: set FB_PROFILE=admin (or any name) in different terminals "
+        "to keep separate identities for the multi-party HITL demo.[/dim]"
+    )
+
+
+def _resolve_repo_dir(repo_dir: str | None) -> Path:
+    """Find or create the repo checkout we'll operate on.
+
+    Precedence: explicit --repo-dir > current dir if it looks like project
+    root > ~/.financebench/repo (clone if missing).
+    """
+    if repo_dir:
+        p = Path(repo_dir).expanduser().resolve()
+        if not (p / "pyproject.toml").exists() or not (p / "src" / "api" / "main.py").exists():
+            render_error(f"--repo-dir {p} doesn't look like a financebench-rag-agent checkout.")
+            raise typer.Exit(1)
+        return p
+
+    cwd = Path.cwd().resolve()
+    if (cwd / "pyproject.toml").exists() and (cwd / "src" / "api" / "main.py").exists():
+        render_info(f"Detected project checkout in current directory: {cwd}")
+        return cwd
+
+    if DEFAULT_CLONE_PATH.exists() and (DEFAULT_CLONE_PATH / "src" / "api" / "main.py").exists():
+        render_info(f"Using existing clone at {DEFAULT_CLONE_PATH}")
+        return DEFAULT_CLONE_PATH
+
+    if not shutil.which("git"):
+        render_error("git is not installed. Install it via Xcode Command Line Tools or Homebrew, then re-run.")
+        raise typer.Exit(1)
+
+    render_info(f"Cloning {REPO_URL} → {DEFAULT_CLONE_PATH} ...")
+    DEFAULT_CLONE_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    rc = subprocess.run(
+        ["git", "clone", REPO_URL, str(DEFAULT_CLONE_PATH)],
+        check=False,
+    ).returncode
+    if rc != 0:
+        render_error(f"git clone failed (exit {rc}). Check your network + that the repo URL is reachable.")
+        raise typer.Exit(1)
+    return DEFAULT_CLONE_PATH
+
+
+def _wizard_env_file(env_path: Path) -> None:
+    """Prompt for API keys; write/update .env. Existing keys preserved
+    unless the user enters a new value."""
+    existing = _parse_env_file(env_path) if env_path.exists() else {}
+
+    if existing:
+        render_info(f".env already exists at {env_path}. Press Enter at any prompt to keep the current value.")
+    else:
+        render_info(f"No .env found. Creating {env_path}.")
+
+    new_values: dict[str, str] = dict(existing)
+    for key, description, required in _API_KEY_PROMPTS:
+        current = existing.get(key, "")
+        masked = ("•" * 6 + current[-4:]) if current else "[not set]"
+        try:
+            entered = pt_prompt(f"  {description}\n  [current: {masked}] > ").strip()
+        except (EOFError, KeyboardInterrupt):
+            render_info("Setup cancelled.")
+            raise typer.Exit(1)
+        if entered:
+            new_values[key] = entered
+        elif required and not current:
+            render_error(f"{key} is required to start the API.")
+            raise typer.Exit(1)
+
+    if not env_path.exists():
+        # Bootstrap a minimal .env using .env.example as the template if available
+        example = env_path.parent / ".env.example"
+        if example.exists():
+            shutil.copyfile(example, env_path)
+
+    _write_env_file(env_path, new_values)
+    render_success(f".env saved at {env_path} ({len(new_values)} keys set)")
+
+
+def _parse_env_file(p: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def _write_env_file(p: Path, values: dict[str, str]) -> None:
+    """Rewrite .env, preserving any non-API-KEY lines from the original."""
+    lines: list[str] = []
+    seen_keys: set[str] = set()
+    if p.exists():
+        for line in p.read_text().splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                lines.append(line)
+                continue
+            key = stripped.split("=", 1)[0].strip()
+            if key in values:
+                lines.append(f"{key}={values[key]}")
+                seen_keys.add(key)
+            else:
+                lines.append(line)
+    for key, value in values.items():
+        if key not in seen_keys:
+            lines.append(f"{key}={value}")
+    p.write_text("\n".join(lines) + "\n")
+    os.chmod(p, 0o600)
+
+
+def _ensure_compose_file_exists(repo_path: Path, compose_file: str) -> None:
+    if not (repo_path / compose_file).exists():
+        render_error(f"{compose_file} not found at {repo_path}. The repo checkout may be incomplete or on an old branch.")
+        raise typer.Exit(1)
+
+
+def _bring_up_stack(repo_path: Path, compose_file: str) -> None:
+    if not shutil.which("docker"):
+        render_error("Docker is not installed or not on PATH. Install Docker Desktop and try again.")
+        raise typer.Exit(1)
+
+    cmd = ["docker", "compose", "-f", compose_file, "up", "-d"]
+    render_info(f"Bringing up the stack: {' '.join(shlex.quote(c) for c in cmd)}")
+    rc = subprocess.run(cmd, cwd=repo_path, check=False).returncode
+    if rc != 0:
+        render_error(f"docker compose up failed (exit {rc}). Check Docker Desktop is running.")
+        raise typer.Exit(1)
+    render_success("Containers started.")
+
+
+def _wait_for_health() -> None:
+    import httpx
+
+    started = time.monotonic()
+    render_info(
+        f"Waiting for /v1/health (timeout {_HEALTHCHECK_TIMEOUT_S}s). "
+        f"First boot downloads the BGE reranker (~570MB) and is the slowest step."
+    )
+    with console.status("Checking /v1/health...", spinner="dots") as status_ui:
+        while time.monotonic() - started < _HEALTHCHECK_TIMEOUT_S:
+            try:
+                r = httpx.get("http://localhost:8000/v1/health", timeout=5.0)
+                if r.status_code == 200:
+                    status_ui.stop()
+                    render_success(f"API healthy after {int(time.monotonic() - started)}s.")
+                    return
+            except Exception:
+                pass
+            time.sleep(_HEALTHCHECK_INTERVAL_S)
+    render_error(
+        f"API didn't become healthy within {_HEALTHCHECK_TIMEOUT_S}s. "
+        f"Check `docker compose -f compose.minimal.yml logs api`."
+    )
+    raise typer.Exit(1)
+
+
+def _prewarm() -> None:
+    import httpx
+
+    try:
+        with console.status("Pre-warming BGE reranker + sparse embedder...", spinner="dots"):
+            httpx.get("http://localhost:8000/v1/warm", timeout=120.0)
+    except Exception as exc:  # noqa: BLE001
+        render_info(f"Pre-warm skipped ({exc}). First chat will load models lazily.")
+        return
+    render_success("Models loaded.")
+
+
+def _seed_sample_corpus(repo_path: Path, compose_file: str) -> None:
+    """Seed the default Qdrant collection with the 8 sample PDFs by running
+    scripts/seed_qdrant.py inside the api container. ~60s + ~$0.001 in
+    embedding cost on text-embedding-3-small."""
+    cmd = [
+        "docker", "compose", "-f", compose_file,
+        "exec", "-T", "api",
+        "python", "scripts/seed_qdrant.py", "--sample",
+    ]
+    render_info("Seeding sample corpus (8 PDFs, ~60s)...")
+    rc = subprocess.run(cmd, cwd=repo_path, check=False).returncode
+    if rc != 0:
+        render_error(f"Seed failed (exit {rc}). You can retry later with `financebench setup --skip-seed` + manual seed.")
+        return
+    render_success("Corpus seeded.")
