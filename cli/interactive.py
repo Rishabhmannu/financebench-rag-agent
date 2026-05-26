@@ -1,25 +1,83 @@
 """Interactive arrow-key pickers shared between standalone subcommands and
-in-REPL slash commands. Built on prompt_toolkit's modal dialogs so they
-work both inside and outside the chat REPL's PromptSession.
+in-REPL slash commands.
 
-Design: every picker is a single function that fetches state, shows a
-radiolist_dialog, and returns the selected id (or None on Esc). Caller
-handles what to do with the selection (approve/reject/switch/etc).
+prompt_toolkit's default `radiolist_dialog` has wrong-feeling UX for our case:
+Enter on the list TOGGLES the selection (it's RadioList semantics) rather than
+submitting it, so users have to Tab over to the OK button then press Enter
+again. We replace it with a custom Application where Enter on the highlighted
+row submits directly. Esc / q / Ctrl+C all cancel (Esc alone is laggy on
+macOS terminals due to Alt-key disambiguation; we don't rely on it solo).
 """
 
 from __future__ import annotations
 
-from prompt_toolkit.shortcuts import (
-    button_dialog,
-    input_dialog,
-    message_dialog,
-    radiolist_dialog,
-)
+from prompt_toolkit import Application
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import HSplit, Layout, Window
+from prompt_toolkit.shortcuts import input_dialog, message_dialog
+from prompt_toolkit.widgets import Frame, Label, RadioList
 from rich.markdown import Markdown
 from rich.panel import Panel
 
 from cli.api_client import APIClient, APIError
 from cli.render import console, render_error, render_info, render_success
+
+
+def select_one(title: str, text: str, choices: list[tuple]):
+    """Arrow-key single-select dialog. Enter submits the highlighted row; Esc /
+    q / Ctrl+C cancels (returns None). `choices` is a list of (value, label)
+    tuples; the returned value is whatever `value` was for the chosen row.
+
+    Replaces prompt_toolkit's radiolist_dialog whose Enter-toggles-not-submits
+    UX confused real-TTY testing (Phase 3.6 user feedback).
+    """
+    if not choices:
+        return None
+
+    radio = RadioList(values=choices)
+    kb = KeyBindings()
+
+    @kb.add("enter", eager=True)
+    def _(event) -> None:
+        idx = getattr(radio, "_selected_index", 0)
+        if 0 <= idx < len(radio.values):
+            event.app.exit(result=radio.values[idx][0])
+        else:
+            event.app.exit(result=None)
+
+    @kb.add("escape", eager=True)
+    @kb.add("c-c", eager=True)
+    @kb.add("q", eager=True)
+    def _(event) -> None:
+        event.app.exit(result=None)
+
+    layout = Layout(
+        HSplit([
+            Frame(
+                body=HSplit([
+                    Label(text=text),
+                    Window(height=1),
+                    radio,
+                ]),
+                title=title,
+            ),
+        ])
+    )
+
+    app = Application(
+        layout=layout,
+        key_bindings=kb,
+        full_screen=True,
+        mouse_support=True,
+    )
+    return app.run()
+
+
+def confirm_action(title: str, text: str, choices: list[tuple]):
+    """Action-button dialog using the same Enter-submits-highlight UX as
+    select_one. Used for Approve/Reject/Back after picking an approval."""
+    return select_one(title, text, choices)
 
 
 def _fetch_pending() -> list[dict] | None:
@@ -83,18 +141,22 @@ def _show_detail(thread_id: str) -> dict | None:
 
 
 def _act_on(thread_id: str) -> bool:
-    """Show detail + Approve/Reject/Back buttons. Returns True if the item was
+    """Show detail + Approve/Reject/Back picker. Returns True if the item was
     handled (approved or rejected) and should be removed from the inbox; False
     if the user chose Back (still pending)."""
     detail = _show_detail(thread_id)
     if detail is None:
         return False
 
-    action = button_dialog(
+    action = confirm_action(
         title=f"Decide on thread {thread_id[:8]}...",
-        text="Approve releases the answer to the requester. Reject sends a refusal.",
-        buttons=[("Approve", "approve"), ("Reject", "reject"), ("Back", "back")],
-    ).run()
+        text="Arrow keys + Enter. Approve releases the answer to the requester. Reject sends a refusal.",
+        choices=[
+            ("approve", "Approve  (release the draft answer)"),
+            ("reject", "Reject   (send refusal to requester)"),
+            ("back", "Back     (leave pending, return to inbox)"),
+        ],
+    )
 
     if action == "back" or action is None:
         return False
@@ -138,31 +200,29 @@ def _act_on(thread_id: str) -> bool:
 
 
 def interactive_approvals_loop() -> None:
-    """The reusable interactive approver inbox. Loop until user picks Esc on
-    the main list. Used by `financebench approvals watch/review` AND by the
+    """The reusable interactive approver inbox. Loop until user picks Esc/q on
+    the main list. Used by `financebench approvals review/watch` AND by the
     `/approvals` slash command in the chat REPL."""
     while True:
         pending = _fetch_pending()
         if pending is None:
             return
         if not pending:
-            choice = button_dialog(
+            choice = confirm_action(
                 title="Approvals inbox",
-                text="No pending approvals for your role. Refresh, or quit?",
-                buttons=[("Refresh", "refresh"), ("Quit", "quit")],
-            ).run()
+                text="No pending approvals for your role. Arrow keys + Enter.",
+                choices=[("refresh", "Refresh"), ("quit", "Quit")],
+            )
             if choice in (None, "quit"):
                 return
             continue
 
         choices = [(a["thread_id"], _label_for_approval(a)) for a in pending]
-        selected = radiolist_dialog(
+        selected = select_one(
             title=f"Pending approvals ({len(pending)})",
-            text="Arrow keys to navigate, Enter to review, Esc to exit.",
-            values=choices,
-            ok_text="Review",
-            cancel_text="Exit",
-        ).run()
+            text="Arrow keys to navigate, Enter to review, Esc / q to exit.",
+            choices=choices,
+        )
         if selected is None:
             return
 
@@ -205,11 +265,8 @@ def interactive_thread_picker(current_thread_id: str | None = None) -> str | Non
         status = " [PAUSED]" if t.get("is_interrupted") else ""
         choices.append((tid, f"{marker} {tid[:8]}... | {title}{status}"))
 
-    selected = radiolist_dialog(
+    return select_one(
         title=f"Your threads ({len(threads)})",
-        text=f"Arrow keys to navigate. Current = marked with *. Esc to keep current.",
-        values=choices,
-        ok_text="Switch",
-        cancel_text="Cancel",
-    ).run()
-    return selected
+        text="Arrow keys + Enter to switch. Current = marked with *. Esc / q to keep current.",
+        choices=choices,
+    )
