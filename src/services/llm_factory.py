@@ -49,9 +49,15 @@ def _attribution_kwargs() -> dict:
     surfaces in Langfuse as `userId`. Returns an empty dict when no user is
     bound (e.g. from a script or background job) so unauthenticated paths
     work unchanged.
+
+    Direct-provider mode (LITELLM_URL unset) skips the attribution: Anthropic's
+    Messages API rejects the `user` kwarg (`Messages.create() got an unexpected
+    keyword argument 'user'`), and there's no Langfuse downstream to surface it
+    anyway. Per-call cost still lands in cost_logs/cost_log.jsonl; just not
+    grouped by user.
     """
     uid = current_user_id.get()
-    if not uid:
+    if not uid or not settings.LITELLM_URL:
         return {}
     return {"model_kwargs": {"user": uid}}
 
