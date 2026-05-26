@@ -3,13 +3,25 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "rag-agent"
+name = "financebench-rag-agent"
 version = "0.1.0"
-description = "Enterprise RAG Agent — Multi-agent LangGraph system for RBAC-secured financial document Q&A"
+description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11,<3.14"
-authors = [{ name = "Rishabh" }]
+authors = [{ name = "Rishabh Kumar", email = "rishabhkumards07@gmail.com" }]
+keywords = ["rag", "langgraph", "finance", "financebench", "llm", "agent", "rbac", "hitl"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 dependencies = [
     # --- Orchestration ---
@@ -100,9 +112,12 @@ eval = [
 dev = [
     "ruff>=0.8,<1.0",
     "pre-commit>=4.0,<5.0",
-    "rag-agent[test]",
-    "rag-agent[eval]",
-    "rag-agent[scripts]",
+    "build>=1.2,<2.0",
+    "twine>=5.0,<7.0",
+    "financebench-rag-agent[test]",
+    "financebench-rag-agent[eval]",
+    "financebench-rag-agent[scripts]",
+    "financebench-rag-agent[cli]",
 ]
 cli = [
     "typer>=0.12,<1.0",
@@ -111,11 +126,47 @@ cli = [
     "httpx-sse>=0.4,<1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Rishabhmannu/financebench-rag-agent"
+Repository = "https://github.com/Rishabhmannu/financebench-rag-agent"
+Issues = "https://github.com/Rishabhmannu/financebench-rag-agent/issues"
+
 [project.scripts]
 financebench = "cli.__main__:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src", "cli"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/",
+  "cli/",
+  "scripts/",
+  "docs/",
+  "tests/",
+  "alembic/",
+  "data/sample/",
+  "pyproject.toml",
+  "README.md",
+  "LICENSE",
+  "Makefile",
+  "Dockerfile",
+  "compose.minimal.yml",
+  "docker-compose.yml",
+  ".env.example",
+  "alembic.ini",
+]
+exclude = [
+  "data/raw/**",
+  "data/models/**",
+  "data/training/**",
+  "docs/demos/**",
+  "tests/evaluation/eval_results/**",
+  "web/**",
+  "**/__pycache__/**",
+  "**/*.pyc",
+  "**/.DS_Store",
+]
 
 [tool.ruff]
 target-version = "py312"
