@@ -97,7 +97,7 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query",
         "tags": ["api", f"role:{user.role}"],
-        "metadata": {"user_id": user.user_id, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
+        "metadata": {"user_id": user.user_id, "name": user.name, "department": user.department, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
         "callbacks": [req_cost],
     }
 
@@ -152,7 +152,7 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query_stream",
         "tags": ["api", "streaming", f"role:{user.role}"],
-        "metadata": {"user_id": user.user_id, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
+        "metadata": {"user_id": user.user_id, "name": user.name, "department": user.department, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
         "callbacks": [req_cost],
     }
 
@@ -290,7 +290,7 @@ async def chat_result(
     from src.services.thread_service import get_thread_owner_role
     pool = getattr(http_request.app.state, "pool", None)
     if pool is not None:
-        owner, requester_role = await get_thread_owner_role(pool, thread_id)
+        owner, requester_role, _name, _dept = await get_thread_owner_role(pool, thread_id)
         if owner is None:
             raise HTTPException(status_code=404, detail="Thread not found")
         if owner != user.user_id and user.role != "admin":
@@ -319,17 +319,29 @@ async def chat_result(
     requires_approval = values.get("requires_human_approval", False)
     human_decision = values.get("human_decision")
 
+    decision_audit = {
+        "decided_at": values.get("human_decision_at"),
+        "decided_by": values.get("human_decision_by"),
+        "decided_by_role": values.get("human_decision_by_role"),
+        "reason": values.get("human_decision_reason"),
+        "submitted_at": values.get("hitl_submitted_at"),
+    }
+
     if requires_approval and human_decision == "rejected":
         return {
             "status": "rejected",
             "thread_id": thread_id,
             "response": final_response,
+            "decision": decision_audit,
         }
 
-    return {
+    payload: dict = {
         "status": "approved" if requires_approval else "ready",
         "thread_id": thread_id,
         "response": final_response,
         "sources": metadata.get("sources", []),
         "confidence": metadata.get("confidence"),
     }
+    if requires_approval:
+        payload["decision"] = decision_audit
+    return payload

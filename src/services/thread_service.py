@@ -110,6 +110,8 @@ _LIST_ALL_SQL = """
 SELECT
     c.thread_id,
     MIN(c.metadata->>'user_id') AS user_id,
+    MIN(c.metadata->>'name') AS name,
+    MIN(c.metadata->>'department') AS department,
     MIN(c.metadata->>'role') AS role,
     MAX(c.checkpoint_id) AS latest_checkpoint_id
 FROM checkpoints c
@@ -119,7 +121,7 @@ LIMIT %s
 """
 
 _OWNERSHIP_ROLE_SQL = """
-SELECT metadata->>'user_id', metadata->>'role'
+SELECT metadata->>'user_id', metadata->>'role', metadata->>'name', metadata->>'department'
 FROM checkpoints
 WHERE thread_id = %s
 LIMIT 1
@@ -127,28 +129,37 @@ LIMIT 1
 
 
 async def list_all_threads(pool, limit: int = 200) -> list[dict[str, Any]]:
-    """List all threads (any user) with their {thread_id, user_id, role}
-    metadata. Used by the approvals inbox to find pending HITL interrupts
-    submitted by other users."""
+    """List all threads (any user) with their {thread_id, user_id, name,
+    department, role} metadata. Used by the approvals inbox to find pending
+    HITL interrupts submitted by other users."""
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(_LIST_ALL_SQL, (limit,))
             rows = await cur.fetchall()
     return [
-        {"thread_id": r[0], "user_id": r[1], "role": r[2], "latest_checkpoint_id": r[3]}
+        {
+            "thread_id": r[0],
+            "user_id": r[1],
+            "name": r[2],
+            "department": r[3],
+            "role": r[4],
+            "latest_checkpoint_id": r[5],
+        }
         for r in rows
     ]
 
 
-async def get_thread_owner_role(pool, thread_id: str) -> tuple[str | None, str | None]:
-    """Return (user_id, role) for the thread's creator. Both None if not found."""
+async def get_thread_owner_role(pool, thread_id: str) -> tuple[str | None, str | None, str | None, str | None]:
+    """Return (user_id, role, name, department) for the thread's creator.
+    All None if not found. Older callers using a 2-tuple unpacking should
+    expand to 4-tuple after this commit."""
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(_OWNERSHIP_ROLE_SQL, (thread_id,))
             row = await cur.fetchone()
     if row is None:
-        return None, None
-    return row[0], row[1]
+        return None, None, None, None
+    return row[0], row[1], row[2], row[3]
 
 
 async def delete_thread(pool, thread_id: str) -> int:

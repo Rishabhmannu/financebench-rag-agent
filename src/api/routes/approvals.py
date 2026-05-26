@@ -80,17 +80,27 @@ async def list_approvals(
             continue
 
         query = ""
+        sources_count = 0
+        confidence = None
         if gs and gs.values:
             query = (gs.values.get("original_query") or gs.values.get("sanitized_query") or "").strip()
+            meta = gs.values.get("response_metadata") or {}
+            sources_count = len(meta.get("sources") or [])
+            confidence = gs.values.get("hallucination_score")
 
         pending.append({
             "thread_id": thread_id,
             "requester_user_id": requester_user_id,
+            "requester_name": r.get("name"),
+            "requester_department": r.get("department"),
             "requester_role": requester_role,
             "query": query[:200],
             "reason": (payload or {}).get("reason"),
             "max_amount": (payload or {}).get("max_amount"),
             "threshold": (payload or {}).get("threshold"),
+            "submitted_at": (payload or {}).get("submitted_at"),
+            "sources_count": sources_count,
+            "confidence": confidence,
         })
 
     return {"approvals": pending, "count": len(pending)}
@@ -107,7 +117,7 @@ async def show_approval(
     pool = _pool_or_503(http_request)
 
     from src.services.thread_service import get_thread_owner_role
-    owner, requester_role = await get_thread_owner_role(pool, thread_id)
+    owner, requester_role, requester_name, requester_dept = await get_thread_owner_role(pool, thread_id)
     if owner is None:
         raise HTTPException(status_code=404, detail="Thread not found")
 
@@ -133,14 +143,24 @@ async def show_approval(
     state_values = gs.values or {}
     draft = state_values.get("generated_answer") or state_values.get("final_response") or ""
     query = state_values.get("original_query") or state_values.get("sanitized_query") or ""
+    meta = state_values.get("response_metadata") or {}
+    sources = meta.get("sources") or []
+    source_files = sorted({s.get("file") for s in sources if isinstance(s, dict) and s.get("file")})
 
     return {
         "thread_id": thread_id,
         "requester_user_id": owner,
+        "requester_name": requester_name,
+        "requester_department": requester_dept,
         "requester_role": requester_role,
         "query": query,
         "draft_answer": draft,
         "reason": (payload or {}).get("reason"),
         "max_amount": (payload or {}).get("max_amount"),
         "threshold": (payload or {}).get("threshold"),
+        "submitted_at": (payload or {}).get("submitted_at"),
+        "sources_count": len(sources),
+        "source_files": source_files,
+        "confidence": state_values.get("hallucination_score"),
+        "retrieval_fallback_used": bool(state_values.get("retrieval_fallback_used")),
     }
