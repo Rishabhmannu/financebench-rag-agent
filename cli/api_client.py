@@ -60,6 +60,13 @@ class APIClient:
         self._raise_for(r)
         return r.json()
 
+    def delete(self, path: str, auth_required: bool = True) -> None:
+        """DELETE — returns nothing on 204; raises APIError on >=400."""
+        r = self._client.delete(path, headers=self._headers(auth_required))
+        if r.status_code == 204:
+            return
+        self._raise_for(r)
+
     def stream_chat(self, json_body: dict) -> Iterator[dict]:
         """Stream /v1/chat/stream as parsed-JSON SSE events.
 

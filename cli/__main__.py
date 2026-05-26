@@ -9,6 +9,7 @@ from cli.commands.chat import chat
 from cli.commands.login import login
 from cli.commands.logout import logout
 from cli.commands.status import status
+from cli.commands.threads import app as threads_app
 
 app = typer.Typer(
     name="financebench",
@@ -22,6 +23,7 @@ app.command(name="login")(login)
 app.command(name="chat")(chat)
 app.command(name="logout")(logout)
 app.command(name="status")(status)
+app.add_typer(threads_app, name="threads")
 
 
 @app.command(name="version")

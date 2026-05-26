@@ -107,11 +107,18 @@ def render_final_footer(payload: dict) -> None:
 
 
 def render_hitl_panel(payload: dict) -> None:
-    """Render the HITL pause panel from a hitl_interrupt SSE event."""
-    preview = payload.get("answer_preview") or "(no preview)"
+    """Render the HITL pause panel. Phase 3: no answer_preview (the generator
+    already streamed the full answer to the user; preview was redundant + got
+    truncated mid-row). Panel shows reason + amount + threshold; the inline
+    [a]pprove/[r]eject prompt is driven by the chat REPL (cli/commands/chat.py)."""
     reason = payload.get("reason") or "Approval required"
+    amount = payload.get("max_amount")
+    threshold = payload.get("threshold")
+    body = f"[bold]{reason}[/bold]"
+    if amount is not None and threshold is not None:
+        body += f"\n\n[dim]Amount referenced:[/dim] ${amount:,.0f}\n[dim]Role threshold:[/dim]    ${threshold:,.0f}"
     console.print(Panel(
-        f"[bold]{reason}[/bold]\n\n[dim]Draft answer (preview):[/dim]\n{preview}",
+        body,
         title="Approval required (HITL)",
         border_style="yellow",
         title_align="left",

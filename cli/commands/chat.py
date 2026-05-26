@@ -6,8 +6,10 @@ from pathlib import Path
 
 import typer
 from prompt_toolkit import PromptSession
+from prompt_toolkit import prompt as pt_prompt
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
+from rich.markdown import Markdown
 
 from cli import credentials, slash
 from cli.api_client import APIClient, APIError
@@ -184,3 +186,48 @@ def _run_turn(client: APIClient, message: str, session: slash.ChatSession) -> No
     session.session_cost_usd += float(cost)
     session.session_tokens_in += int(tokens.get("input", 0))
     session.session_tokens_out += int(tokens.get("output", 0))
+
+    if terminal.get("type") == "hitl_interrupt":
+        _handle_hitl_decision(client, terminal)
+
+
+def _handle_hitl_decision(client: APIClient, hitl_event: dict) -> None:
+    """Prompt approve/reject/skip + POST + render the resumed answer."""
+    console.print()
+    while True:
+        try:
+            choice = pt_prompt("[a]pprove / [r]eject / s[k]ip > ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            render_info("HITL skipped (returned to REPL prompt). Pause remains in Postgres.")
+            return
+        if choice in ("a", "approve"):
+            decision = "approve"
+            break
+        if choice in ("r", "reject"):
+            decision = "reject"
+            break
+        if choice in ("k", "s", "skip"):
+            render_info("HITL skipped. Pause remains in Postgres; you can resume this thread later.")
+            return
+        render_error(f"Unrecognized choice {choice!r}. Use a / r / k.")
+
+    body = {"thread_id": hitl_event["thread_id"]}
+    try:
+        with console.status(f"{decision.capitalize()}ing and resuming graph...", spinner="dots"):
+            resp = client.post(f"/v1/hitl/{decision}", body)
+    except APIError as e:
+        render_error(f"HITL {decision} failed: {e.message}")
+        return
+
+    console.print()
+    if decision == "approve":
+        render_success("Approved. Resumed answer:")
+    else:
+        render_info("Rejected. Response:")
+    response_text = (resp.get("response") or "").strip()
+    if response_text:
+        console.print(Markdown(response_text))
+    render_final_footer({
+        "sources": resp.get("sources") or [],
+        "confidence": resp.get("confidence"),
+    })
