@@ -70,10 +70,12 @@ def hitl_gate_node(state: RAGState, config: RunnableConfig | None = None) -> dic
 
         # Pause the graph — state is checkpointed via PostgresSaver.
         # The caller resumes with Command(resume="approved") or Command(resume="rejected").
+        # No answer_preview: the generator already streamed the full answer to
+        # the client before HITL fired; the preview was redundant and got
+        # truncated mid-row in the CLI panel (Phase 2 user feedback).
         decision = interrupt({
             "type": "approval_required",
             "reason": f"Answer references ${max_amount:,.0f} which exceeds the ${threshold:,} threshold for role '{user_role}'",
-            "answer_preview": answer[:500],
             "max_amount": max_amount,
             "threshold": threshold,
         })

@@ -106,6 +106,10 @@ async def generator_node(state: RAGState) -> dict:
     chunks = state.get("relevant_chunks", [])
     agent_synthesis = state.get("agent_synthesis")
 
+    # Empty-chunks path is owned by no_info_node (terminal_nodes.py) which
+    # detects RBAC-driven empties and returns an informative refusal. Generator
+    # is only reached when relevant_chunks >= GRADING_MIN_RELEVANT_CHUNKS.
+
     raw_context = _format_context(chunks)
     if agent_synthesis:
         context = (

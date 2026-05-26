@@ -72,6 +72,13 @@ _NODE_LABELS = {
     "hallucination_checker": "Verifying accuracy",
     "hitl_gate": "Checking approval requirements",
     "response_formatter": "Formatting response",
+    # Terminal nodes — must be in this dict so their on_chain_end output is
+    # captured as final_state (otherwise the SSE `final` event falls back to
+    # "No response generated.").
+    "no_info_response": "Compiling response",
+    "blocked_response": "Compiling response",
+    "out_of_scope": "Compiling response",
+    "clarification": "Compiling response",
 }
 
 
@@ -203,8 +210,9 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                                 interrupt_value = task.interrupts[0].value
                                 yield json.dumps({
                                     "type": "hitl_interrupt",
-                                    "answer_preview": interrupt_value.get("answer_preview", ""),
                                     "reason": interrupt_value.get("reason", "Approval required"),
+                                    "max_amount": interrupt_value.get("max_amount"),
+                                    "threshold": interrupt_value.get("threshold"),
                                     "thread_id": thread_id,
                                 })
                                 return
