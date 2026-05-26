@@ -133,7 +133,16 @@ def _repl(creds: dict) -> None:
     HISTORY_PATH.parent.mkdir(mode=0o700, exist_ok=True)
     prompt_session: PromptSession = PromptSession(history=FileHistory(str(HISTORY_PATH)))
 
-    render_success(f"REPL ready. Logged in as {user_id} (role={role}) -> {base_url}")
+    profile = credentials.current_profile()
+    render_success(
+        f"REPL ready. Profile=[bold]{profile}[/bold]  Logged in as {user_id} "
+        f"(role={role}) -> {base_url}"
+    )
+    if profile == "default":
+        console.print(
+            "[dim]Tip: set FB_PROFILE=admin (or any name) in different terminals "
+            "to keep separate identities for the multi-party HITL demo.[/dim]"
+        )
     console.print("[dim]Type a question, or /help for slash commands. Ctrl+D to exit.[/dim]")
 
     while True:

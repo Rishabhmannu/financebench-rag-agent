@@ -59,6 +59,7 @@ def status() -> None:
     table = Table(show_header=False, show_lines=False, box=None, pad_edge=False)
     table.add_column("Field", style="dim")
     table.add_column("Value")
+    table.add_row("Profile", f"[bold]{credentials.current_profile()}[/bold]")
     table.add_row("Backend URL", base_url)
     table.add_row("Backend reachable", "yes" if reachable else "[red]no[/red]")
     if reachable:
