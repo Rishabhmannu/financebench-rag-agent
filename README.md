@@ -1,5 +1,6 @@
 # FinanceBench RAG Agent
 
+[![PyPI](https://img.shields.io/pypi/v/financebench-rag-agent.svg)](https://pypi.org/project/financebench-rag-agent/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
 [![Tests](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)]()
@@ -7,6 +8,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **72.7% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a BGE cross-encoder reranker, and a self-hosted LLM observability stack.
+
+## Try it
+
+```bash
+pip install financebench-rag-agent
+financebench setup     # brings up the 4-service docker stack, seeds a sample corpus
+financebench login -u analyst    # password analyst123
+financebench chat
+```
+
+![RBAC role-switch demo](docs/demos/rbac.gif)
+
+Multi-party HITL approval workflow and conversation memory have their own walkthroughs in [docs/cli.md](docs/cli.md). Self-hosting the backend (env vars, full vs minimal stack, production hardening) is in [docs/deploy.md](docs/deploy.md).
 
 ## Architecture
 
@@ -31,7 +45,8 @@ A router classifies each query as a simple lookup or research-required. Simple l
 ## Tech stack
 
 - **Backend** — FastAPI · LangGraph · Qdrant · PostgreSQL · Redis · PyJWT
-- **Frontend** — Next.js 16 · React 19 · Tailwind · shadcn/ui  *(in progress; Gradio is the current usable UI)*
+- **Client** — `financebench` CLI: typer · rich · prompt_toolkit · httpx-sse · token-streaming over SSE
+- **Frontend** — Next.js 16 · React 19 · Tailwind · shadcn/ui  *(in progress; CLI is the canonical client)*
 - **LLMs** — Claude Sonnet 4.6 · gpt-4o-mini · Llama 3.3 (via Groq)
 - **Retrieval** — voyage-finance-2 embeddings · BGE-reranker-v2-m3 cross-encoder
 - **Observability** — self-hosted LiteLLM proxy + Langfuse v3 + Redis semantic cache
@@ -74,22 +89,25 @@ Long-context approaches score higher but are not enterprise-deployable — 10-K 
 - **Frontend is a vertical slice** — login + streaming chat work; sidebar, HITL UI, admin panel, citation PDF viewer are unbuilt.
 - **Below the top-published systems** (Mafin 2.5 at 98.7%, DANA at 94.3%) — see comparison table above for context.
 
-## Quick start
+## Running from source
 
 ```bash
 git clone https://github.com/Rishabhmannu/financebench-rag-agent.git
 cd financebench-rag-agent
-pip install -e ".[dev]" && cp .env.example .env   # add your API keys
-docker compose up -d && make run                  # API at http://localhost:8000
+pip install -e ".[cli,dev]" && cp .env.example .env   # add your API keys
+financebench setup                                     # docker compose + seed corpus
 ```
 
-Full setup, test accounts, dev commands, and API surface in [docs/setup.md](docs/setup.md).
+For self-hosting the full 11-service stack (LiteLLM + Langfuse), upgrade flows, and production hardening, see [docs/deploy.md](docs/deploy.md) and [docs/upgrade.md](docs/upgrade.md).
 
 ## Documentation
 
+- [docs/cli.md](docs/cli.md) — CLI reference, slash commands, multi-party HITL workflow
+- [docs/deploy.md](docs/deploy.md) — Self-host: stack profiles, env vars, backup, hardening
+- [docs/upgrade.md](docs/upgrade.md) — Upgrade cookbook by change type
 - [docs/evaluation.md](docs/evaluation.md) — Methodology, results, reproduction
 - [docs/engineering-log.md](docs/engineering-log.md) — Engineering decisions and tradeoffs
-- [docs/setup.md](docs/setup.md) — Local development, test accounts, environment
+- [docs/setup.md](docs/setup.md) — Test accounts, environment, dev commands
 - [docs/architecture.md](docs/architecture.md) · [docs/api-reference.md](docs/api-reference.md) · [docs/rbac-matrix.md](docs/rbac-matrix.md) · [web/README.md](web/README.md)
 
 ## License
