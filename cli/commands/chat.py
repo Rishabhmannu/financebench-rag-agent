@@ -234,7 +234,19 @@ def _wait_for_approval(client: APIClient, pending_event: dict) -> None:
                 if st in ("approved", "ready"):
                     status_ui.stop()
                     console.print()
-                    render_success("Approved. Answer released:")
+                    decision = resp.get("decision") or {}
+                    decided_by = decision.get("decided_by")
+                    decided_by_role = decision.get("decided_by_role")
+                    decided_at = decision.get("decided_at")
+                    reason = (decision.get("reason") or "").strip()
+                    if decided_by:
+                        suffix = f" by {decided_by} ({decided_by_role})" if decided_by_role else f" by {decided_by}"
+                        suffix += f" at {decided_at}" if decided_at else ""
+                        render_success(f"Approved{suffix}. Released answer:")
+                        if reason:
+                            console.print(f"[dim]Approver note:[/dim] {reason}")
+                    else:
+                        render_success("Approved. Answer released:")
                     response_text = (resp.get("response") or "").strip()
                     if response_text:
                         console.print(Markdown(response_text))
@@ -246,7 +258,19 @@ def _wait_for_approval(client: APIClient, pending_event: dict) -> None:
                 if st == "rejected":
                     status_ui.stop()
                     console.print()
-                    render_info("Rejected by approver.")
+                    decision = resp.get("decision") or {}
+                    decided_by = decision.get("decided_by")
+                    decided_by_role = decision.get("decided_by_role")
+                    decided_at = decision.get("decided_at")
+                    reason = (decision.get("reason") or "").strip()
+                    if decided_by:
+                        suffix = f" by {decided_by} ({decided_by_role})" if decided_by_role else f" by {decided_by}"
+                        suffix += f" at {decided_at}" if decided_at else ""
+                        render_info(f"Rejected{suffix}.")
+                    else:
+                        render_info("Rejected by approver.")
+                    if reason:
+                        console.print(f"[yellow]Reason:[/yellow] {reason}")
                     response_text = (resp.get("response") or "").strip()
                     if response_text:
                         console.print(Markdown(response_text))
