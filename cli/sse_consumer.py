@@ -21,6 +21,7 @@ from cli.render import (
     make_status,
     render_error,
     render_final_footer,
+    render_final_response_text,
     render_hitl_panel,
 )
 
@@ -72,6 +73,11 @@ def render_chat_stream(events: Iterator[dict]) -> dict:
             elif et == "final":
                 if not streaming_started:
                     status_ctx.stop()
+                    # No tokens streamed during this turn — render the response
+                    # text from the final event (e.g., RBAC-filtered empty-results
+                    # path, or any fallback that sets final_response without going
+                    # through the generator's astream).
+                    render_final_response_text(event)
                 else:
                     console.print()
                 render_final_footer(event)

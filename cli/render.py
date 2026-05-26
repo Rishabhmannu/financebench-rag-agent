@@ -53,6 +53,17 @@ def render_info(message: str) -> None:
     console.print(f"[bold blue][INFO][/bold blue] {message}")
 
 
+def render_final_response_text(payload: dict) -> None:
+    """Render the response text from a final event when no tokens were streamed
+    during the turn (e.g., the backend short-circuited with a fallback message
+    before reaching the generator's astream path)."""
+    text = (payload.get("response") or "").strip()
+    if not text:
+        return
+    console.print()
+    console.print(Markdown(text))
+
+
 def render_final_footer(payload: dict) -> None:
     """Print sources table + confidence + cost footer for a /chat/stream final
     event (or a non-streaming chat response with the same shape)."""
