@@ -14,8 +14,6 @@ Usage:
 
 from __future__ import annotations
 
-import time
-
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
@@ -191,52 +189,19 @@ def reject(
         console.print(Markdown(response_text))
 
 
-def watch(
-    interval: int = typer.Option(3, "--interval", "-i", min=1, max=60),
-) -> None:
-    """Live approver inbox. Polls /v1/approvals every N seconds and prints
-    new pending items as they arrive. Ctrl+C to exit."""
-    client = APIClient()
-    seen: set[str] = set()
-    console.print(f"[dim]Watching approval inbox (poll every {interval}s). Ctrl+C to exit.[/dim]")
-    try:
-        while True:
-            try:
-                resp = client.get("/v1/approvals")
-            except APIError as e:
-                render_error(f"Poll failed: {e.message}")
-                time.sleep(interval)
-                continue
+def review() -> None:
+    """Interactive approver inbox — arrow keys to select, Enter to review,
+    buttons to Approve / Reject / Back. No copy-pasting thread IDs. After each
+    decision, the list refreshes and you stay in the loop until Esc."""
+    from cli.interactive import interactive_approvals_loop
+    interactive_approvals_loop()
 
-            pending = resp.get("approvals") or []
-            current_ids = {a.get("thread_id") for a in pending if a.get("thread_id")}
-            new_items = [a for a in pending if a.get("thread_id") not in seen]
 
-            for a in new_items:
-                amount = a.get("max_amount")
-                amt_str = f"${amount:,.0f}" if amount is not None else "—"
-                console.print()
-                console.print(Panel(
-                    (
-                        f"[bold]Thread:[/bold] {a.get('thread_id', '?')}\n"
-                        f"[bold]Requester:[/bold] {a.get('requester_user_id', '?')} "
-                        f"([dim]role={a.get('requester_role', '?')}[/dim])\n"
-                        f"[bold]Query:[/bold] {a.get('query') or '(no query)'}\n"
-                        f"[bold]Amount:[/bold] [yellow]{amt_str}[/yellow]\n\n"
-                        f"[dim]approvals approve {a.get('thread_id', '?')}   "
-                        f"approvals reject {a.get('thread_id', '?')}[/dim]"
-                    ),
-                    title="NEW pending approval",
-                    border_style="yellow",
-                    title_align="left",
-                ))
-
-            seen = current_ids
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        console.print("\n[dim]Watch stopped.[/dim]")
-    finally:
-        client.close()
+def watch() -> None:
+    """Alias for `review` — kept for backwards-compatibility with Phase 3.5
+    docs. The behavior is identical (interactive arrow-key TUI, NOT the old
+    blocking poll-loop that swallowed the shell)."""
+    review()
 
 
 app = typer.Typer(
@@ -248,4 +213,5 @@ app.command("list")(list_approvals)
 app.command("show")(show)
 app.command("approve")(approve)
 app.command("reject")(reject)
+app.command("review")(review)
 app.command("watch")(watch)

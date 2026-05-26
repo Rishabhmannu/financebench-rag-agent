@@ -47,16 +47,17 @@ Available slash commands:
   /permissions       Show current role's RBAC access (doc types, confidentiality, HITL threshold)
   /thread new        Reset thread (start fresh conversation)
   /thread show       Show current thread id + turn count + session cost
-  /threads           List your prior conversations (Phase 3 wire-up)
+  /threads           Switch active thread (arrow-key picker)
+  /approvals         Open the approver inbox (admin/clevel only; arrow-key picker)
   /cost [N]          Show recent LLM cost from cost_logs/cost_log.jsonl (admin role)
   /audit [N]         Tail recent events from logs/run_*.jsonl (admin role)
   /clear             Clear the screen
   /help              This help text
   /quit, /exit       Leave the REPL
 
-When the chat pauses for HITL approval (high-stakes amount above your role
-threshold), an inline a/r/k prompt fires. The thread stays paused in Postgres
-until you decide.
+If your role has a HITL threshold (finance: $100K, clevel: $1M), high-stakes
+queries pause and an authorized approver in another session must release them.
+Your REPL polls /v1/chat/result and renders the answer once decided.
 
 Anything not starting with `/` is sent as a chat query to the agent.
 """.strip()
@@ -109,6 +110,9 @@ def handle(text: str, session: ChatSession) -> bool:
 
     if cmd == "/threads":
         return _handle_threads(session)
+
+    if cmd == "/approvals":
+        return _handle_approvals_slash(session)
 
     if cmd == "/thread":
         if not args:
@@ -290,37 +294,34 @@ def _handle_audit(session: ChatSession, n: int = 15) -> bool:
 
 
 def _handle_threads(session: ChatSession) -> bool:
-    """List threads and optionally switch active thread via arrow-key selection."""
-    client = APIClient()
-    try:
-        resp = client.get("/v1/threads?limit=20")
-    except APIError as e:
-        render_error(f"Could not list threads: {e.message}")
+    """Arrow-key picker over the caller's threads. Switches session.thread_id
+    to whatever's selected. Esc to keep current. Phase 3.6 promoted this from
+    the list-only Phase 3 implementation now that the radiolist_dialog pattern
+    is proven safe inside the active PromptSession."""
+    from cli.interactive import interactive_thread_picker
+    selected = interactive_thread_picker(current_thread_id=session.thread_id)
+    if selected is None:
+        render_info("Kept current thread.")
         return True
-    finally:
-        client.close()
-
-    threads = resp.get("threads") or []
-    if not threads:
-        render_info("No threads yet. Ask a question to start one.")
+    if selected == session.thread_id:
+        render_info("Already on that thread.")
         return True
+    session.thread_id = selected
+    session.turn_count = 0  # subsequent turns will append to the new thread
+    render_success(f"Switched to thread {selected[:8]}...")
+    return True
 
-    table = Table(title=f"Your threads ({len(threads)} of {resp.get('total', '?')})",
-                  header_style="bold cyan", title_style="bold")
-    table.add_column("#", style="dim", justify="right")
-    table.add_column("Thread ID", style="cyan", overflow="fold")
-    table.add_column("Title", overflow="fold")
-    table.add_column("Checkpoints", justify="right", style="dim")
-    table.add_column("Status")
-    for i, t in enumerate(threads, 1):
-        tid = t.get("thread_id", "?")
-        if session.thread_id and tid == session.thread_id:
-            tid = f"[bold green]{tid}[/bold green]"
-        status = "[yellow]paused (HITL)[/yellow]" if t.get("is_interrupted") else ""
-        table.add_row(str(i), tid, (t.get("title") or "[dim](no title)[/dim]"), str(t.get("checkpoint_count", "?")), status)
-    console.print(table)
-    console.print("[dim]Tip: switch threads by sending a query with --thread-id, "
-                  "or start fresh with /thread new.[/dim]")
+
+def _handle_approvals_slash(session: ChatSession) -> bool:
+    """Open the interactive approver inbox without leaving the REPL.
+
+    Authorization is enforced server-side: the /v1/approvals endpoint returns
+    only items the caller can approve. analyst/finance/hr see an empty inbox
+    (no approval authority); clevel sees finance/hr/analyst requests; admin
+    sees everything. Self-approval is blocked by the backend regardless.
+    """
+    from cli.interactive import interactive_approvals_loop
+    interactive_approvals_loop()
     return True
 
 
