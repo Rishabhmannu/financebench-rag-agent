@@ -78,6 +78,8 @@ class ChatResponse(BaseModel):
     confidence: float | None = None
     requires_approval: bool = False
     thread_id: str | None = None
+    cost_usd: float | None = None
+    tokens: dict | None = None
 
 
 class LoginRequest(BaseModel):

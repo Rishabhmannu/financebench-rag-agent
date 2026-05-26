@@ -10,6 +10,8 @@ from src.api.dependencies import get_current_user
 from src.graph.builder import build_graph
 from src.models.auth import User
 from src.models.schemas import ChatRequest, ChatResponse
+from src.services.cost_tracker import RequestScopedCostHandler
+from src.services.reranker_service import get_reranker
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +84,13 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
     checkpointer = getattr(http_request.app.state, "checkpointer", None) if http_request else None
     graph = _get_graph(checkpointer=checkpointer)
 
+    req_cost = RequestScopedCostHandler()
     config = {
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query",
         "tags": ["api", f"role:{user.role}"],
         "metadata": {"user_id": user.user_id, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
+        "callbacks": [req_cost],
     }
 
     try:
@@ -114,12 +118,15 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
             logger.warning(f"Failed to check graph state for interrupts: {e}")
 
     metadata = result.get("response_metadata", {})
+    cost_summary = req_cost.aggregate()
     return ChatResponse(
         response=result.get("final_response", "No response generated."),
         sources=metadata.get("sources", []),
         confidence=metadata.get("confidence"),
         requires_approval=result.get("requires_human_approval", False),
         thread_id=thread_id,
+        cost_usd=cost_summary["cost_usd"],
+        tokens=cost_summary["tokens"],
     )
 
 
@@ -132,11 +139,13 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
     checkpointer = getattr(http_request.app.state, "checkpointer", None) if http_request else None
     graph = _get_graph(checkpointer=checkpointer)
 
+    req_cost = RequestScopedCostHandler()
     config = {
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query_stream",
         "tags": ["api", "streaming", f"role:{user.role}"],
         "metadata": {"user_id": user.user_id, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
+        "callbacks": [req_cost],
     }
 
     async def event_generator():
@@ -172,7 +181,13 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     chunk = event.get("data", {}).get("chunk")
                     if chunk and hasattr(chunk, "content") and chunk.content:
                         tags = event.get("tags", [])
-                        if "generator" in name or any("generator" in t for t in tags):
+                        metadata = event.get("metadata", {}) or {}
+                        node_name = metadata.get("langgraph_node", "")
+                        if (
+                            "generator" in name
+                            or any("generator" in t for t in tags)
+                            or "generator" in node_name
+                        ):
                             yield json.dumps({
                                 "type": "token",
                                 "content": chunk.content,
@@ -197,6 +212,7 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     logger.warning(f"Failed to check graph state for interrupts: {e}")
 
             # Normal completion — emit final event
+            cost_summary = req_cost.aggregate()
             if final_state:
                 metadata = final_state.get("response_metadata", {})
                 yield json.dumps({
@@ -206,6 +222,8 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     "confidence": metadata.get("confidence"),
                     "requires_approval": final_state.get("requires_human_approval", False),
                     "thread_id": thread_id,
+                    "cost_usd": cost_summary["cost_usd"],
+                    "tokens": cost_summary["tokens"],
                 })
             else:
                 yield json.dumps({
@@ -215,6 +233,8 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     "confidence": None,
                     "requires_approval": False,
                     "thread_id": thread_id,
+                    "cost_usd": cost_summary["cost_usd"],
+                    "tokens": cost_summary["tokens"],
                 })
 
         except Exception as e:

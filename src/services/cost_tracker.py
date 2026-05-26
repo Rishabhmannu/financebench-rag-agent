@@ -254,6 +254,105 @@ def get_cost_handler() -> CostCallbackHandler:
     return _GLOBAL_HANDLER
 
 
+class RequestScopedCostHandler(BaseCallbackHandler):
+    """In-memory per-request cost collector. Attach via `config["callbacks"]` on
+    graph.invoke / astream_events so the per-request total can be surfaced in
+    the chat response (Section 18.3.x / D3b of the deployment plan). The global
+    handler keeps writing to disk in parallel; this one just aggregates.
+    """
+
+    raise_error = False
+
+    def __init__(self) -> None:
+        self._records: list[dict[str, Any]] = []
+        self._starts: dict[UUID, tuple[float, str | None, dict | None]] = {}
+        self._lock = threading.Lock()
+
+    def on_llm_start(
+        self,
+        serialized: dict,
+        prompts: list[str],
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        metadata: dict | None = None,
+        **kwargs: Any,
+    ) -> None:
+        invocation = kwargs.get("invocation_params") or {}
+        serialized_kwargs = (serialized or {}).get("kwargs", {}) or {}
+        model = (
+            invocation.get("model")
+            or invocation.get("model_name")
+            or serialized_kwargs.get("model")
+            or serialized_kwargs.get("model_name")
+        )
+        with self._lock:
+            self._starts[run_id] = (time.monotonic(), model, metadata or {})
+
+    def on_chat_model_start(self, *args: Any, **kwargs: Any) -> None:
+        return self.on_llm_start(*args, **kwargs)
+
+    def on_llm_end(self, response: LLMResult, *, run_id: UUID, **kwargs: Any) -> None:
+        with self._lock:
+            start_time, start_model, metadata = self._starts.pop(
+                run_id, (time.monotonic(), None, {})
+            )
+        duration = time.monotonic() - start_time
+
+        try:
+            usage = CostCallbackHandler._extract_usage(response)
+            raw_model = CostCallbackHandler._extract_model(response) or start_model or "unknown"
+            model = normalize_model(raw_model)
+            cost = compute_cost(
+                model=model,
+                input_tokens=usage["input_tokens"],
+                output_tokens=usage["output_tokens"],
+                cache_read_tokens=usage["cache_read_tokens"],
+                cache_write_tokens=usage["cache_write_tokens"],
+            )
+            with self._lock:
+                self._records.append({
+                    "model": model,
+                    "duration_s": round(duration, 3),
+                    "cost_usd": cost,
+                    "node": (metadata or {}).get("node"),
+                    **usage,
+                })
+        except Exception:  # noqa: BLE001
+            pass
+
+    def aggregate(self) -> dict:
+        """Return a single-turn cost summary suitable for surfacing in the chat
+        API's `final` event payload."""
+        with self._lock:
+            records = list(self._records)
+        total_cost = sum(r["cost_usd"] for r in records)
+        total_in = sum(r["input_tokens"] for r in records)
+        total_out = sum(r["output_tokens"] for r in records)
+        total_cache_read = sum(r["cache_read_tokens"] for r in records)
+        per_model: dict[str, dict] = {}
+        for r in records:
+            m = per_model.setdefault(r["model"], {"cost_usd": 0.0, "calls": 0, "input_tokens": 0, "output_tokens": 0})
+            m["cost_usd"] += r["cost_usd"]
+            m["calls"] += 1
+            m["input_tokens"] += r["input_tokens"]
+            m["output_tokens"] += r["output_tokens"]
+        for m in per_model.values():
+            m["cost_usd"] = round(m["cost_usd"], 6)
+        return {
+            "cost_usd": round(total_cost, 6),
+            "tokens": {
+                "input": total_in,
+                "output": total_out,
+                "cache_read": total_cache_read,
+                "total": total_in + total_out,
+            },
+            "n_calls": len(records),
+            "per_model": per_model,
+        }
+
+
 class CostTracker:
     """Public API: name a run, write its summary, query aggregated spend."""
 

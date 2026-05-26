@@ -88,13 +88,19 @@ def _log_cache_stats(response) -> None:
         )
 
 
-def generator_node(state: RAGState) -> dict:
+async def generator_node(state: RAGState) -> dict:
     """Generate an answer from relevant chunks. Claude Sonnet 4.6 with prompt caching.
 
     Sprint 7.6: when the research agent ran (agent_synthesis is set), prepend
     its structured findings block above the raw chunks. The generator now
     sees both the agent's curated synthesis AND the raw chunks the
     hallucination checker will ground against — best of both worlds.
+
+    Async + astream so /v1/chat/stream surfaces per-token events via
+    LangGraph's astream_events (the CLI's REPL renders these as live tokens).
+    Total wall-time is unchanged vs the prior `invoke` path; the result is
+    accumulated by adding chunks together (langchain BaseMessageChunk supports
+    `__add__`).
     """
     query = state.get("sanitized_query", "")
     chunks = state.get("relevant_chunks", [])
@@ -115,10 +121,16 @@ def generator_node(state: RAGState) -> dict:
 
     try:
         llm = LLMFactory.get_generator_llm()
-        result = llm.invoke([
+        messages = [
             _build_system_message(llm),
             HumanMessage(content=user_prompt),
-        ])
+        ]
+        result = None
+        async for chunk in llm.astream(messages):
+            result = chunk if result is None else result + chunk
+        if result is None:
+            logger.warning("Generator astream produced no chunks")
+            return {"generated_answer": "I couldn't generate a response. Please try again."}
         _log_cache_stats(result)
         logger.info(f"Generated answer: {len(result.content)} chars")
         from src.services.event_log import emit
