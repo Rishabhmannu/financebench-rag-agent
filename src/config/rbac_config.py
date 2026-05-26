@@ -46,3 +46,42 @@ def get_permissions(role: str) -> dict:
     """
     from src.services.roles_service import get_permissions as _db_first
     return _db_first(role)
+
+
+# Phase 3.5 — multi-party HITL approval hierarchy. Codified in source (not
+# DB-driven like ROLE_PERMISSIONS) because org-level approval policy isn't a
+# per-tenant knob that should be editable through /admin/roles. Adding a
+# can_approve_for column to the dynamic roles table would invite footguns
+# like a tenant accidentally making analysts able to approve clevel queries.
+#
+# Read: CAN_APPROVE_FOR[approver_role] = set of roles whose HITL-paused
+# queries the approver can approve. "*" matches all roles. Empty set means
+# the role has no approval authority.
+#
+# admin sees no HITL gates of its own (requires_hitl_above=None) but can
+# approve anyone. clevel can approve finance/hr/analyst but not its own
+# queries (so a clevel question above $1M still requires admin).
+CAN_APPROVE_FOR: dict[str, set[str]] = {
+    "analyst": set(),
+    "finance": set(),
+    "hr": set(),
+    "c_level": {"finance", "hr", "analyst"},
+    "admin": {"*"},
+}
+
+
+def can_approve(approver_role: str, requester_role: str) -> bool:
+    """True iff `approver_role` is authorized to approve a HITL-paused query
+    submitted by `requester_role`. Self-approval is never allowed."""
+    if approver_role == requester_role:
+        return False
+    allowed = CAN_APPROVE_FOR.get(approver_role, set())
+    return "*" in allowed or requester_role in allowed
+
+
+def approvers_for(requester_role: str) -> list[str]:
+    """List of role names authorized to approve `requester_role`'s queries."""
+    return sorted(
+        role for role, allowed in CAN_APPROVE_FOR.items()
+        if role != requester_role and ("*" in allowed or requester_role in allowed)
+    )

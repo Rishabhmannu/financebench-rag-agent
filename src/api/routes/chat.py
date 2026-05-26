@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage
 from sse_starlette.sse import EventSourceResponse
 
 from src.api.dependencies import get_current_user
+from src.config.rbac_config import approvers_for, get_permissions
 from src.graph.builder import build_graph
 from src.models.auth import User
 from src.models.schemas import ChatRequest, ChatResponse
@@ -155,6 +156,13 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
         "callbacks": [req_cost],
     }
 
+    # Phase 3.5: if the requester's role has a HITL threshold, suppress token
+    # streaming entirely. The requester must never see the draft answer; they
+    # only see the answer after an authorized approver releases it (via
+    # /v1/hitl/approve). For roles without a threshold (admin, analyst, hr),
+    # streaming proceeds normally.
+    suppress_tokens = get_permissions(user.role).get("requires_hitl_above") is not None
+
     async def event_generator():
         final_state = None
 
@@ -183,8 +191,10 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                         "node": name,
                     })
 
-                # LLM token streaming — only from the generator node
-                elif kind == "on_chat_model_stream":
+                # LLM token streaming — only from the generator node, and only
+                # when the requester's role has no HITL threshold (otherwise
+                # we'd be streaming a draft the requester isn't cleared to see).
+                elif kind == "on_chat_model_stream" and not suppress_tokens:
                     chunk = event.get("data", {}).get("chunk")
                     if chunk and hasattr(chunk, "content") and chunk.content:
                         tags = event.get("tags", [])
@@ -200,7 +210,11 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                                 "content": chunk.content,
                             })
 
-            # After stream ends, check for HITL interrupts via graph state
+            # After stream ends, check for HITL interrupts via graph state.
+            # Phase 3.5: emit pending_approval with the list of roles authorized
+            # to approve — the requester's CLI uses this to display "waiting
+            # for approval by X|Y". The draft answer is intentionally NOT
+            # included; only approvers see it via /v1/approvals/{thread_id}.
             if checkpointer is not None:
                 try:
                     graph_state = await graph.aget_state(config)
@@ -209,11 +223,13 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                             if hasattr(task, "interrupts") and task.interrupts:
                                 interrupt_value = task.interrupts[0].value
                                 yield json.dumps({
-                                    "type": "hitl_interrupt",
+                                    "type": "pending_approval",
                                     "reason": interrupt_value.get("reason", "Approval required"),
                                     "max_amount": interrupt_value.get("max_amount"),
                                     "threshold": interrupt_value.get("threshold"),
                                     "thread_id": thread_id,
+                                    "approvers": approvers_for(user.role),
+                                    "requester_role": user.role,
                                 })
                                 return
                 except Exception as e:
@@ -253,3 +269,67 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
             })
 
     return EventSourceResponse(event_generator())
+
+
+@router.get("/result/{thread_id}")
+async def chat_result(
+    thread_id: str,
+    http_request: Request,
+    user: User = Depends(get_current_user),
+):
+    """Phase 3.5: the requester polls this to retrieve the answer once their
+    HITL-paused query has been approved or rejected. Returns status=pending
+    while paused; status=approved/rejected with the response once decided.
+
+    Ownership-gated: only the original requester (or admin) can fetch.
+    """
+    checkpointer = getattr(http_request.app.state, "checkpointer", None)
+    if checkpointer is None:
+        raise HTTPException(status_code=503, detail="Result polling unavailable (no checkpointer)")
+
+    from src.services.thread_service import get_thread_owner_role
+    pool = getattr(http_request.app.state, "pool", None)
+    if pool is not None:
+        owner, requester_role = await get_thread_owner_role(pool, thread_id)
+        if owner is None:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        if owner != user.user_id and user.role != "admin":
+            raise HTTPException(status_code=403, detail="Thread belongs to a different user")
+
+    graph = _get_graph(checkpointer=checkpointer)
+    cfg = {"configurable": {"thread_id": thread_id}}
+    gs = await graph.aget_state(cfg)
+    if gs is None or not gs.values:
+        return {"status": "pending", "thread_id": thread_id}
+
+    for task in (gs.tasks or []):
+        if getattr(task, "interrupts", None):
+            v = task.interrupts[0].value
+            return {
+                "status": "pending",
+                "thread_id": thread_id,
+                "reason": (v or {}).get("reason"),
+                "max_amount": (v or {}).get("max_amount"),
+                "threshold": (v or {}).get("threshold"),
+            }
+
+    values = gs.values or {}
+    final_response = values.get("final_response", "")
+    metadata = values.get("response_metadata") or {}
+    requires_approval = values.get("requires_human_approval", False)
+    human_decision = values.get("human_decision")
+
+    if requires_approval and human_decision == "rejected":
+        return {
+            "status": "rejected",
+            "thread_id": thread_id,
+            "response": final_response,
+        }
+
+    return {
+        "status": "approved" if requires_approval else "ready",
+        "thread_id": thread_id,
+        "response": final_response,
+        "sources": metadata.get("sources", []),
+        "confidence": metadata.get("confidence"),
+    }

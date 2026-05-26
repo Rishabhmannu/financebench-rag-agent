@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg_pool import AsyncConnectionPool
 
-from src.api.routes import admin, auth, chat, documents, health, hitl, ingest, threads
+from src.api.routes import admin, approvals, auth, chat, documents, health, hitl, ingest, threads
 from src.config.settings import settings
 
 API_VERSION = "1"
@@ -127,7 +127,7 @@ def version() -> dict:
     return {"api_version": API_VERSION, "semver": app.version, "git_sha": _git_sha()}
 
 
-_routers = [health, auth, chat, ingest, hitl, admin, threads, documents]
+_routers = [health, auth, chat, ingest, hitl, admin, threads, documents, approvals]
 
 # Canonical: /v1-prefixed routes. CLI declares it speaks v1.
 for r in _routers:
