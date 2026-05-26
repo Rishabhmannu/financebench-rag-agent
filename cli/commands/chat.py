@@ -1,45 +1,65 @@
-"""financebench chat — Phase 1 supports --no-stream only (Phase 2 adds REPL)."""
+"""financebench chat — REPL by default (Phase 2); --no-stream for one-shot scripting."""
 
 from __future__ import annotations
 
-import typer
+from pathlib import Path
 
-from cli import credentials
+import typer
+from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.history import FileHistory
+
+from cli import credentials, slash
 from cli.api_client import APIClient, APIError
-from cli.render import render_error, render_info, render_response
+from cli.render import (
+    console,
+    render_error,
+    render_final_footer,
+    render_info,
+    render_response,
+    render_success,
+)
+from cli.sse_consumer import render_chat_stream
+
+HISTORY_PATH = Path.home() / ".financebench" / "history"
 
 
 def chat(
-    message: str = typer.Argument(..., help="The query to ask the agent"),
+    message: str = typer.Argument(None, help="One-shot query. Omit to enter the REPL."),
     no_stream: bool = typer.Option(
         False,
         "--no-stream",
-        help="Use the non-streaming /v1/chat endpoint. Required in Phase 1; streaming REPL ships in Phase 2.",
+        help="Use the non-streaming /v1/chat endpoint. Useful for scripting; REPL is the default otherwise.",
     ),
     thread_id: str = typer.Option(None, "--thread-id", help="Continue an existing thread"),
 ) -> None:
-    """Ask the agent a question. Phase 1: --no-stream only."""
-    if not no_stream:
-        render_error(
-            "Phase 1 supports --no-stream only. Streaming REPL ships in Phase 2.\n"
-            "Try: financebench chat --no-stream 'your question here'"
-        )
-        raise typer.Exit(1)
-
-    if credentials.load() is None:
+    """Chat with the agent. REPL by default; pass a message + --no-stream for one-shot."""
+    creds = credentials.load()
+    if creds is None:
         render_error("Not logged in. Run: financebench login -u analyst")
         raise typer.Exit(1)
 
+    if message and no_stream:
+        _one_shot_non_streaming(message, thread_id)
+        return
+    if message and not no_stream:
+        _one_shot_streaming(message, thread_id)
+        return
+
+    _repl(creds)
+
+
+def _one_shot_non_streaming(message: str, thread_id: str | None) -> None:
     client = APIClient()
     try:
         body: dict = {"message": message}
         if thread_id:
             body["thread_id"] = thread_id
-        render_info(f"Querying {client.base_url}/v1/chat ...")
+        render_info(f"Querying {client.base_url}/v1/chat (non-streaming) ...")
         resp = client.post("/v1/chat", body)
     except APIError as e:
         if e.status_code == 401:
-            render_error("Auth expired or invalid. Run: financebench login")
+            render_error("Auth expired. Run: financebench login")
         else:
             render_error(f"Chat failed: {e.message}")
         raise typer.Exit(1)
@@ -51,3 +71,116 @@ def chat(
         sources=resp.get("sources", []),
         confidence=resp.get("confidence"),
     )
+    render_final_footer({
+        "sources": [],
+        "confidence": None,
+        "cost_usd": resp.get("cost_usd"),
+        "tokens": resp.get("tokens"),
+    })
+
+
+def _one_shot_streaming(message: str, thread_id: str | None) -> None:
+    client = APIClient()
+    try:
+        body: dict = {"message": message}
+        if thread_id:
+            body["thread_id"] = thread_id
+        render_chat_stream(client.stream_chat(body))
+    except APIError as e:
+        if e.status_code == 401:
+            render_error("Auth expired. Run: financebench login")
+        else:
+            render_error(f"Chat failed: {e.message}")
+        raise typer.Exit(1)
+    finally:
+        client.close()
+
+
+def _prewarm(client: APIClient) -> None:
+    """Force the backend to lazy-load the BGE reranker + sparse embedder before
+    the user's first query, so first-query latency matches subsequent queries
+    (Phase 1 feedback)."""
+    try:
+        with console.status("Pre-warming backend models (BGE reranker, sparse embedder)...", spinner="dots"):
+            client.get("/v1/warm", auth_required=False)
+    except APIError as e:
+        render_info(f"Pre-warm skipped: {e.message}")
+    except Exception as e:  # noqa: BLE001
+        render_info(f"Pre-warm skipped: {e}")
+
+
+def _repl(creds: dict) -> None:
+    user_id = creds.get("user_id", "?")
+    base_url = creds.get("base_url", "http://localhost:8000")
+
+    client = APIClient(base_url=base_url, token=creds.get("token"))
+
+    role = "?"
+    try:
+        me = client.get("/v1/auth/me")
+        role = me.get("role", "?")
+    except APIError as e:
+        render_error(f"Could not load identity from {base_url}: {e.message}")
+        client.close()
+        raise typer.Exit(1)
+
+    session_state = slash.ChatSession(user_id=user_id, role=role, base_url=base_url)
+
+    _prewarm(client)
+
+    HISTORY_PATH.parent.mkdir(mode=0o700, exist_ok=True)
+    prompt_session: PromptSession = PromptSession(history=FileHistory(str(HISTORY_PATH)))
+
+    render_success(f"REPL ready. Logged in as {user_id} (role={role}) -> {base_url}")
+    console.print("[dim]Type a question, or /help for slash commands. Ctrl+D to exit.[/dim]")
+
+    while True:
+        prompt_text = HTML(f"<ansicyan>{session_state.prompt_label}</ansicyan>&gt; ")
+        try:
+            text = prompt_session.prompt(prompt_text)
+        except (EOFError, KeyboardInterrupt):
+            render_info("Bye.")
+            break
+
+        text = text.strip()
+        if not text:
+            continue
+
+        if text.startswith("/"):
+            if not slash.handle(text, session_state):
+                break
+            # /role may have changed credentials; reload client token
+            if session_state.user_id != user_id or session_state.role != role:
+                user_id = session_state.user_id
+                role = session_state.role
+                fresh = credentials.load() or {}
+                client.close()
+                client = APIClient(base_url=base_url, token=fresh.get("token"))
+            continue
+
+        _run_turn(client, text, session_state)
+
+    client.close()
+
+
+def _run_turn(client: APIClient, message: str, session: slash.ChatSession) -> None:
+    body: dict = {"message": message}
+    if session.thread_id:
+        body["thread_id"] = session.thread_id
+    try:
+        terminal = render_chat_stream(client.stream_chat(body))
+    except APIError as e:
+        if e.status_code == 401:
+            render_error("Auth expired. Run: financebench login (or use /role <name>)")
+            return
+        render_error(f"Chat failed: {e.message}")
+        return
+
+    session.turn_count += 1
+    if terminal.get("thread_id"):
+        session.thread_id = terminal["thread_id"]
+    cost = terminal.get("cost_usd") or 0.0
+    tokens = terminal.get("tokens") or {}
+    session.session_cost_usd += float(cost)
+    session.session_tokens_in += int(tokens.get("input", 0))
+    session.session_tokens_out += int(tokens.get("output", 0))

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
+from typing import Iterator
+
 import httpx
+from httpx_sse import connect_sse
 
 from cli import credentials
 
@@ -55,6 +59,29 @@ class APIClient:
         r = self._client.get(path, headers=self._headers(auth_required))
         self._raise_for(r)
         return r.json()
+
+    def stream_chat(self, json_body: dict) -> Iterator[dict]:
+        """Stream /v1/chat/stream as parsed-JSON SSE events.
+
+        Yields dicts with a 'type' field — one of node_start, node_end, token,
+        hitl_interrupt, final, error (see api/routes/chat.py for shapes).
+        Unknown event types are yielded as-is; callers should ignore unknown
+        types for forward compatibility (deployment plan Section 18.3.2).
+        """
+        with connect_sse(
+            self._client,
+            "POST",
+            "/v1/chat/stream",
+            json=json_body,
+            headers=self._headers(auth_required=True),
+        ) as event_source:
+            for sse in event_source.iter_sse():
+                if not sse.data:
+                    continue
+                try:
+                    yield json.loads(sse.data)
+                except json.JSONDecodeError:
+                    continue
 
     def close(self) -> None:
         self._client.close()

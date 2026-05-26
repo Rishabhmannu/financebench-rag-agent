@@ -51,3 +51,64 @@ def render_success(message: str) -> None:
 
 def render_info(message: str) -> None:
     console.print(f"[bold blue][INFO][/bold blue] {message}")
+
+
+def render_final_footer(payload: dict) -> None:
+    """Print sources table + confidence + cost footer for a /chat/stream final
+    event (or a non-streaming chat response with the same shape)."""
+    sources = payload.get("sources") or []
+    if sources:
+        console.print()
+        table = Table(title="Sources", show_lines=False, header_style="bold cyan", title_style="bold")
+        table.add_column("Document", style="cyan", overflow="fold")
+        table.add_column("Page", justify="right", style="dim")
+        table.add_column("Section", style="dim", overflow="fold")
+        table.add_column("Type", style="dim")
+        for s in sources[:8]:
+            if not isinstance(s, dict):
+                continue
+            doc = s.get("file") or s.get("filename") or s.get("source") or "?"
+            page = s.get("page")
+            page_str = str(page) if page is not None else "—"
+            section = (s.get("section") or "")[:60]
+            doc_type = s.get("doc_type") or ""
+            table.add_row(str(doc), page_str, section, doc_type)
+        console.print(table)
+
+    confidence = payload.get("confidence")
+    cost_usd = payload.get("cost_usd")
+    tokens = payload.get("tokens") or {}
+
+    footer_parts: list[str] = []
+    if confidence is not None:
+        color = "green" if confidence >= 0.7 else "yellow" if confidence >= 0.4 else "red"
+        footer_parts.append(f"[{color}]conf {confidence:.2f}[/{color}]")
+    if cost_usd is not None:
+        footer_parts.append(f"[dim]${cost_usd:.4f}[/dim]")
+    if tokens:
+        t_in = tokens.get("input", 0)
+        t_out = tokens.get("output", 0)
+        footer_parts.append(f"[dim]{t_in} in / {t_out} out[/dim]")
+
+    if footer_parts:
+        console.print()
+        console.print(" · ".join(footer_parts))
+
+
+def render_hitl_panel(payload: dict) -> None:
+    """Render the HITL pause panel from a hitl_interrupt SSE event."""
+    preview = payload.get("answer_preview") or "(no preview)"
+    reason = payload.get("reason") or "Approval required"
+    console.print(Panel(
+        f"[bold]{reason}[/bold]\n\n[dim]Draft answer (preview):[/dim]\n{preview}",
+        title="Approval required (HITL)",
+        border_style="yellow",
+        title_align="left",
+    ))
+
+
+def make_status(label: str = "Connecting..."):
+    """Return a fresh `console.status` context. Caller uses .update(text) to
+    change the spinner label and .stop() to exit it (e.g. before printing
+    streaming tokens)."""
+    return console.status(label, spinner="dots")
