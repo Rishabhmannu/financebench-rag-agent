@@ -224,6 +224,31 @@ def log_runtime_components() -> dict:
             "status": str(info.status),
         }
 
+        # Track 2 hardening: read the actual vector dim from the collection
+        # config and compare to settings.EMBEDDING_DIMENSIONS. Catches the
+        # silent-failure class the fingerprint check missed for pre-fingerprint
+        # collections — qdrant returns HTTP 400 on every retrieval, the
+        # exception is swallowed by retrieval_node's broad try/except, and the
+        # pipeline cascades to no_info refusals (cli-test.txt Test 1 repro).
+        try:
+            vectors_cfg = info.config.params.vectors
+            if isinstance(vectors_cfg, dict):
+                # Named vectors (modern): {"dense": VectorParams(size=N, ...), ...}
+                stored_dim = next(iter(vectors_cfg.values())).size
+            else:
+                # Legacy single-vector schema
+                stored_dim = vectors_cfg.size
+            qdrant_info["stored_dim"] = stored_dim
+            if stored_dim != settings.EMBEDDING_DIMENSIONS:
+                qdrant_info["dim_mismatch"] = {
+                    "stored": stored_dim,
+                    "live": settings.EMBEDDING_DIMENSIONS,
+                    "live_provider": settings.EMBEDDING_PROVIDER,
+                    "live_model": settings.EMBEDDING_MODEL,
+                }
+        except Exception as dim_exc:  # noqa: BLE001
+            qdrant_info["stored_dim"] = f"probe_failed: {type(dim_exc).__name__}"
+
         fp = get_collection_fingerprint(qc, settings.QDRANT_COLLECTION)
         if fp is None:
             qdrant_info["fingerprint"] = "unknown (collection pre-dates fingerprinting)"
@@ -306,5 +331,38 @@ def log_runtime_components() -> dict:
         logger.warning("WARNING: queries will return garbage or fail with VectorDimensionError.")
         logger.warning("WARNING: re-ingest the corpus with the new embedding to fix.")
         logger.warning(sep)
+
+    # Hard-fail boot if the collection's vector dim doesn't match the runtime
+    # embedding dim. This is THE bug that consistently masqueraded as "first
+    # query returns no_info refusal" — every retrieval call HTTP 400s but the
+    # exception gets swallowed silently. Better to refuse to start than to
+    # return garbage answers all day.
+    dim_mismatch = qdrant_state.get("dim_mismatch")
+    if isinstance(dim_mismatch, dict):
+        logger.critical(sep)
+        logger.critical(
+            "FATAL: collection '%s' stores %d-dim vectors but runtime is configured for %d-dim (%s/%s).",
+            qdrant_state.get("collection"),
+            dim_mismatch["stored"],
+            dim_mismatch["live"],
+            dim_mismatch["live_provider"],
+            dim_mismatch["live_model"],
+        )
+        logger.critical(
+            "FATAL: every retrieval call will fail with HTTP 400 from Qdrant and the pipeline will silently degrade to no_info refusals."
+        )
+        logger.critical("FATAL: fix by either:")
+        logger.critical("FATAL:   (a) re-ingesting with the matching embedding:")
+        logger.critical(
+            "FATAL:       curl -X DELETE http://%s:%s/collections/%s && python scripts/seed_qdrant.py --sample",
+            settings.QDRANT_HOST, settings.QDRANT_PORT, qdrant_state.get("collection"),
+        )
+        logger.critical("FATAL:   (b) editing .env to match the existing collection:")
+        logger.critical("FATAL:       EMBEDDING_PROVIDER=<provider> / EMBEDDING_MODEL=<model> / EMBEDDING_DIMENSIONS=%d", dim_mismatch["stored"])
+        logger.critical(sep)
+        raise SystemExit(
+            f"Embedding dimension mismatch: collection={dim_mismatch['stored']}-dim, "
+            f"runtime={dim_mismatch['live']}-dim. Refusing to start. See boot log for fix."
+        )
 
     return banner
