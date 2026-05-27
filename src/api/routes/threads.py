@@ -28,7 +28,9 @@ from src.models.auth import User
 from src.services.thread_service import (
     delete_thread,
     get_thread_owner,
+    list_all_threads_paged,
     list_threads_for_user,
+    ts_from_checkpoint_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,26 +111,34 @@ async def list_threads(
     http_request: Request,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    all_users: bool = Query(
+        False,
+        alias="all",
+        description="Admin only: enumerate every user's threads (default false). Ignored for non-admin roles.",
+    ),
     user: User = Depends(get_current_user),
 ):
-    """List the current user's conversation threads, newest first.
+    """List conversation threads, newest first.
 
-    For each thread we cheaply read row stats from the checkpoints table
-    (thread_id, counts, latest checkpoint_id as a recency proxy). Titles
-    require deserializing the checkpoint blob, so they're populated by a
-    second pass through LangGraph's ``aget_state`` only for the rows we
-    actually return in this page.
+    Default: caller's own threads. Admin + `?all=true`: every user's threads
+    (Bug A fix). Each row carries owner identity (user_id, name, role, dept),
+    decoded created_at / last_activity_at timestamps, checkpoint_count, plus
+    the title + is_interrupted flag derived from a per-row aget_state call.
     """
     pool = _pool_or_503(http_request)
-    rows, total = await list_threads_for_user(pool, user.user_id, limit=limit, offset=offset)
 
-    # Per-thread title + interrupt state require the deserialized state,
-    # so we hit LangGraph's API once per row. Cheap at the typical page
-    # size (≤50) and avoids reimplementing the deserializer.
+    # Bug A (audit): admin gets the cross-user listing when ?all=true.
+    # Non-admin role silently falls back to own-user listing — we don't 403
+    # to avoid breaking older CLIs that may set ?all=true unconditionally.
+    if all_users and user.role == "admin":
+        rows, total = await list_all_threads_paged(pool, limit=limit, offset=offset)
+        scope = "all"
+    else:
+        rows, total = await list_threads_for_user(pool, user.user_id, limit=limit, offset=offset)
+        scope = "self"
+
     graph = getattr(http_request.app.state, "graph", None)
     if graph is None:
-        # Fallback: the chat route lazily builds & caches the graph; if
-        # that hasn't happened yet we build it here so /threads still works
         from src.api.routes.chat import _get_graph
         graph = _get_graph(checkpointer=http_request.app.state.checkpointer)
 
@@ -148,9 +158,27 @@ async def list_threads(
             "title": title,
             "checkpoint_count": r["checkpoint_count"],
             "is_interrupted": interrupted,
+            # Track 2 enrichment: owner identity + decoded timestamps. The
+            # CLI uses these to render columns like "Owner | Role | Last
+            # activity" so admin can scan whose request is whose at a glance.
+            "owner": {
+                "user_id": r["user_id"],
+                "name": r["name"],
+                "role": r["role"],
+                "department": r["department"],
+            },
+            "created_at": r["created_at"],
+            "last_activity_at": r["last_activity_at"],
         })
 
-    return {"threads": threads, "total": total, "limit": limit, "offset": offset}
+    return {
+        "threads": threads,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "scope": scope,
+        "viewer_role": user.role,
+    }
 
 
 @router.get("/{thread_id}")
@@ -159,17 +187,21 @@ async def get_thread(
     http_request: Request,
     user: User = Depends(get_current_user),
 ):
-    """Load the messages + interrupt state for a single thread.
+    """Load the messages + interrupt state + HITL audit for a single thread.
 
-    Ownership: the thread's metadata.user_id must match the caller. 403
-    on mismatch (intentionally not 404 — we don't leak existence to a
-    different user any more than 403 already does).
+    Ownership: the thread's metadata.user_id must match the caller. Admin
+    bypass per docs/cli.md spec (Bug A fix — get_thread had no bypass while
+    delete_thread did, an inconsistency we're now closing).
     """
     pool = _pool_or_503(http_request)
-    owner = await get_thread_owner(pool, thread_id)
-    if owner is None:
+
+    # Bug A (audit) + Track 2: pull owner identity (4-tuple) instead of just
+    # user_id so the response can carry the owner block. Same call cost.
+    from src.services.thread_service import get_thread_owner_role
+    owner_user_id, owner_role, owner_name, owner_dept = await get_thread_owner_role(pool, thread_id)
+    if owner_user_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
-    if owner != user.user_id:
+    if owner_user_id != user.user_id and user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Thread belongs to a different user")
 
     graph = getattr(http_request.app.state, "graph", None)
@@ -179,15 +211,61 @@ async def get_thread(
 
     cfg = {"configurable": {"thread_id": thread_id}}
     gs = await graph.aget_state(cfg)
+    owner_block = {
+        "user_id": owner_user_id,
+        "name": owner_name,
+        "role": owner_role,
+        "department": owner_dept,
+    }
     if gs is None or not gs.values:
-        return {"thread_id": thread_id, "messages": [], "is_interrupted": False, "interrupt_payload": None}
+        return {
+            "thread_id": thread_id,
+            "messages": [],
+            "is_interrupted": False,
+            "interrupt_payload": None,
+            "owner": owner_block,
+            "turn_count": 0,
+            "audit": None,
+            "last_activity_at": None,
+        }
 
     interrupted, payload = _is_interrupted(gs)
+    values = gs.values or {}
+
+    # Turn count = number of HumanMessage entries in the state. Cheap (already
+    # have the deserialized state from aget_state above).
+    try:
+        from langchain_core.messages import HumanMessage
+        turn_count = sum(1 for m in (values.get("messages") or []) if isinstance(m, HumanMessage))
+    except Exception:
+        turn_count = 0
+
+    # HITL audit block (Track 2): present iff this thread went through hitl_gate
+    # and had a decision recorded. All None if the thread never triggered HITL.
+    audit = None
+    if values.get("hitl_submitted_at") or values.get("human_decision_at"):
+        audit = {
+            "hitl_submitted_at": values.get("hitl_submitted_at"),
+            "decided_at": values.get("human_decision_at"),
+            "decided_by": values.get("human_decision_by"),
+            "decided_by_role": values.get("human_decision_by_role"),
+            "decision": values.get("human_decision"),
+            "reason": values.get("human_decision_reason"),
+        }
+
+    # Last activity = decoded ts of the most-recent checkpoint id. Cheaper
+    # than another SQL roundtrip — gs.config carries the checkpoint_id used.
+    last_activity_at = ts_from_checkpoint_id(gs.config.get("configurable", {}).get("checkpoint_id"))
+
     return {
         "thread_id": thread_id,
         "messages": _messages_from_state(gs.values),
         "is_interrupted": interrupted,
         "interrupt_payload": payload,
+        "owner": owner_block,
+        "turn_count": turn_count,
+        "audit": audit,
+        "last_activity_at": last_activity_at,
     }
 
 

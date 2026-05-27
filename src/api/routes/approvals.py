@@ -20,7 +20,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from src.api.dependencies import get_current_user
 from src.config.rbac_config import can_approve
 from src.models.auth import User
-from src.services.thread_service import list_all_threads
+from src.services.thread_service import (
+    count_hitl_decisions_on_thread,
+    list_all_threads,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +150,24 @@ async def show_approval(
     sources = meta.get("sources") or []
     source_files = sorted({s.get("file") for s in sources if isinstance(s, dict) and s.get("file")})
 
+    # Track 2 enrichment — context fields the approver wants at decision time:
+    #   submitted_at_age_seconds: pre-computed age so the CLI doesn't have to
+    #     do timezone math. None if submitted_at is missing or malformed.
+    #   prior_decisions_on_thread: catches re-submissions / bouncing patterns
+    #     (e.g. requester re-asks a question that was already rejected).
+    submitted_at_str = (payload or {}).get("submitted_at")
+    submitted_at_age_s: float | None = None
+    if submitted_at_str:
+        try:
+            from datetime import datetime, timezone
+            submitted_dt = datetime.fromisoformat(submitted_at_str)
+            if submitted_dt.tzinfo is None:
+                submitted_dt = submitted_dt.replace(tzinfo=timezone.utc)
+            submitted_at_age_s = (datetime.now(timezone.utc) - submitted_dt).total_seconds()
+        except (ValueError, TypeError):
+            pass
+    prior_decisions = await count_hitl_decisions_on_thread(pool, thread_id)
+
     return {
         "thread_id": thread_id,
         "requester_user_id": owner,
@@ -158,7 +179,9 @@ async def show_approval(
         "reason": (payload or {}).get("reason"),
         "max_amount": (payload or {}).get("max_amount"),
         "threshold": (payload or {}).get("threshold"),
-        "submitted_at": (payload or {}).get("submitted_at"),
+        "submitted_at": submitted_at_str,
+        "submitted_at_age_seconds": submitted_at_age_s,
+        "prior_decisions_on_thread": prior_decisions,
         "sources_count": len(sources),
         "source_files": source_files,
         "confidence": state_values.get("hallucination_score"),
