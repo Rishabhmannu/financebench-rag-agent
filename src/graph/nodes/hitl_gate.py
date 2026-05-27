@@ -49,6 +49,7 @@ def hitl_gate_node(state: RAGState, config: RunnableConfig | None = None) -> dic
     the node auto-approves to avoid crashing.
     """
     answer = state.get("generated_answer", "")
+    query = state.get("sanitized_query", "")
     user_role = state.get("user_role", "analyst")
 
     permissions = get_permissions(user_role)
@@ -57,7 +58,13 @@ def hitl_gate_node(state: RAGState, config: RunnableConfig | None = None) -> dic
     if threshold is None:
         return {"requires_human_approval": False, "human_decision": None}
 
-    max_amount = _extract_max_amount(answer)
+    # Bug F (audit): extract from BOTH query and answer. Answer-only missed
+    # cases where the user named a high-stakes amount ("approve $200K transfer")
+    # but the AI's response referenced a different number ("per policy, your
+    # director can approve up to $5K") — HITL would silently not fire. Take the
+    # max of both so the gate trips whenever EITHER side mentions an amount
+    # above threshold.
+    max_amount = max(_extract_max_amount(answer), _extract_max_amount(query))
 
     if max_amount > threshold:
         logger.info(f"HITL triggered: amount=${max_amount:,.0f} exceeds threshold=${threshold:,} for role={user_role}")

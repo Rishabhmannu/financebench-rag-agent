@@ -126,7 +126,13 @@ def _repl(creds: dict) -> None:
         client.close()
         raise typer.Exit(1)
 
-    session_state = slash.ChatSession(user_id=user_id, role=role, base_url=base_url)
+    # Bug B (audit): pin the JWT into session state at REPL boot so subsequent
+    # slash commands hit the backend with the same identity the user saw at
+    # login. Otherwise a stale or concurrently-overwritten profile file would
+    # drift the slash commands away from the REPL prompt label.
+    session_state = slash.ChatSession(
+        user_id=user_id, role=role, base_url=base_url, token=creds.get("token")
+    )
 
     _prewarm(client)
 
@@ -160,13 +166,15 @@ def _repl(creds: dict) -> None:
         if text.startswith("/"):
             if not slash.handle(text, session_state):
                 break
-            # /role may have changed credentials; reload client token
+            # /role may have changed credentials; reload client token. Session
+            # state's `token` is the source of truth (Bug B fix) — fall back to
+            # disk only if the slash didn't update it.
             if session_state.user_id != user_id or session_state.role != role:
                 user_id = session_state.user_id
                 role = session_state.role
-                fresh = credentials.load() or {}
                 client.close()
-                client = APIClient(base_url=base_url, token=fresh.get("token"))
+                new_token = session_state.token or (credentials.load() or {}).get("token")
+                client = APIClient(base_url=base_url, token=new_token)
             continue
 
         _run_turn(client, text, session_state)
@@ -239,14 +247,19 @@ def _wait_for_approval(client: APIClient, pending_event: dict) -> None:
                     decided_by_role = decision.get("decided_by_role")
                     decided_at = decision.get("decided_at")
                     reason = (decision.get("reason") or "").strip()
+                    # Bug E (audit): use "Released" not "Approved" on the
+                    # requester side. The workflow verb (approver released the
+                    # draft) is distinct from the substance verb (the AI's
+                    # answer may itself say "I cannot approve this expense"),
+                    # and conflating them in the same panel confused testers.
                     if decided_by:
                         suffix = f" by {decided_by} ({decided_by_role})" if decided_by_role else f" by {decided_by}"
                         suffix += f" at {decided_at}" if decided_at else ""
-                        render_success(f"Approved{suffix}. Released answer:")
+                        render_success(f"Draft released{suffix}:")
                         if reason:
                             console.print(f"[dim]Approver note:[/dim] {reason}")
                     else:
-                        render_success("Approved. Answer released:")
+                        render_success("Draft released:")
                     response_text = (resp.get("response") or "").strip()
                     if response_text:
                         console.print(Markdown(response_text))
@@ -266,9 +279,9 @@ def _wait_for_approval(client: APIClient, pending_event: dict) -> None:
                     if decided_by:
                         suffix = f" by {decided_by} ({decided_by_role})" if decided_by_role else f" by {decided_by}"
                         suffix += f" at {decided_at}" if decided_at else ""
-                        render_info(f"Rejected{suffix}.")
+                        render_info(f"Draft withheld{suffix}.")
                     else:
-                        render_info("Rejected by approver.")
+                        render_info("Draft withheld by approver.")
                     if reason:
                         console.print(f"[yellow]Reason:[/yellow] {reason}")
                     response_text = (resp.get("response") or "").strip()

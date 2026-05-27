@@ -24,11 +24,20 @@ from cli.render import console, render_error, render_info, render_success
 
 @dataclass
 class ChatSession:
-    """REPL-scoped state. One per `financebench chat` invocation."""
+    """REPL-scoped state. One per `financebench chat` invocation.
+
+    Bug B (audit): `token` is pinned at REPL boot and used by EVERY slash
+    command's APIClient. Without this, the default `APIClient()` re-reads
+    credentials from disk on each call — if a concurrent process or a
+    `login -u <other>` in the same shell overwrites the profile file,
+    the REPL keeps showing the old `user@` prompt while slash commands
+    silently start hitting the backend as a different user (test 7 in
+    cli-test.txt repro'd this exactly)."""
 
     user_id: str
     role: str
     base_url: str = DEFAULT_BASE_URL
+    token: str | None = None
     thread_id: str | None = None
     turn_count: int = 0
     session_cost_usd: float = 0.0
@@ -147,7 +156,7 @@ def _safe_int(s: str) -> int:
 
 def _handle_permissions(session: ChatSession) -> bool:
     """Print the current role's RBAC access matrix via /v1/auth/me."""
-    client = APIClient()
+    client = APIClient(base_url=session.base_url, token=session.token)
     try:
         me = client.get("/v1/auth/me")
     except APIError as e:
@@ -299,7 +308,11 @@ def _handle_threads(session: ChatSession) -> bool:
     the list-only Phase 3 implementation now that the radiolist_dialog pattern
     is proven safe inside the active PromptSession."""
     from cli.interactive import interactive_thread_picker
-    selected = interactive_thread_picker(current_thread_id=session.thread_id)
+    selected = interactive_thread_picker(
+        current_thread_id=session.thread_id,
+        token=session.token,
+        base_url=session.base_url,
+    )
     if selected is None:
         render_info("Kept current thread.")
         return True
@@ -321,7 +334,7 @@ def _handle_approvals_slash(session: ChatSession) -> bool:
     sees everything. Self-approval is blocked by the backend regardless.
     """
     from cli.interactive import interactive_approvals_loop
-    interactive_approvals_loop()
+    interactive_approvals_loop(token=session.token, base_url=session.base_url)
     return True
 
 
@@ -364,6 +377,7 @@ def _handle_role(target_user: str, session: ChatSession) -> bool:
     credentials.save(token=token, user_id=target_user, base_url=session.base_url)
     session.user_id = target_user
     session.role = new_role
+    session.token = token   # Bug B (audit): keep session.token in lockstep with the new JWT
     session.thread_id = None
     session.turn_count = 0
     render_success(f"Switched to {target_user} (role={new_role}). Thread reset.")

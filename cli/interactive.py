@@ -129,9 +129,14 @@ def confirm_action(title: str, text: str, choices: list[tuple]):
     return select_one(title, text, choices)
 
 
-def _fetch_pending() -> list[dict] | None:
-    """Fetch /v1/approvals. Returns the list or None on error (already rendered)."""
-    client = APIClient()
+def _fetch_pending(token: str | None = None, base_url: str | None = None) -> list[dict] | None:
+    """Fetch /v1/approvals. Returns the list or None on error (already rendered).
+
+    Bug B (audit): when invoked from inside the REPL via /approvals slash, the
+    caller passes the REPL's pinned `token` so we don't silently switch JWTs
+    if another process touches the profile file mid-session. Default None
+    keeps the external-command behavior (load from disk)."""
+    client = APIClient(base_url=base_url, token=token)
     try:
         resp = client.get("/v1/approvals")
     except APIError as e:
@@ -158,9 +163,9 @@ def _label_for_approval(a: dict) -> str:
     return f"{name:<16} {role:<8} {dept:<10} {age:>10}   {amt_str}   {query}"
 
 
-def _show_detail(thread_id: str) -> dict | None:
+def _show_detail(thread_id: str, token: str | None = None, base_url: str | None = None) -> dict | None:
     """Fetch + render the full approval payload. Returns the payload dict."""
-    client = APIClient()
+    client = APIClient(base_url=base_url, token=token)
     try:
         detail = client.get(f"/v1/approvals/{thread_id}")
     except APIError as e:
@@ -185,7 +190,19 @@ def _show_detail(thread_id: str) -> dict | None:
     )
 
     submitted_at = detail.get("submitted_at")
-    age = _format_age(submitted_at)
+    # Track 2: prefer the backend-computed age (avoids local TZ math drift); fall back to local.
+    age_seconds = detail.get("submitted_at_age_seconds")
+    if age_seconds is not None:
+        if age_seconds < 60:
+            age = f"{int(age_seconds)}s ago"
+        elif age_seconds < 3600:
+            age = f"{int(age_seconds // 60)}m ago"
+        elif age_seconds < 86400:
+            age = f"{int(age_seconds // 3600)}h ago"
+        else:
+            age = f"{int(age_seconds // 86400)}d ago"
+    else:
+        age = _format_age(submitted_at)
     age_color = _age_color(submitted_at)
     age_line = (
         f"[bold]Submitted:[/bold] [{age_color}]{age}[/{age_color}]"
@@ -210,6 +227,19 @@ def _show_detail(thread_id: str) -> dict | None:
     if detail.get("retrieval_fallback_used"):
         retrieval_warning = "\n[bold red]WARNING:[/bold red] retrieval used relaxed filters — draft may be weakly grounded"
 
+    # Track 2: prior_decisions_on_thread surfaces re-submission patterns (e.g.
+    # requester re-asked a query that was already withheld). Bold yellow if >0
+    # so the approver doesn't miss it.
+    prior = detail.get("prior_decisions_on_thread", 0)
+    if prior > 0:
+        context_line = (
+            f"\n[bold yellow]Context:[/bold yellow] {prior} prior HITL decision"
+            + ("s" if prior != 1 else "")
+            + " on this thread — re-submission?"
+        )
+    else:
+        context_line = "\n[bold]Context:[/bold] [dim]first decision on this thread[/dim]"
+
     header = (
         f"[bold]Thread:[/bold] {detail.get('thread_id', '?')}\n"
         f"{requester_line}\n"
@@ -219,6 +249,7 @@ def _show_detail(thread_id: str) -> dict | None:
         f"[bold]Role threshold:[/bold] [dim]{thr_str}[/dim]\n"
         f"{conf_line}\n"
         f"{sources_line}"
+        f"{context_line}"
         f"{retrieval_warning}"
     )
     console.print()
@@ -236,11 +267,11 @@ def _show_detail(thread_id: str) -> dict | None:
     return detail
 
 
-def _act_on(thread_id: str) -> bool:
+def _act_on(thread_id: str, token: str | None = None, base_url: str | None = None) -> bool:
     """Show detail + Approve/Reject/Back picker. Returns True if the item was
     handled (approved or rejected) and should be removed from the inbox; False
     if the user chose Back (still pending)."""
-    detail = _show_detail(thread_id)
+    detail = _show_detail(thread_id, token=token, base_url=base_url)
     if detail is None:
         return False
 
@@ -287,7 +318,7 @@ def _act_on(thread_id: str) -> bool:
     if reason:
         body["reason"] = reason
 
-    client = APIClient()
+    client = APIClient(base_url=base_url, token=token)
     try:
         with console.status(f"{action.capitalize()}ing and resuming graph...", spinner="dots"):
             resp = client.post(f"/v1/hitl/{action}", body)
@@ -300,14 +331,17 @@ def _act_on(thread_id: str) -> bool:
     console.print()
     decided_at = resp.get("decided_at") or ""
     decided_at_local = f" at {decided_at}" if decided_at else ""
+    # Bug E (audit): match the requester-side wording in cli/commands/chat.py.
+    # "Released" / "Withheld" is the workflow verb (about the draft) — keeps
+    # it distinct from the substance verb the AI may use in the answer text.
     if action == "approve":
         render_success(
-            f"Approved by {resp.get('approver_user_id', '?')} "
-            f"({resp.get('approver_role', '?')}){decided_at_local}. Released answer:"
+            f"Draft released by {resp.get('approver_user_id', '?')} "
+            f"({resp.get('approver_role', '?')}){decided_at_local}:"
         )
     else:
         render_info(
-            f"Rejected by {resp.get('approver_user_id', '?')} "
+            f"Draft withheld by {resp.get('approver_user_id', '?')} "
             f"({resp.get('approver_role', '?')}){decided_at_local}.\n[dim]Reason:[/dim] {reason}"
         )
     response_text = (resp.get("response") or "").strip()
@@ -316,12 +350,16 @@ def _act_on(thread_id: str) -> bool:
     return True
 
 
-def interactive_approvals_loop() -> None:
+def interactive_approvals_loop(token: str | None = None, base_url: str | None = None) -> None:
     """The reusable interactive approver inbox. Loop until user picks Esc/q on
     the main list. Used by `financebench approvals review/watch` AND by the
-    `/approvals` slash command in the chat REPL."""
+    `/approvals` slash command in the chat REPL.
+
+    Bug B (audit): when called from inside a REPL the caller passes the REPL's
+    pinned token + base_url so the inbox is guaranteed to query the same
+    identity the user is logged in as in this terminal."""
     while True:
-        pending = _fetch_pending()
+        pending = _fetch_pending(token=token, base_url=base_url)
         if pending is None:
             return
         if not pending:
@@ -346,14 +384,14 @@ def interactive_approvals_loop() -> None:
         if selected is None:
             return
 
-        _act_on(selected)
+        _act_on(selected, token=token, base_url=base_url)
         # Loop refetches; the just-acted-on item drops off the list naturally
         # because it's no longer in `pending` state.
 
 
-def _fetch_threads(limit: int = 30) -> list[dict] | None:
+def _fetch_threads(limit: int = 30, token: str | None = None, base_url: str | None = None) -> list[dict] | None:
     """Fetch the caller's own threads (used by /threads picker in REPL)."""
-    client = APIClient()
+    client = APIClient(base_url=base_url, token=token)
     try:
         resp = client.get(f"/v1/threads?limit={limit}")
     except APIError as e:
@@ -364,10 +402,14 @@ def _fetch_threads(limit: int = 30) -> list[dict] | None:
     return resp.get("threads") or []
 
 
-def interactive_thread_picker(current_thread_id: str | None = None) -> str | None:
+def interactive_thread_picker(
+    current_thread_id: str | None = None,
+    token: str | None = None,
+    base_url: str | None = None,
+) -> str | None:
     """Show the caller's threads as arrow-key list. Returns selected thread_id
     or None if cancelled. Used by the chat REPL's `/threads` slash command."""
-    threads = _fetch_threads()
+    threads = _fetch_threads(token=token, base_url=base_url)
     if threads is None:
         return None
     if not threads:

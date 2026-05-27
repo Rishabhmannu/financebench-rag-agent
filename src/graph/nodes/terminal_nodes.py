@@ -64,6 +64,13 @@ def no_info_node(state: RAGState) -> dict:
     """Empty-relevant-chunks terminal. When the empty-set was driven by RBAC
     filtering, return an informative refusal that names the doc types the user
     can't access. Otherwise the generic "couldn't find relevant info" message.
+
+    Trade-off: naming the blocked doc_type ("matches documents of type invoice")
+    discloses doc-category existence to an unauthorized requester. For the
+    portfolio demo this is the right UX — the "switch to /role finance" hint
+    is genuinely useful. For a real enterprise deployment with adversarial
+    users, this refusal should be made indistinguishable from the generic
+    no-info one to avoid letting an attacker enumerate doc categories.
     """
     blocked = _rbac_blocked_doc_types(state)
     if blocked:
