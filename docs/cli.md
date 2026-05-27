@@ -164,6 +164,37 @@ financebench upgrade --force             # allow upgrade even with uncommitted l
 
 `upgrade` refuses to run if the cloned repo has uncommitted changes (so you don't lose local edits). Pass `--force` to override.
 
+## Capturing terminal sessions for debugging
+
+Copy-pasting REPL output into a bug report is slow and lossy (the ANSI colours don't survive, the TUI screens get mangled). The `fb-record` wrapper solves that — it uses `script(1)` to capture the *entire* terminal session into a file you can share verbatim.
+
+```bash
+fb-record financebench chat                  # capture a chat REPL
+fb-record financebench approvals review      # capture an approver flow
+fb-record curl http://localhost:8000/v1/health   # capture anything, really
+```
+
+Logs land at `~/.financebench/cli_sessions/session_<timestamp>_<cmd>.log`. The wrapper handles the macOS vs Linux `script` flag differences for you. The capture ends when the wrapped command exits normally (or you Ctrl+D out of an interactive prompt).
+
+Browse + read captured sessions via the `logs` subcommand:
+
+```bash
+financebench logs list                       # newest first, with sizes
+financebench logs show latest                # raw — includes ANSI for re-rendering
+financebench logs show latest --clean        # ANSI stripped — paste this into a bug report
+financebench logs path latest                # absolute path, for `pbcopy <`, opening in VS Code, etc.
+financebench logs show <id> --clean | pbcopy # one-step: latest clean log on the macOS clipboard
+```
+
+Add an alias to your shell rc to make it one keystroke:
+
+```bash
+# ~/.zshrc
+alias fbrec='/Users/rishabh/Documents/Documents/Agentic-AI-Course/CampusX-LangGraph-Course/scripts/fb-record'
+```
+
+Why script(1) and not a pure-Python rich.record-mode capture: `prompt_toolkit` TUIs (approval inbox, thread picker) and `getpass` bypass rich entirely. A Python-side recorder would silently miss those — exactly the parts most worth capturing during HITL testing.
+
 ## Known limitations
 
 - The arrow-key TUI requires a real terminal. Piped or captured contexts (e.g., `financebench approvals review | cat`) will fail because `prompt_toolkit` can't drive its event loop.

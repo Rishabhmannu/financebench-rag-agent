@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# fb-record — wrap a command in script(1) so the full terminal session
+# (REPL, TUIs, ANSI, all of it) gets dumped to a file you can share later.
+#
+# Usage:  fb-record financebench chat
+#         fb-record financebench approvals review
+#         fb-record curl http://localhost:8000/v1/health
+#
+# Logs go to ~/.financebench/cli_sessions/session_<timestamp>_<cmd>.log
+# Discover/view them via:  financebench logs list  |  financebench logs show latest --clean
+#
+# Why script(1) and not a Python wrapper:
+#   - Captures EVERYTHING the terminal renders: prompt_toolkit TUIs, getpass,
+#     rich.Console output, ANSI cursor moves. A Python rich.record-mode log
+#     silently misses prompt_toolkit and getpass output — the most interesting
+#     parts of any HITL test session.
+
+set -u
+
+LOG_DIR="${HOME}/.financebench/cli_sessions"
+mkdir -p "${LOG_DIR}"
+
+if [ $# -eq 0 ]; then
+  echo "fb-record: usage: fb-record <command...>" >&2
+  echo "fb-record: example: fb-record financebench chat" >&2
+  exit 64
+fi
+
+TS=$(date +%Y%m%d-%H%M%S)
+# Sanitize the command into a filesystem-safe slug (alnum only, max 40 chars)
+SAFE_NAME=$(printf '%s' "$*" | tr -c '[:alnum:]' '_' | head -c 40)
+LOG="${LOG_DIR}/session_${TS}_${SAFE_NAME}.log"
+
+echo "fb-record: capturing terminal session to ${LOG}" >&2
+echo "fb-record: (Ctrl+D / your command's normal exit ends the capture)" >&2
+echo >&2
+
+# script(1) syntax differs between BSD (macOS) and util-linux.
+case "$(uname -s)" in
+  Darwin)
+    # BSD script: -q quiet, -F flush on every write (so the log is usable
+    # even if the process crashes mid-session)
+    script -q -F "${LOG}" "$@"
+    status=$?
+    ;;
+  Linux)
+    # util-linux script: -q quiet, -f flush, -c <command> runs the command
+    # in a sh -c subshell instead of an interactive shell
+    script -q -f -c "$*" "${LOG}"
+    status=$?
+    ;;
+  *)
+    echo "fb-record: unsupported OS: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+echo >&2
+echo "fb-record: done (exit ${status}). Log: ${LOG}" >&2
+echo "fb-record: view with:  financebench logs show latest --clean" >&2
+exit ${status}

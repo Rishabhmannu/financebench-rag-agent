@@ -10,6 +10,7 @@ from cli.commands.chat import chat
 from cli.commands.down import down
 from cli.commands.login import login
 from cli.commands.logout import logout
+from cli.commands.logs import app as logs_app
 from cli.commands.setup import setup
 from cli.commands.status import status
 from cli.commands.threads import app as threads_app
@@ -32,6 +33,7 @@ app.command(name="upgrade")(upgrade)
 app.command(name="down")(down)
 app.add_typer(threads_app, name="threads")
 app.add_typer(approvals_app, name="approvals")
+app.add_typer(logs_app, name="logs")
 
 
 @app.command(name="version")
