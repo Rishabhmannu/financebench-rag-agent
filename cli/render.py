@@ -2,12 +2,61 @@
 
 from __future__ import annotations
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 console = Console()
+
+
+# FastMCP-style boxed startup banner. Hardcoded ASCII (figlet "standard" font)
+# so the logo is deterministic and ships with zero new deps.
+_LOGO = r"""  _____ _                            ____                  _
+ |  ___(_)_ __   __ _ _ __   ___ ___| __ )  ___ _ __   ___| |__
+ | |_  | | '_ \ / _` | '_ \ / __/ _ \  _ \ / _ \ '_ \ / __| '_ \
+ |  _| | | | | | (_| | | | | (_|  __/ |_) |  __/ | | | (__| | | |
+ |_|   |_|_| |_|\__,_|_| |_|\___\___|____/ \___|_| |_|\___|_| |_|"""
+
+
+def render_startup_banner(
+    *,
+    backend_url: str,
+    api_version: str | None,
+    api_semver: str | None,
+    api_git_sha: str | None,
+    user_id: str,
+    role: str,
+    profile: str,
+) -> None:
+    """REPL startup banner. Version values come from cli.__version__ (locked
+    at release time by pyproject.toml) and the backend's /version response,
+    so the banner auto-reflects whichever versions are live without manual
+    edits per release."""
+    from cli import __version__ as cli_version
+
+    logo = Text(_LOGO, style="bold green")
+    info = Text.from_markup(
+        f"  [cyan]Package:[/]        financebench-rag-agent\n"
+        f"  [cyan]Backend URL:[/]    [underline]{backend_url}[/]\n"
+        f"  [cyan]Docs:[/]           [underline]https://github.com/Rishabhmannu/financebench-rag-agent[/]\n"
+        f"\n"
+        f"  [yellow]CLI version:[/]    {cli_version}\n"
+        f"  [yellow]API version:[/]    {api_version or '?'}  "
+        f"[dim](semver {api_semver or '?'}, sha {(api_git_sha or '?')[:7]})[/]\n"
+        f"  [yellow]Logged in as:[/]   [bold]{user_id}[/]  "
+        f"[dim](role={role} · Profile={profile})[/]"
+    )
+    console.print(
+        Panel(
+            Group(logo, "", info),
+            title="[bold]FinanceBench RAG Agent[/]",
+            title_align="left",
+            border_style="bright_blue",
+            padding=(1, 2),
+        )
+    )
 
 
 def render_response(

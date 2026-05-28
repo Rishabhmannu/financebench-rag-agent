@@ -159,3 +159,6 @@ cost_logs/
 # Sprint 7.19 Step 1 partial-adapter backups (kept locally for ablation, not pushed)
 data/models/reranker_ft_v2_local_partial/
 data/models/reranker_ft_v2_partial_epoch1/
+
+# Publishing assets (mockups, reference images, drafts) — kept local
+publish-assets/

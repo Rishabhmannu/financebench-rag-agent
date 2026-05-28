@@ -126,6 +126,30 @@ def _repl(creds: dict) -> None:
         client.close()
         raise typer.Exit(1)
 
+    # Pull backend version info for the banner. Best-effort — banner still
+    # renders if /version is unreachable, just with "?" placeholders.
+    api_version = api_semver = api_git_sha = None
+    try:
+        v = client.get("/version", auth_required=False)
+        api_version = v.get("api_version")
+        api_semver = v.get("semver")
+        api_git_sha = v.get("git_sha")
+    except Exception:  # noqa: BLE001
+        pass
+
+    profile = credentials.current_profile()
+
+    from cli.render import render_startup_banner
+    render_startup_banner(
+        backend_url=base_url,
+        api_version=api_version,
+        api_semver=api_semver,
+        api_git_sha=api_git_sha,
+        user_id=user_id,
+        role=role,
+        profile=profile,
+    )
+
     # Bug B (audit): pin the JWT into session state at REPL boot so subsequent
     # slash commands hit the backend with the same identity the user saw at
     # login. Otherwise a stale or concurrently-overwritten profile file would
@@ -139,11 +163,6 @@ def _repl(creds: dict) -> None:
     HISTORY_PATH.parent.mkdir(mode=0o700, exist_ok=True)
     prompt_session: PromptSession = PromptSession(history=FileHistory(str(HISTORY_PATH)))
 
-    profile = credentials.current_profile()
-    render_success(
-        f"REPL ready. Profile=[bold]{profile}[/bold]  Logged in as {user_id} "
-        f"(role={role}) -> {base_url}"
-    )
     if profile == "default":
         console.print(
             "[dim]Tip: set FB_PROFILE=admin (or any name) in different terminals "
