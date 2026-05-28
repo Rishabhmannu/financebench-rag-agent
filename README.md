@@ -5,7 +5,7 @@
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
 [![Tests](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)]()
 [![FinanceBench](https://img.shields.io/badge/FinanceBench-72.7%25%20pass-blue.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/LICENSE)
 
 A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **72.7% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a BGE cross-encoder reranker, and a self-hosted LLM observability stack.
 
@@ -18,9 +18,9 @@ financebench login -u analyst    # password analyst123
 financebench chat
 ```
 
-![RBAC role-switch demo](docs/demos/rbac.gif)
+![RBAC role-switch demo](https://raw.githubusercontent.com/Rishabhmannu/financebench-rag-agent/main/docs/demos/rbac.gif)
 
-Multi-party HITL approval workflow and conversation memory have their own walkthroughs in [docs/cli.md](docs/cli.md). Self-hosting the backend (env vars, full vs minimal stack, production hardening) is in [docs/deploy.md](docs/deploy.md).
+Multi-party HITL approval workflow and conversation memory have their own walkthroughs in [docs/cli.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/cli.md). Self-hosting the backend (env vars, full vs minimal stack, production hardening) is in [docs/deploy.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/deploy.md).
 
 ## Architecture
 
@@ -67,7 +67,7 @@ Evaluated on the FinanceBench benchmark (150 questions across 32 companies):
 
 Per-slice pass rate: **lookup 68.6%** (n=86), **multi-hop 84.6%** (n=13), **calc 76.5%** (n=51).
 
-The correctness judge is a Claude Sonnet 4.6 + structured-prompt setup calibrated to Cohen's κ = 0.932 against an 89-question hand-labeled set with an adversarial leniency guard. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](docs/evaluation.md).
+The correctness judge is a Claude Sonnet 4.6 + structured-prompt setup calibrated to Cohen's κ = 0.932 against an 89-question hand-labeled set with an adversarial leniency guard. Full methodology, per-judge scores, and reproduction commands in [docs/evaluation.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/evaluation.md).
 
 ## Comparison with published systems on FinanceBench
 
@@ -98,17 +98,17 @@ pip install -e ".[cli,dev]" && cp .env.example .env   # add your API keys
 financebench setup                                     # docker compose + seed corpus
 ```
 
-For self-hosting the full 11-service stack (LiteLLM + Langfuse), upgrade flows, and production hardening, see [docs/deploy.md](docs/deploy.md) and [docs/upgrade.md](docs/upgrade.md).
+For self-hosting the full 11-service stack (LiteLLM + Langfuse), upgrade flows, and production hardening, see [docs/deploy.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/deploy.md) and [docs/upgrade.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/upgrade.md).
 
 ## Documentation
 
-- [docs/cli.md](docs/cli.md) — CLI reference, slash commands, multi-party HITL workflow
-- [docs/deploy.md](docs/deploy.md) — Self-host: stack profiles, env vars, backup, hardening
-- [docs/upgrade.md](docs/upgrade.md) — Upgrade cookbook by change type
-- [docs/evaluation.md](docs/evaluation.md) — Methodology, results, reproduction
-- [docs/engineering-log.md](docs/engineering-log.md) — Engineering decisions and tradeoffs
-- [docs/setup.md](docs/setup.md) — Test accounts, environment, dev commands
-- [docs/architecture.md](docs/architecture.md) · [docs/api-reference.md](docs/api-reference.md) · [docs/rbac-matrix.md](docs/rbac-matrix.md) · [web/README.md](web/README.md)
+- [docs/cli.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/cli.md) — CLI reference, slash commands, multi-party HITL workflow
+- [docs/deploy.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/deploy.md) — Self-host: stack profiles, env vars, backup, hardening
+- [docs/upgrade.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/upgrade.md) — Upgrade cookbook by change type
+- [docs/evaluation.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/evaluation.md) — Methodology, results, reproduction
+- [docs/engineering-log.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/engineering-log.md) — Engineering decisions and tradeoffs
+- [docs/setup.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/setup.md) — Test accounts, environment, dev commands
+- [docs/architecture.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/architecture.md) · [docs/api-reference.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/api-reference.md) · [docs/rbac-matrix.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/rbac-matrix.md) · [web/README.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/web/README.md)
 
 ## License
 
