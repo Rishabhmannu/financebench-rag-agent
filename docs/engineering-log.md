@@ -1685,3 +1685,27 @@ If I had another two weeks, the committed priority order (see "Roadmap — Sprin
 | Sprint 7.17 (grader LoRA-FT MiniLM + 4-way model comparison + max_tokens control) | ~$5.50 | **~$165** |
 
 Total LLM spend across the eval-quality sprints: **~$165**. Per-eval cost at canonical config (post-Sprint-7.15 with multi-judge panel): **~$20** (pipeline ~$13 with Sonnet 4.6 on hallu; RAGAS + DeepEval add ~$5-7 if run; correctness scoring ~$0.30; rejudge ~$0.50). Skipping RAGAS + DeepEval drops it to ~$13 — the multi-judge panel is optional for headline pass-rate measurement but useful for retrieval-quality diagnostics. The Sprint 7.13/7.14 audit + re-judging that re-framed the entire project's headline pass rate (47% → 68% under fair judging) cost ~$1.50 in marginal LLM spend; Sprint 7.15's component-diagnostic-driven interventions added +5.33pp on top for ~$37 — proof that hands-on data verification and per-component F1 measurement are the cheapest possible ways to catch interpretation errors and find real lift.
+
+---
+
+## Post-deploy audit — embedding-dim mismatch silently degraded retrieval
+
+After shipping the CLI client + minimal docker stack + PyPI package (Phases 0–5), manual testing surfaced a repeatable failure on the first chat query of any session: a generic `"I couldn't find relevant information in the available documents..."` refusal at ~$0.0003 / 1788 input tokens. Retry behavior was non-deterministic — sometimes the second call succeeded with full citations.
+
+**False diagnosis (first pass).** Cold-start warm gap was the obvious suspect: BGE reranker + dense embedding provider HTTP client + grader LLM connection pool all warm lazily, and `/v1/warm` only loaded BGE + sparse BM25. Extended `/v1/warm` to also exercise `LLMFactory.get_grader_llm() / get_generator_llm() / get_router_llm()` plus a tiny `embed_text("warmup")` round-trip. **Did not fix the failure.** Re-fired the same query twice in a row after the warm extension — both failed identically.
+
+**Audit-first protocol caught the real cause.** The Sprint 7.19 boot banner had been printing the answer all along:
+
+```
+qdrant: {'collection': 'financial_docs', 'points': 249, 'fingerprint': 'unknown (collection pre-dates fingerprinting)'}
+```
+
+The `financial_docs` Qdrant collection was created with **1536-dim OpenAI vectors** (probably from an early-Phase-0 ingest attempt when `EMBEDDING_PROVIDER` was openai). The runtime `.env` had `EMBEDDING_PROVIDER=voyage` (1024-dim). Every retrieval call returned HTTP 400 from Qdrant — `Wrong input: Vector dimension error: expected dim: 1536, got 1024`. The `retrieval_node` had a broad `except Exception` that swallowed the 400 and returned `{"retrieved_chunks": [], "retrieval_fallback_used": False}`. Empty chunks → grader had nothing to grade → `no_info_node` fired the generic refusal. No retrieval/grader event was even emitted to `logs/run_*.jsonl` because the exception fired before `emit()`.
+
+The fingerprint sentinel from Sprint 7.19 would have caught this — but only for collections created *after* the sentinel feature shipped (2026-05-15). `financial_docs` predated it, so the boot banner reported `fingerprint: unknown` and skipped the comparison entirely. Silent degradation was the inevitable outcome for any pre-sentinel collection if the runtime embedding setting ever drifted from the ingest-time setting.
+
+**Fix (commit `2156a4a`).** Read the collection's actual vector dim directly from `info.config.params.vectors` regardless of whether a sentinel exists, compare to `settings.EMBEDDING_DIMENSIONS`, and `raise SystemExit` on mismatch with the exact `curl DELETE` + `python scripts/seed_qdrant.py --sample` recovery recipe printed to the boot log. Any pre-fingerprint collection is now automatically protected — uvicorn refuses to start, the FATAL log line tells you exactly which command to run, and there is no path back to "silently return wrong answers all day."
+
+**Recurring meta-lesson (third instance in the project).** Same shape as the `RERANKER_ADAPTER_PATH` silent-fallback caught in the Sprint 7.19 reranker audit and the `LITELLM_URL` host-vs-docker-hostname issue in Sprint 9.1: **silent failure paths via broad `except Exception` blocks compound with config that's read raw from `os.environ` outside pydantic-settings**. Three independent classes of failure, same root: the settings snapshot says one thing, runtime behavior says another, and the audit has to probe live state — not config. The boot banner pattern (Sprint 7.19) closes one of the three; the dim-check (this audit) closes a second. The remaining `LITELLM_URL` direct-provider fallback is still env-trust-based and would benefit from the same treatment.
+
+The methodological reinforcement: **a hard-fail at boot is cheaper than any amount of mid-query debugging**. Both incidents in this project where I rebuilt the same fix-the-symptom loop multiple times (this one + the FT v1 reranker silent inactivity) were resolved in <1 hour each *after* the audit-first probe ran; both took >2 hours of false-trail chasing *before* the probe ran. The pattern is now: any time runtime behavior contradicts a settings snapshot, the first thing to probe is the actual loaded state, not the configured state.
