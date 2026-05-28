@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.1.0"
+version = "0.1.1"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -23,8 +23,27 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+# Main dependencies — what `pip install financebench-rag-agent` pulls.
+# Only what the THIN CLI client needs to talk to a backend. Backend runtime
+# deps (fastapi, langgraph, qdrant-client, etc.) live in [backend] extras
+# because PyPI installers run the backend in docker; the api container's
+# pyproject.toml install pulls .[backend] and gets the heavy stuff.
+# Pre-0.1.1: a fresh pip install was ~500 MB and the CLI broke at first
+# import because httpx-sse + prompt_toolkit lived in the gated [cli] extra.
 dependencies = [
-    # --- Orchestration ---
+    "typer>=0.12,<1.0",
+    "rich>=13.0,<15.0",
+    "prompt_toolkit>=3.0,<4.0",
+    "httpx>=0.28,<1.0",
+    "httpx-sse>=0.4,<1.0",
+    "python-dotenv>=1.0,<2.0",
+]
+
+[project.optional-dependencies]
+# Backend runtime — what the api container needs. Self-hosters running the
+# backend on bare metal (not docker) install via `pip install .[backend]`.
+backend = [
+    # Orchestration
     "langgraph>=0.6,<1.0",
     "langchain>=0.3,<1.0",
     "langchain-core>=0.3,<1.0",
@@ -32,61 +51,60 @@ dependencies = [
     "langchain-groq>=0.2,<1.0",
     "langchain-anthropic>=0.3,<1.0",
 
-    # --- Backend ---
+    # FastAPI server
     "fastapi>=0.115,<1.0",
     "uvicorn[standard]>=0.34,<1.0",
     "sse-starlette>=2.0,<3.0",
     "python-multipart>=0.0.18",
 
-    # --- Frontend ---
-    "gradio>=5.0,<6.0",
-    "httpx>=0.28,<1.0",
-
-    # --- Vector DB ---
+    # Vector DB
     "qdrant-client>=1.13,<2.0",
-    "fastembed>=0.4,<1.0",        # BM25 sparse vectors for hybrid search
+    "fastembed>=0.4,<1.0",
 
-    # --- Reranker ---
-    "sentence-transformers>=3.0,<5.0",  # BGE cross-encoder for post-retrieval reranking
+    # Reranker — sentence-transformers ships the BGE cross-encoder; peft is
+    # required by reranker_service.py for the optional LoRA adapter path
+    # and gets imported at module load even when no adapter is configured.
+    # Adding it as a hard dep is cheaper than gating the import behind every
+    # call site (post-0.1.0 finding: M1 install had peft missing and the
+    # reranker failed to load at boot, breaking the entire pipeline).
+    "sentence-transformers>=3.0,<5.0",
+    "peft>=0.13,<2.0",
 
-    # --- Document Processing ---
+    # Document parsing
     "docling>=2.70,<3.0",
     "pypdf>=5.0,<7.0",
 
-    # --- Embeddings ---
+    # Embedding providers
     "openai>=1.60,<3.0",
     "voyageai>=0.3,<1.0",
 
-    # --- Auth ---
+    # Auth
     "PyJWT>=2.9,<3.0",
     "python-jose[cryptography]>=3.3,<4.0",
 
-    # --- Guardrails ---
+    # Guardrails
     "presidio-analyzer>=2.2,<3.0",
     "presidio-anonymizer>=2.2,<3.0",
     "llm-guard>=0.3,<1.0",
 
-    # --- LangGraph Persistence ---
+    # LangGraph persistence
     "langgraph-checkpoint-postgres>=2.0,<3.0",
     "psycopg[binary]>=3.2,<4.0",
 
-    # --- Config ---
+    # Config (pydantic-settings is backend-only; the CLI uses python-dotenv)
     "pydantic>=2.9,<3.0",
     "pydantic-settings>=2.6,<3.0",
-    "python-dotenv>=1.0,<2.0",
 
-    # --- Observability ---
+    # Observability
     "langsmith>=0.4,<1.0",
 
-    # --- Result cache (Sprint 8e: per-stage Redis caches for embeddings,
-    # reranker pairs, grader verdicts) ---
+    # Result cache (Sprint 8e: per-stage Redis caches)
     "redis>=5.0,<6.0",
 
-    # --- Migrations (Sprint 9.0: DB-backed dynamic roles) ---
+    # Migrations
     "alembic>=1.13,<2.0",
 ]
 
-[project.optional-dependencies]
 test = [
     "pytest>=8.0,<9.0",
     "pytest-asyncio>=0.24,<1.0",
@@ -102,11 +120,7 @@ scripts = [
 eval = [
     "ragas>=0.2,<1.0",
     "datasets>=3.0,<4.0",
-    "patronus>=0.1,<1.0",  # Patronus AI hosted judges for FinanceBench external eval
-    # DeepEval — local LLM-as-judge framework. Replaces Patronus when credits are
-    # exhausted; same four RAG metrics (faithfulness / answer_relevancy /
-    # contextual_precision / contextual_recall) with a different judge prompt
-    # family, giving us a true second-framework cross-check vs RAGAS.
+    "patronus>=0.1,<1.0",
     "deepeval>=3.9,<4.0",
 ]
 dev = [
@@ -114,16 +128,10 @@ dev = [
     "pre-commit>=4.0,<5.0",
     "build>=1.2,<2.0",
     "twine>=5.0,<7.0",
+    "financebench-rag-agent[backend]",
     "financebench-rag-agent[test]",
     "financebench-rag-agent[eval]",
     "financebench-rag-agent[scripts]",
-    "financebench-rag-agent[cli]",
-]
-cli = [
-    "typer>=0.12,<1.0",
-    "rich>=13.0,<15.0",
-    "prompt_toolkit>=3.0,<4.0",
-    "httpx-sse>=0.4,<1.0",
 ]
 
 [project.urls]

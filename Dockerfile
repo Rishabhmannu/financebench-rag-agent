@@ -8,14 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
-RUN pip install --no-cache-dir .
+# Backend deps are gated behind the [backend] extra as of 0.1.1 so the
+# PyPI wheel stays lean for CLI installers. The api container needs the
+# full backend toolchain, so we explicitly install with [backend].
+RUN pip install --no-cache-dir ".[backend]"
 
 # === Runtime stage ===
 FROM python:3.12-slim
 
 LABEL maintainer="Rishabh" \
       description="Enterprise RAG Agent API" \
-      version="0.1.0"
+      version="0.1.1"
 
 WORKDIR /app
 

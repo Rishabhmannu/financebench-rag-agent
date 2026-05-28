@@ -38,7 +38,13 @@ def chat(
     """Chat with the agent. REPL by default; pass a message + --no-stream for one-shot."""
     creds = credentials.load()
     if creds is None:
-        render_error("Not logged in. Run: financebench login -u analyst")
+        # M1 feedback (0.1.0): the hardcoded "-u analyst" suggestion confused
+        # users on other profiles. Make it generic + list available dev users
+        # so anyone can pick the right one regardless of FB_PROFILE.
+        render_error(
+            "Not logged in. Run:  financebench login -u <username>\n\n"
+            "Available dev accounts: analyst | finance | hr | clevel | admin"
+        )
         raise typer.Exit(1)
 
     if message and no_stream:

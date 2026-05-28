@@ -127,6 +127,28 @@ def version() -> dict:
     return {"api_version": API_VERSION, "semver": app.version, "git_sha": _git_sha()}
 
 
+@app.get("/")
+def root() -> dict:
+    """Friendly entry point. The boot banner in the CLI displays the backend
+    URL with rich's [underline] markup; iTerm2/Terminal auto-link it as
+    clickable, and a user landing here without this route hits FastAPI's
+    default 404 (`{"detail":"Not Found"}`). 0.1.1 surfaces the actual
+    entry points instead so the URL is useful."""
+    return {
+        "name": "FinanceBench RAG Agent API",
+        "api_version": API_VERSION,
+        "semver": app.version,
+        "try": {
+            "health": f"/v{API_VERSION}/health",
+            "version": "/version",
+            "openapi_docs": "/docs",
+            "openapi_redoc": "/redoc",
+        },
+        "cli": "pip install financebench-rag-agent",
+        "repo": "https://github.com/Rishabhmannu/financebench-rag-agent",
+    }
+
+
 _routers = [health, auth, chat, ingest, hitl, admin, threads, documents, approvals]
 
 # Canonical: /v1-prefixed routes. CLI declares it speaks v1.

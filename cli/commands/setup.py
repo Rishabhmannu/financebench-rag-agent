@@ -55,9 +55,13 @@ def setup(
     skip_seed: bool = typer.Option(
         False, "--skip-seed", help="Don't run the sample corpus seed at the end (useful for re-runs)."
     ),
+    force_seed: bool = typer.Option(
+        False, "--force-seed", help="Re-seed even if the collection already exists with points. Default skips if a non-empty collection is detected."
+    ),
 ) -> None:
     """Interactive first-run wizard: clones/locates the repo, collects keys,
-    brings up the stack, pre-warms, seeds. ~5 min on warm Docker cache."""
+    brings up the stack, pre-warms, seeds, and verifies. ~5 min on warm
+    Docker cache."""
     console.print("[bold]financebench setup[/bold] — one-time wizard.\n")
 
     repo_path = _resolve_repo_dir(repo_dir)
@@ -74,10 +78,22 @@ def setup(
     _prewarm()
 
     if not skip_seed:
-        _seed_sample_corpus(repo_path, compose_file)
+        _seed_sample_corpus(repo_path, compose_file, force=force_seed)
+
+    # Verify everything is actually wired up before declaring setup done.
+    # Pre-0.1.1 the wizard happily reported success even when the seed had
+    # silently failed or peft was missing — users only discovered the broken
+    # state when chat queries started returning "An error occurred...".
+    verified = _verify_setup()
 
     console.print()
-    render_success("Setup complete. Try: financebench chat")
+    if verified:
+        render_success("Setup complete. Try: financebench chat")
+    else:
+        render_error(
+            "Setup completed with WARNINGS — chat may not work correctly. "
+            "See the lines above + `docker compose logs api` for details."
+        )
     console.print(
         "[dim]Tip: set FB_PROFILE=admin (or any name) in different terminals "
         "to keep separate identities for the multi-party HITL demo.[/dim]"
@@ -251,10 +267,36 @@ def _prewarm() -> None:
     render_success("Models loaded.")
 
 
-def _seed_sample_corpus(repo_path: Path, compose_file: str) -> None:
+def _seed_sample_corpus(repo_path: Path, compose_file: str, force: bool = False) -> None:
     """Seed the default Qdrant collection with the 8 sample PDFs by running
     scripts/seed_qdrant.py inside the api container. ~60s + ~$0.001 in
-    embedding cost on text-embedding-3-small."""
+    embedding cost on text-embedding-3-small.
+
+    Idempotent: when `force` is False and the collection already exists with
+    points, the seed is skipped — re-runs of `financebench setup` after a
+    successful first setup don't re-pay the embedding cost or re-write the
+    same 179 chunks. Pass --force-seed to override.
+    """
+    import httpx
+
+    if not force:
+        collection_name = os.environ.get("QDRANT_COLLECTION", "financial_docs")
+        try:
+            r = httpx.get(
+                f"http://localhost:6333/collections/{collection_name}",
+                timeout=5.0,
+            )
+            if r.status_code == 200:
+                points = (r.json().get("result") or {}).get("points_count", 0)
+                if points and points > 0:
+                    render_info(
+                        f"Collection '{collection_name}' already has {points} points — skipping seed. "
+                        f"Pass --force-seed to re-ingest."
+                    )
+                    return
+        except Exception:  # noqa: BLE001
+            pass  # qdrant unreachable / collection missing — fall through to seed
+
     cmd = [
         "docker", "compose", "-f", compose_file,
         "exec", "-T", "api",
@@ -266,3 +308,78 @@ def _seed_sample_corpus(repo_path: Path, compose_file: str) -> None:
         render_error(f"Seed failed (exit {rc}). You can retry later with `financebench setup --skip-seed` + manual seed.")
         return
     render_success("Corpus seeded.")
+
+
+def _verify_setup() -> bool:
+    """Post-setup verification — confirms the things that need to be true
+    for a chat query to succeed. Returns True if everything looks healthy,
+    False if any check failed (caller prints a generic warning).
+
+    Three checks, in order of failure cost (cheapest first):
+    1. /v1/health returns 200            — backend is up
+    2. /v1/warm components all loaded    — reranker + embedder + LLMs didn't error
+    3. qdrant collection exists w/ points — chat queries will find chunks
+
+    Pre-0.1.1 the wizard didn't probe any of these; users discovered failures
+    when chat returned the generic "An error occurred..." after a 60s wait.
+    """
+    import httpx
+
+    ok = True
+
+    # 1. Health
+    try:
+        r = httpx.get("http://localhost:8000/v1/health", timeout=5.0)
+        if r.status_code == 200:
+            render_success("Backend health: OK")
+        else:
+            render_error(f"Backend health: HTTP {r.status_code}")
+            ok = False
+    except Exception as exc:  # noqa: BLE001
+        render_error(f"Backend health: unreachable ({type(exc).__name__})")
+        return False  # nothing else will work
+
+    # 2. /v1/warm component check
+    try:
+        r = httpx.get("http://localhost:8000/v1/warm", timeout=120.0)
+        loaded = (r.json() or {}).get("loaded", {})
+        errors = {k: v for k, v in loaded.items() if isinstance(v, str) and v.startswith("error:")}
+        if errors:
+            render_error("Components failed to load:")
+            for k, v in errors.items():
+                console.print(f"  [red]{k}:[/red] {v}")
+            ok = False
+        else:
+            render_success(f"Components loaded: {', '.join(loaded.keys())}")
+    except Exception as exc:  # noqa: BLE001
+        render_error(f"/v1/warm probe failed ({type(exc).__name__})")
+        ok = False
+
+    # 3. Qdrant collection exists + has points
+    collection_name = os.environ.get("QDRANT_COLLECTION", "financial_docs")
+    try:
+        r = httpx.get(
+            f"http://localhost:6333/collections/{collection_name}",
+            timeout=5.0,
+        )
+        if r.status_code == 200:
+            points = (r.json().get("result") or {}).get("points_count", 0)
+            if points and points > 0:
+                render_success(f"Qdrant collection '{collection_name}': {points} chunks")
+            else:
+                render_error(
+                    f"Qdrant collection '{collection_name}' exists but has 0 points. "
+                    f"Re-run with --force-seed."
+                )
+                ok = False
+        else:
+            render_error(
+                f"Qdrant collection '{collection_name}' not found (HTTP {r.status_code}). "
+                f"Re-run `financebench setup` (the seed step likely failed)."
+            )
+            ok = False
+    except Exception as exc:  # noqa: BLE001
+        render_error(f"Qdrant probe failed ({type(exc).__name__})")
+        ok = False
+
+    return ok

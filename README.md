@@ -24,6 +24,8 @@ Multi-party HITL approval workflow and conversation memory have their own walkth
 
 ## Architecture
 
+> *The mermaid diagram below renders as a flowchart on [GitHub](https://github.com/Rishabhmannu/financebench-rag-agent#architecture). PyPI's markdown renderer doesn't support mermaid — readers there see the source and the prose summary that follows.*
+
 ```mermaid
 flowchart TD
     Q([Query + JWT]) --> RBAC[rbac_gate<br/>JWT to Qdrant filter]
@@ -40,16 +42,15 @@ flowchart TD
     HITL --> Out([Answer + sources])
 ```
 
-A router classifies each query as a simple lookup or research-required. Simple lookups take the fast direct path; research queries enter a multi-turn subgraph that decomposes the question, retrieves per sub-question, grades sufficiency, and synthesizes a final answer. RBAC is enforced at the Qdrant payload-filter level — agentic queries cannot bypass access control. High-stakes answers (above a per-role dollar threshold) pause via LangGraph's `interrupt()` for human approval, with state checkpointed to Postgres.
+A router classifies each query as a simple lookup or research-required. Simple lookups take the fast direct path (retrieval → BGE reranker → grader → Claude generator); research queries enter a multi-turn subgraph that decomposes the question, retrieves per sub-question, grades sufficiency, and synthesizes a final answer. RBAC is enforced at the Qdrant payload-filter level — agentic queries cannot bypass access control. High-stakes answers (above a per-role dollar threshold) pause via LangGraph's `interrupt()` for multi-party human approval, with state checkpointed to Postgres so the workflow survives container restarts.
 
 ## Tech stack
 
 - **Backend** — FastAPI · LangGraph · Qdrant · PostgreSQL · Redis · PyJWT
 - **Client** — `financebench` CLI: typer · rich · prompt_toolkit · httpx-sse · token-streaming over SSE
-- **Frontend** — Next.js 16 · React 19 · Tailwind · shadcn/ui  *(in progress; CLI is the canonical client)*
-- **LLMs** — Claude Sonnet 4.6 · gpt-4o-mini · Llama 3.3 (via Groq)
-- **Retrieval** — voyage-finance-2 embeddings · BGE-reranker-v2-m3 cross-encoder
-- **Observability** — self-hosted LiteLLM proxy + Langfuse v3 + Redis semantic cache
+- **LLMs** — Claude Sonnet 4.6 · gpt-4o-mini · Llama 3.3 (via Groq, optional)
+- **Retrieval** — OpenAI text-embedding-3-small or voyage-finance-2 · BGE-reranker-v2-m3 cross-encoder
+- **Observability** — self-hosted LiteLLM proxy + Langfuse v3 + Redis semantic cache (full stack only)
 - **Safety** — Microsoft Presidio PII detection · LLM Guard · LLM classifier (3-layer cascade)
 - **Evaluation** — RAGAS · DeepEval · custom LLM correctness judge
 
@@ -86,7 +87,7 @@ Long-context approaches score higher but are not enterprise-deployable — 10-K 
 ## Known limitations
 
 - **Not deployed to production** — runs locally via `docker compose up -d`. No public URL or live traffic.
-- **Frontend is a vertical slice** — login + streaming chat work; sidebar, HITL UI, admin panel, citation PDF viewer are unbuilt.
+- **CLI is the canonical client today.** A Next.js web frontend is in progress in `web/` but not wired into the deployment story.
 - **Below the top-published systems** (Mafin 2.5 at 98.7%, DANA at 94.3%) — see comparison table above for context.
 
 ## Running from source
@@ -94,8 +95,8 @@ Long-context approaches score higher but are not enterprise-deployable — 10-K 
 ```bash
 git clone https://github.com/Rishabhmannu/financebench-rag-agent.git
 cd financebench-rag-agent
-pip install -e ".[cli,dev]" && cp .env.example .env   # add your API keys
-financebench setup                                     # docker compose + seed corpus
+pip install -e ".[backend,dev]" && cp .env.example .env   # backend extras + dev tools
+financebench setup                                         # docker compose + seed corpus
 ```
 
 For self-hosting the full 11-service stack (LiteLLM + Langfuse), upgrade flows, and production hardening, see [docs/deploy.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/deploy.md) and [docs/upgrade.md](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/docs/upgrade.md).
