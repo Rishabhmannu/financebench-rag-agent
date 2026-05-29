@@ -73,7 +73,7 @@ async def warm():
     # M1 evidence: 3-min uninstrumented time before entity_extractor on first
     # query. Almost certainly this model loading. Force it here instead.
     def _warm_guardrails():
-        from src.services.guardrails import check_injection_llm_guard
+        from src.services.guardrails_service import check_injection_llm_guard
         check_injection_llm_guard("warmup query")
         return "LLMGuard"
     res = _timed("guardrails", _warm_guardrails)

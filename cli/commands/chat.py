@@ -104,6 +104,35 @@ def _one_shot_streaming(message: str, thread_id: str | None) -> None:
         client.close()
 
 
+def _wait_or_fail_clean(base_url: str) -> None:
+    """Probe /v1/health with a short timeout before any heavier auth call.
+
+    If the backend is unreachable or mid-boot (TCP RST window during
+    lifespan startup on macOS Docker Desktop), render a clean message
+    and exit instead of dumping the raw httpx connection traceback.
+    """
+    import httpx
+
+    try:
+        r = httpx.get(f"{base_url}/v1/health", timeout=5.0)
+        if r.status_code == 200:
+            return
+        render_error(
+            f"Backend at {base_url} returned HTTP {r.status_code} on /v1/health. "
+            f"Run `financebench setup` to (re)bring up the stack."
+        )
+        raise typer.Exit(1)
+    except typer.Exit:
+        raise
+    except Exception:  # noqa: BLE001
+        render_error(
+            f"Backend at {base_url} is not reachable. If you just ran "
+            f"`docker compose up`, wait ~3 min for first-boot model download "
+            f"to finish. Otherwise run `financebench setup`."
+        )
+        raise typer.Exit(1)
+
+
 def _prewarm(client: APIClient) -> None:
     """Force the backend to lazy-load the BGE reranker + sparse embedder before
     the user's first query, so first-query latency matches subsequent queries
@@ -121,6 +150,13 @@ def _repl(creds: dict) -> None:
     user_id = creds.get("user_id", "?")
     base_url = creds.get("base_url", "http://localhost:8000")
 
+    # 0.1.3: quick reachability probe before any auth call. The previous CLI
+    # dumped a 700-line httpx traceback when the user ran `financebench chat`
+    # right after `docker compose up -d --build` returned, because uvicorn
+    # had bound port 8000 but lifespan (BGE download, ~3 min) wasn't done
+    # yet — macOS Docker Desktop responds with TCP RST in that window.
+    _wait_or_fail_clean(base_url)
+
     client = APIClient(base_url=base_url, token=creds.get("token"))
 
     role = "?"
@@ -131,6 +167,14 @@ def _repl(creds: dict) -> None:
         render_error(f"Could not load identity from {base_url}: {e.message}")
         client.close()
         raise typer.Exit(1)
+    except Exception as e:  # noqa: BLE001
+        render_error(
+            f"Backend at {base_url} reset the connection mid-request. "
+            f"It's likely still starting up. Wait 30s and retry, or run "
+            f"`docker compose -f compose.minimal.yml logs api --tail 50`."
+        )
+        client.close()
+        raise typer.Exit(1) from e
 
     # Pull backend version info for the banner. Best-effort — banner still
     # renders if /version is unreachable, just with "?" placeholders.

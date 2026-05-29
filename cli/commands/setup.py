@@ -100,6 +100,35 @@ def setup(
     )
 
 
+def _refresh_clone(repo_path: Path) -> None:
+    """git pull --ff-only on the resolved repo so `pip install -U` upgraders
+    pick up the latest Dockerfile / pyproject.toml / .env.example.
+
+    0.1.2 placed this only in the DEFAULT_CLONE_PATH branch; users who cd'd
+    into ~/.financebench/repo before running `financebench setup` took the
+    cwd branch and silently skipped the pull, ending up rebuilding from
+    stale source. Calling this from both branches fixes that. --ff-only is
+    safe — if the user has local commits ahead or uncommitted changes, it
+    fails harmlessly and the wizard continues."""
+    if not (repo_path / ".git").exists() or not shutil.which("git"):
+        return
+    try:
+        rc = subprocess.run(
+            ["git", "pull", "--ff-only"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if rc.returncode == 0:
+            msg = rc.stdout.strip().split("\n")[-1] if rc.stdout.strip() else "(up to date)"
+            render_info(f"git pull: {msg}")
+        else:
+            render_info(f"git pull skipped: {(rc.stderr or rc.stdout).strip()[:100]}")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _resolve_repo_dir(repo_dir: str | None) -> Path:
     """Find or create the repo checkout we'll operate on.
 
@@ -116,30 +145,12 @@ def _resolve_repo_dir(repo_dir: str | None) -> Path:
     cwd = Path.cwd().resolve()
     if (cwd / "pyproject.toml").exists() and (cwd / "src" / "api" / "main.py").exists():
         render_info(f"Detected project checkout in current directory: {cwd}")
+        _refresh_clone(cwd)
         return cwd
 
     if DEFAULT_CLONE_PATH.exists() and (DEFAULT_CLONE_PATH / "src" / "api" / "main.py").exists():
         render_info(f"Using existing clone at {DEFAULT_CLONE_PATH}")
-        # 0.1.2: refresh the clone so `pip install -U` upgraders pick up the
-        # latest Dockerfile / pyproject.toml / .env.example. M1 test showed
-        # 0.1.0 → 0.1.1 upgraders had a stale clone, so docker rebuilt from
-        # 0.1.0 source and missed peft + the new defaults.
-        if (DEFAULT_CLONE_PATH / ".git").exists() and shutil.which("git"):
-            try:
-                rc = subprocess.run(
-                    ["git", "pull", "--ff-only"],
-                    cwd=DEFAULT_CLONE_PATH,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                if rc.returncode == 0:
-                    msg = rc.stdout.strip().split("\n")[-1] if rc.stdout.strip() else "(up to date)"
-                    render_info(f"git pull: {msg}")
-                else:
-                    render_info(f"git pull skipped: {(rc.stderr or rc.stdout).strip()[:100]}")
-            except Exception:  # noqa: BLE001
-                pass
+        _refresh_clone(DEFAULT_CLONE_PATH)
         return DEFAULT_CLONE_PATH
 
     if not shutil.which("git"):
@@ -423,6 +434,25 @@ def _verify_setup() -> bool:
     except Exception as exc:  # noqa: BLE001
         render_error(f"Backend health: unreachable ({type(exc).__name__})")
         return False  # nothing else will work
+
+    # 1b. Version match — backend semver vs CLI __version__. Catches the
+    # "wizard ran, docker cache reused a stale image, banner reports 0.1.0
+    # while pip installed 0.1.3" failure mode that bit the M1 test cycle.
+    try:
+        from cli import __version__ as cli_version
+
+        r = httpx.get("http://localhost:8000/version", timeout=5.0)
+        if r.status_code == 200:
+            backend_semver = (r.json() or {}).get("semver")
+            if backend_semver and backend_semver != cli_version:
+                render_error(
+                    f"Version mismatch: CLI is {cli_version} but backend is {backend_semver}. "
+                    f"Run `cd {Path.home() / '.financebench' / 'repo'} && git pull && "
+                    f"docker compose -f compose.minimal.yml up -d --build` to rebuild."
+                )
+                ok = False
+    except Exception:  # noqa: BLE001
+        pass  # /version is best-effort; don't block setup on it
 
     # 2. /v1/warm component check
     try:

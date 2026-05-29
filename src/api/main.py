@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="FinanceBench RAG Agent API",
     description="Enterprise Financial Document Q&A with RBAC, Guardrails, and Multi-Agent Pipeline",
-    version="0.1.2",
+    version="0.1.3",
     lifespan=lifespan,
 )
 

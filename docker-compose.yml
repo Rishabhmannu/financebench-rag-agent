@@ -14,6 +14,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data
+      - hf_cache:/home/appuser/.cache/huggingface
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -320,6 +321,7 @@ volumes:
   qdrant_data:
   pg_data:
   redis_data:
+  hf_cache:
   langfuse_postgres_data:
   langfuse_clickhouse_data:
   langfuse_clickhouse_logs:

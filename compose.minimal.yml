@@ -29,7 +29,7 @@ services:
       - ./data:/app/data
       - ./cost_logs:/app/cost_logs
       - ./logs:/app/logs
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/home/appuser/.cache/huggingface
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

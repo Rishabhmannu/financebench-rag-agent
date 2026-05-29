@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.1.2"
+      version="0.1.3"
 
 WORKDIR /app
 
@@ -52,6 +52,13 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY src/ src/
 COPY scripts/ scripts/
 COPY data/sample/ data/sample/
+# 0.1.3: alembic.ini + migrations/ are required by src.api.main lifespan to
+# run schema migrations on boot. Without them the lifespan logs "Alembic
+# upgrade failed: No 'script_location' key found in configuration." and
+# falls back to static RBAC. Non-fatal but means new migrations don't apply
+# in the container. (script_location = migrations per alembic.ini.)
+COPY alembic.ini alembic.ini
+COPY migrations/ migrations/
 
 # Change ownership and switch to non-root
 RUN chown -R appuser:appuser /app
