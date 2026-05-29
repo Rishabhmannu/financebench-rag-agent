@@ -94,7 +94,7 @@ financebench upgrade
 Old CLI keeps working — it ignores endpoints it doesn't call. To use the new endpoint from the CLI, the maintainer also added a slash command or subcommand and republished the CLI:
 
 ```bash
-pip install --upgrade financebench-rag-cli
+pip install --upgrade financebench-rag-agent
 ```
 
 ### "I added a new RBAC role"
@@ -120,14 +120,38 @@ The right pattern:
 2. Update the CLI to support BOTH versions; bump CLI semver.
 3. The CLI's `Accept` header (`application/vnd.financebench.v1+json`) gives the backend a chance to disambiguate.
 4. Eventually deprecate v1 over one or two minor versions.
-5. Users on the old CLI get a clear error message pointing to `pip install --upgrade financebench-rag-cli`.
+5. Users on the old CLI get a clear error message pointing to `pip install --upgrade financebench-rag-agent`.
 
 For the user, the upgrade command stays the same:
 
 ```bash
 financebench upgrade
-pip install --upgrade financebench-rag-cli
+pip install --upgrade financebench-rag-agent
 ```
+
+### "I'm upgrading past 0.1.3 on a machine that previously ran 0.1.3 (M1 / Apple Silicon)"
+
+0.1.3 mounted the HuggingFace cache volume at the wrong path inside the container (`/root/.cache/huggingface` while the api runs as `appuser`). 0.1.4 fixes the mount to `/home/appuser/.cache/huggingface` AND pre-creates the directory with `appuser` ownership so Docker copies the right permissions into a fresh volume on first mount.
+
+But the volume `repo_hf_cache` already exists from your 0.1.3 run with root-owned permissions. Docker reuses existing volumes as-is — the Dockerfile fix doesn't help if the volume is already in the wrong state. You must wipe it once:
+
+```bash
+cd ~/.financebench/repo
+git pull
+docker compose -f compose.minimal.yml down -v   # -v removes named volumes
+docker compose -f compose.minimal.yml up -d --build
+```
+
+`down -v` also wipes Qdrant (your seeded corpus), Postgres (HITL state), and Redis (result cache). The wizard's `_seed_sample_corpus` step re-seeds the sample 8 PDFs automatically on the next `financebench setup` (~60s, ~$0.0005 in embeddings).
+
+Verify the fix landed by inspecting the volume permissions after the rebuild:
+
+```bash
+docker exec repo-api-1 stat -c '%U:%G %a' /home/appuser/.cache/huggingface
+# Should print: appuser:appuser 755
+```
+
+If it still prints `root:root`, the wipe didn't happen — re-run `down -v` and `up -d --build`.
 
 ### "I want to roll back an upgrade"
 

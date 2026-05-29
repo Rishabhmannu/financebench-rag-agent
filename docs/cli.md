@@ -7,7 +7,7 @@ The `financebench` CLI is the canonical client for this project. It hits the Fas
 ```bash
 pip install -e ".[cli]"          # from a local checkout
 # or, when published:
-pip install financebench-rag-cli
+pip install financebench-rag-agent
 ```
 
 The script is registered as `financebench` (see `pyproject.toml` `[project.scripts]`).

@@ -1709,3 +1709,54 @@ The fingerprint sentinel from Sprint 7.19 would have caught this — but only fo
 **Recurring meta-lesson (third instance in the project).** Same shape as the `RERANKER_ADAPTER_PATH` silent-fallback caught in the Sprint 7.19 reranker audit and the `LITELLM_URL` host-vs-docker-hostname issue in Sprint 9.1: **silent failure paths via broad `except Exception` blocks compound with config that's read raw from `os.environ` outside pydantic-settings**. Three independent classes of failure, same root: the settings snapshot says one thing, runtime behavior says another, and the audit has to probe live state — not config. The boot banner pattern (Sprint 7.19) closes one of the three; the dim-check (this audit) closes a second. The remaining `LITELLM_URL` direct-provider fallback is still env-trust-based and would benefit from the same treatment.
 
 The methodological reinforcement: **a hard-fail at boot is cheaper than any amount of mid-query debugging**. Both incidents in this project where I rebuilt the same fix-the-symptom loop multiple times (this one + the FT v1 reranker silent inactivity) were resolved in <1 hour each *after* the audit-first probe ran; both took >2 hours of false-trail chasing *before* the probe ran. The pattern is now: any time runtime behavior contradicts a settings snapshot, the first thing to probe is the actual loaded state, not the configured state.
+
+---
+
+## 0.1.x install-path campaign — five bugs, one missing tool
+
+After Phase-5 PyPI publication (0.1.0), a fresh-laptop Apple-Silicon (M1, miniforge3 Python 3.12) install was the first time the wizard was driven by a user who hadn't touched the source. Five independent bugs surfaced across five test cycles, each rolled into a patch release. The single tool that would have caught all five at PR time — a fresh-laptop install smoke test — was not in place. This entry captures the campaign, the mechanism behind each bug, and the credibility-rule analogue for install-time auditing.
+
+### The bugs, in order of discovery
+
+| Release | Surfaced bug | Mechanism | Source of miss |
+|---|---|---|---|
+| 0.1.0 → 0.1.1 | `peft` missing from `[backend]` extra | `RERANKER_ADAPTER_PATH=data/models/reranker_ft_v1` shipped in `.env.example` triggered `peft` import in `src/services/reranker_service.py:92` even when no FT adapter was on disk. Container crashed on first warm. | Sprint 7.19 audit already proved FT v1 regressed and stock BGE was canonical; `.env.example` was never updated to comment out the adapter line. Settings-snapshot audit missed it because `RERANKER_ADAPTER_PATH` is read via raw `os.environ.get`, not pydantic — same shape as the Sprint 7.19 reranker-silent-fallback audit two months earlier. |
+| 0.1.1 → 0.1.2 | (multiple wizard ergonomics; the test cycle was the dominant signal here) | Wizard verification missed the case where Docker layer-cache reused the previous build. CLI banner said `semver 0.1.0` while pip-installed CLI was 0.1.2. | Wizard ran `_verify_setup` against `/v1/health` + `/v1/warm` + Qdrant — all three returned 200 because the cached 0.1.0 image was still functioning. No version cross-check between CLI and backend. |
+| 0.1.2 → 0.1.3 | `src.services.guardrails` typo in `src/api/routes/health.py:76` | My code; the actual module is `src.services.guardrails_service`. Production chat queries used the correct import via `src/graph/nodes/guardrails.py:7` and worked; only the deep `/v1/warm` warmup hit the bad path and surfaced as "Components failed to load" in `_verify_setup`. | No automated test exercises `/v1/warm`. The `tests/` suite mocks every external dependency for unit-test speed; the import error fires only on a real container, which lives outside the unit-test loop. |
+| 0.1.2 → 0.1.3 | `hf_cache` volume mounted at the wrong path | `compose.minimal.yml` had `- hf_cache:/root/.cache/huggingface` but the container ran as `appuser` whose HF cache lives at `/home/appuser/.cache/huggingface`. Volume sat empty; BGE redownloaded ~568 MB on every rebuild. | Sprint 9 added the volume during a docker-compose refactor. The path was copy-pasted from a Dockerfile that ran as root. No reviewer ran a full `down -v` + `up --build` to observe the redownload. |
+| 0.1.3 → 0.1.4 | The same `hf_cache` volume, now correctly path-matched, became unwritable | Docker named volumes are created root-owned by the daemon. Mounting an EMPTY named volume on an in-image directory does copy contents, but appuser was created by `useradd --create-home` which doesn't pre-create `.cache/`. The mount landed on a path that didn't yet exist in the image → docker created it as root → appuser couldn't write → partial BGE → `ValueError: Unrecognized model in BAAI/bge-reranker-v2-m3`. | I shipped the 0.1.3 mount-path fix without testing it on a machine that had no pre-existing `hf_cache` volume. Existing dev machines all had the (root-owned, empty, ignored) 0.1.2 volume sitting around — the same wrong-permissions state never manifested locally because dev never mounted the volume into the right path. |
+| 0.1.4 (this release) | Same — fixed by `mkdir -p /home/appuser/.cache/huggingface && chown -R appuser:appuser /home/appuser/.cache` in `Dockerfile` BEFORE `USER appuser`. | Docker copies the in-image directory's ownership into the empty volume on first mount. Subsequent mounts of the now-populated volume preserve appuser ownership. | (The fix.) |
+
+### The credibility-rule analogue for install paths
+
+The Sprint 7.19 audit-first protocol works for **runtime** state: when behavior contradicts the settings snapshot, probe the actually-loaded class / dim / env-var. The same logic applies to install paths but the audit surface is different:
+
+- **Runtime audit**: probe `/v1/version`, `/v1/warm` `loaded`, Qdrant collection metadata, the boot banner output.
+- **Install-path audit**: probe a *clean* environment — fresh user (no `~/.financebench/`), fresh Docker (no existing volumes / images / layer cache), fresh pip install, and the wizard run end-to-end.
+
+The runtime audit caught real bugs three times in the eval-quality sprints (FT v1 reranker silent inactivity, embedding-dim drift, LITELLM hostname). The install-path audit did not exist during 0.1.0–0.1.3 and would have caught all five bugs above. Each release was tested by the maintainer on a machine that already had every prior artifact cached.
+
+### The missing tool — and why it wasn't built
+
+`scripts/smoke_test_setup.sh` was on the 0.1.2 deferred list with the reasoning "requires nuking `~/.financebench/`, can't run on dev machine." That reasoning is correct for a script — but wrong for a CI workflow. A GitHub Actions job that runs `pip install dist/*.whl + financebench setup` inside a fresh ubuntu-latest container (or, for the M1 path, a `setup-buildx-action` + multi-arch build verification) would catch all five bug classes without touching the maintainer's environment.
+
+The tool was deferred for the right reason at the wrong level of abstraction. Build-time and run-time stay separate: build-time CI verifies the install path on a clean substrate; run-time tests verify behavior. The 0.1.x cycle proved that conflating "I can't test this locally" with "I can't test this at all" costs five round trips.
+
+### Versioning observation
+
+PyPI immutability forces a version bump on every fix, so the 0.1.x cycle has a parade of release tags (0.1.0–0.1.4) that, from outside, looks like rapid iteration on a working tool. It is actually a record of "the install path was wrong, here's how it got fixed." Once 0.1.4 verifies clean, yanking 0.1.0–0.1.3 from PyPI is the right cleanup — `pip install financebench-rag-agent` would then return 0.1.4, and pinned installs of older versions remain available for reproducibility.
+
+The 1.0.0 milestone should be tied to install-path stability validated on multiple architectures (M1, Linux/amd64, WSL2), NOT to feature completeness. 0.1.4 is the first release where the install path has been hardened against the five known failure modes; 0.2.0 should ship the pre-built image + GHCR multi-arch CI (which sidesteps the layer-cache cost-per-version problem entirely); 1.0.0 follows after both have been validated by an unaffiliated user.
+
+### Roadmap — 0.2.0 (pre-built image + install hardening)
+
+| Item | Why | Estimated effort |
+|---|---|---|
+| Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), tagged per release | Cuts M1 install from ~7 min build to ~90s pull. Sidesteps the per-version `pyproject.toml` invalidation that re-downloads ~700 MB torch + ~30 backend deps on every patch bump. GHCR is free for public repos, no rate-limit. | ~1 day: workflow + `compose.minimal.yml` `image:` swap + docs |
+| `scripts/ci_smoke_install.sh` driven by a GitHub Actions workflow on every tag | Would have caught all five 0.1.x install bugs. Runs in a fresh ubuntu-latest container against the just-built image. | ~3 hours |
+| API key validation Layer 2 (live provider ping) | 0.1.4 ships format-check + clickable URLs (Layer 1); Layer 2 issues a single tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. | ~3 hours including the per-provider ping endpoints + per-provider error handling |
+| Yank 0.1.0–0.1.3 from PyPI | After 0.1.4 verifies clean on M1. Cleans the PyPI project page; pinned installs of old versions still work for reproducibility. | 5 minutes (`twine` upload + `pip yank`) |
+
+### Methodological reinforcement (third time this rule has earned a log entry)
+
+The pattern across the eval-quality sprints (FT v1 reranker), the post-deploy audit (embedding-dim mismatch), and now the install-path campaign is the same: **silent-failure paths in code or infrastructure compound with config that's read raw and not validated against ground truth at boot or in CI**. The runtime audit closes the code half (boot banner, hard-fail on dim mismatch). The install-path audit closes the infrastructure half. Both belong in the maintainer's standard toolkit, not as one-off responses to the most recent fire.

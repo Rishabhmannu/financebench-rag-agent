@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.1.3"
+      version="0.1.4"
 
 WORKDIR /app
 
@@ -62,6 +62,15 @@ COPY migrations/ migrations/
 
 # Change ownership and switch to non-root
 RUN chown -R appuser:appuser /app
+# 0.1.4: pre-create the HuggingFace cache directory with appuser ownership
+# BEFORE the USER switch and BEFORE the hf_cache volume mounts over it. On
+# first mount of an empty named volume, Docker copies the in-image directory's
+# permissions into the new volume. Without this step, the volume is created
+# root-owned, appuser can't write, BGE/docling downloads fail with PermissionError,
+# and sentence-transformers ends up loading a partial model cache that raises
+# "Unrecognized model in BAAI/bge-reranker-v2-m3". (0.1.3 M1 hit this.)
+RUN mkdir -p /home/appuser/.cache/huggingface && \
+    chown -R appuser:appuser /home/appuser/.cache
 USER appuser
 
 EXPOSE 8000

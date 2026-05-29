@@ -34,11 +34,31 @@ from cli.render import console, render_error, render_info, render_success
 DEFAULT_CLONE_PATH = Path.home() / ".financebench" / "repo"
 REPO_URL = "https://github.com/Rishabhmannu/financebench-rag-agent.git"
 
-_API_KEY_PROMPTS: list[tuple[str, str, bool]] = [
-    ("OPENAI_API_KEY",     "OpenAI API key (required — embeddings + gpt-4o-mini)", True),
-    ("ANTHROPIC_API_KEY",  "Anthropic API key (required — Claude Sonnet generator)", True),
-    ("VOYAGE_API_KEY",     "Voyage API key (optional — voyage-finance-2 embeddings)", False),
-    ("GROQ_API_KEY",       "Groq API key (optional — free tier; falls back to OpenAI)", False),
+# 0.1.4: each prompt carries the URL to obtain a key + the expected prefix
+# so we can format-check pasted values and warn on typos / wrong-provider
+# pastes. Modern terminals (iTerm2, macOS Terminal, VSCode terminal) auto-link
+# the URL to clickable. Input is masked at paste time (is_password=True below).
+_API_KEY_PROMPTS: list[tuple[str, str, bool, str, tuple[str, ...]]] = [
+    ("OPENAI_API_KEY",
+     "OpenAI API key (required — embeddings + gpt-4o-mini)",
+     True,
+     "https://platform.openai.com/api-keys",
+     ("sk-proj-", "sk-")),
+    ("ANTHROPIC_API_KEY",
+     "Anthropic API key (required — Claude Sonnet generator)",
+     True,
+     "https://console.anthropic.com/settings/keys",
+     ("sk-ant-",)),
+    ("VOYAGE_API_KEY",
+     "Voyage API key (optional — voyage-finance-2 embeddings)",
+     False,
+     "https://dash.voyageai.com/api-keys",
+     ("pa-",)),
+    ("GROQ_API_KEY",
+     "Groq API key (optional — free tier; falls back to OpenAI)",
+     False,
+     "https://console.groq.com/keys",
+     ("gsk_",)),
 ]
 
 _HEALTHCHECK_TIMEOUT_S = 360  # cold BGE download can take a few minutes
@@ -181,15 +201,31 @@ def _wizard_env_file(env_path: Path) -> None:
         render_info(f"No .env found. Creating {env_path}.")
 
     new_values: dict[str, str] = dict(existing)
-    for key, description, required in _API_KEY_PROMPTS:
+    for key, description, required, signup_url, expected_prefixes in _API_KEY_PROMPTS:
         current = existing.get(key, "")
         masked = ("•" * 6 + current[-4:]) if current else "[not set]"
+        # 0.1.4: print URL on its own line so the terminal can auto-link it.
+        # is_password=True echoes pasted/typed chars as •, so the key stays
+        # out of terminal scrollback (the M1 test cycle exposed plaintext
+        # keys in shared logs — never again).
+        console.print(f"  [bold]{description}[/bold]")
+        console.print(f"  [dim]Get one at: {signup_url}[/dim]")
         try:
-            entered = pt_prompt(f"  {description}\n  [current: {masked}] > ").strip()
+            entered = pt_prompt(
+                f"  [current: {masked}] > ",
+                is_password=True,
+            ).strip()
         except (EOFError, KeyboardInterrupt):
             render_info("Setup cancelled.")
             raise typer.Exit(1)
         if entered:
+            if not any(entered.startswith(p) for p in expected_prefixes):
+                prefix_hint = " or ".join(f"`{p}...`" for p in expected_prefixes)
+                console.print(
+                    f"  [yellow]Warning:[/] that doesn't look like a {key} value "
+                    f"(expected to start with {prefix_hint}). Saved anyway — "
+                    f"re-run setup to correct."
+                )
             new_values[key] = entered
         elif required and not current:
             render_error(f"{key} is required to start the API.")

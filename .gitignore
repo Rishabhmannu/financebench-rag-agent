@@ -162,3 +162,7 @@ data/models/reranker_ft_v2_partial_epoch1/
 
 # Publishing assets (mockups, reference images, drafts) — kept local
 publish-assets/
+
+# M1 install-path test logs — may contain pasted API keys from wizard prompts
+# until 0.1.4 introduces masked-input. Kept local-only by rule, not by accident.
+tests/m1-test/
