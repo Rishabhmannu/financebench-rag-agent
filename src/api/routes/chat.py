@@ -266,6 +266,18 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
     async def event_generator():
         final_state = None
 
+        # Per-stage timing — captured from langgraph's on_chain_start/end events
+        # which we already listen for to emit progress. No node-side changes
+        # needed. M1 test showed the reranker alone takes 35-40s on CPU and
+        # the first-query cold start of guardrails layer-2 LLM Guard adds ~3
+        # min of invisible time. Surfacing per-stage durations makes both
+        # measurable from the CLI and lets users + future-me distinguish
+        # "cold start" from "steady state" without reading docker logs.
+        import time as _time
+        _wall_start = _time.monotonic()
+        _node_starts: dict[str, float] = {}
+        _stage_timings_ms: dict[str, int] = {}
+
         try:
             async for event in graph.astream_events(
                 initial_state, config=config, version="v2"
@@ -273,16 +285,19 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                 kind = event.get("event", "")
                 name = event.get("name", "")
 
-                # Node start events — emit progress
+                # Node start events — emit progress + record start time
                 if kind == "on_chain_start" and name in _NODE_LABELS:
+                    _node_starts[name] = _time.monotonic()
                     yield json.dumps({
                         "type": "node_start",
                         "node": name,
                         "label": _NODE_LABELS[name],
                     })
 
-                # Node end events — capture final state
+                # Node end events — capture final state + record elapsed ms
                 elif kind == "on_chain_end" and name in _NODE_LABELS:
+                    if name in _node_starts:
+                        _stage_timings_ms[name] = int((_time.monotonic() - _node_starts.pop(name)) * 1000)
                     output = event.get("data", {}).get("output")
                     if isinstance(output, dict):
                         final_state = output
@@ -335,8 +350,9 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                 except Exception as e:
                     logger.warning(f"Failed to check graph state for interrupts: {e}")
 
-            # Normal completion — emit final event
+            # Normal completion — emit final event with timing
             cost_summary = req_cost.aggregate()
+            _wall_clock_s = round(_time.monotonic() - _wall_start, 1)
             if final_state:
                 metadata = final_state.get("response_metadata", {})
                 yield json.dumps({
@@ -348,6 +364,8 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     "thread_id": thread_id,
                     "cost_usd": cost_summary["cost_usd"],
                     "tokens": cost_summary["tokens"],
+                    "wall_clock_s": _wall_clock_s,
+                    "stage_timings_ms": _stage_timings_ms,
                 })
             else:
                 yield json.dumps({
@@ -359,6 +377,8 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     "thread_id": thread_id,
                     "cost_usd": cost_summary["cost_usd"],
                     "tokens": cost_summary["tokens"],
+                    "wall_clock_s": _wall_clock_s,
+                    "stage_timings_ms": _stage_timings_ms,
                 })
 
         except Exception as e:

@@ -229,6 +229,24 @@ def _run_turn(client: APIClient, message: str, session: slash.ChatSession) -> No
     session.session_tokens_in += int(tokens.get("input", 0))
     session.session_tokens_out += int(tokens.get("output", 0))
 
+    # Record per-turn observability data for /thread show + /timings.
+    # 0.1.2 enrichment per M1 test feedback ("/thread show didn't give much
+    # info"). Keep last 50 turns to bound memory.
+    session.history.append({
+        "turn": session.turn_count,
+        "query_preview": message[:80],
+        "cost_usd": float(cost),
+        "tokens_in": int(tokens.get("input", 0)),
+        "tokens_out": int(tokens.get("output", 0)),
+        "wall_clock_s": terminal.get("wall_clock_s"),
+        "stage_timings_ms": terminal.get("stage_timings_ms") or {},
+        "confidence": terminal.get("confidence"),
+        "n_sources": len(terminal.get("sources") or []),
+        "thread_id": session.thread_id,
+    })
+    if len(session.history) > 50:
+        session.history = session.history[-50:]
+
     if terminal.get("type") in ("pending_approval", "hitl_interrupt"):
         _wait_for_approval(client, terminal)
 

@@ -11,7 +11,12 @@ from httpx_sse import connect_sse
 from cli import credentials
 
 DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_TIMEOUT = 180.0
+# httpx default read-timeout is 5s; we used 180s in 0.1.1 which was tight
+# even on M4 Pro for a cold-start non-streaming chat. M1 test surfaced
+# ReadTimeouts on 3-4 min queries when guardrails was cold. Bump to 10 min;
+# users can always Ctrl+C if they want out early.
+DEFAULT_CONNECT_TIMEOUT = 10.0
+DEFAULT_READ_TIMEOUT = 600.0
 
 
 class APIError(Exception):
@@ -32,7 +37,12 @@ class APIClient:
         self.token = token
         self._client = httpx.Client(
             base_url=self.base_url,
-            timeout=httpx.Timeout(DEFAULT_TIMEOUT),
+            timeout=httpx.Timeout(
+                connect=DEFAULT_CONNECT_TIMEOUT,
+                read=DEFAULT_READ_TIMEOUT,
+                write=DEFAULT_READ_TIMEOUT,
+                pool=DEFAULT_READ_TIMEOUT,
+            ),
             headers={"Accept": "application/vnd.financebench.v1+json, application/json"},
         )
 

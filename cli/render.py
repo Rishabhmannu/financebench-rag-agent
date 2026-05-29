@@ -138,6 +138,8 @@ def render_final_footer(payload: dict) -> None:
     confidence = payload.get("confidence")
     cost_usd = payload.get("cost_usd")
     tokens = payload.get("tokens") or {}
+    wall_clock_s = payload.get("wall_clock_s")
+    stage_timings_ms = payload.get("stage_timings_ms") or {}
 
     footer_parts: list[str] = []
     if confidence is not None:
@@ -149,10 +151,28 @@ def render_final_footer(payload: dict) -> None:
         t_in = tokens.get("input", 0)
         t_out = tokens.get("output", 0)
         footer_parts.append(f"[dim]{t_in} in / {t_out} out[/dim]")
+    if wall_clock_s is not None:
+        # Color-code by latency band so slow turns are visually flagged. 60s
+        # is the steady-state benchmark on a warm M4 Pro; 120s+ means the
+        # M1 is hot or something's cold-starting.
+        wall_color = "green" if wall_clock_s < 60 else "yellow" if wall_clock_s < 120 else "red"
+        footer_parts.append(f"[{wall_color}]⏱ {wall_clock_s:.1f}s[/{wall_color}]")
 
     if footer_parts:
         console.print()
         console.print(" · ".join(footer_parts))
+
+    # Per-stage timing breakdown — only show stages that took >500ms so the
+    # footer stays scannable. Helps the M1 case where reranker dominates.
+    if stage_timings_ms:
+        notable = [(k, v) for k, v in stage_timings_ms.items() if v >= 500]
+        notable.sort(key=lambda kv: kv[1], reverse=True)
+        if notable:
+            stage_bits = []
+            for stage, ms in notable[:6]:
+                s = ms / 1000
+                stage_bits.append(f"[dim]{stage} {s:.1f}s[/dim]")
+            console.print(" · ".join(stage_bits))
 
 
 def render_hitl_panel(payload: dict) -> None:

@@ -120,6 +120,26 @@ def _resolve_repo_dir(repo_dir: str | None) -> Path:
 
     if DEFAULT_CLONE_PATH.exists() and (DEFAULT_CLONE_PATH / "src" / "api" / "main.py").exists():
         render_info(f"Using existing clone at {DEFAULT_CLONE_PATH}")
+        # 0.1.2: refresh the clone so `pip install -U` upgraders pick up the
+        # latest Dockerfile / pyproject.toml / .env.example. M1 test showed
+        # 0.1.0 → 0.1.1 upgraders had a stale clone, so docker rebuilt from
+        # 0.1.0 source and missed peft + the new defaults.
+        if (DEFAULT_CLONE_PATH / ".git").exists() and shutil.which("git"):
+            try:
+                rc = subprocess.run(
+                    ["git", "pull", "--ff-only"],
+                    cwd=DEFAULT_CLONE_PATH,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if rc.returncode == 0:
+                    msg = rc.stdout.strip().split("\n")[-1] if rc.stdout.strip() else "(up to date)"
+                    render_info(f"git pull: {msg}")
+                else:
+                    render_info(f"git pull skipped: {(rc.stderr or rc.stdout).strip()[:100]}")
+            except Exception:  # noqa: BLE001
+                pass
         return DEFAULT_CLONE_PATH
 
     if not shutil.which("git"):
@@ -145,6 +165,7 @@ def _wizard_env_file(env_path: Path) -> None:
 
     if existing:
         render_info(f".env already exists at {env_path}. Press Enter at any prompt to keep the current value.")
+        _migrate_stale_env_defaults(existing)
     else:
         render_info(f"No .env found. Creating {env_path}.")
 
@@ -171,6 +192,62 @@ def _wizard_env_file(env_path: Path) -> None:
 
     _write_env_file(env_path, new_values)
     render_success(f".env saved at {env_path} ({len(new_values)} keys set)")
+
+
+# 0.1.2 — stale .env detection. Upgraders from 0.1.0 carry over defaults that
+# changed in 0.1.1 / 0.1.2. Wizard preserves their existing values for safety
+# (we don't silently rewrite their config), but warns + prompts to update.
+_STALE_DEFAULTS = [
+    # (env_key, stale_value, new_value, why_it_matters)
+    (
+        "EMBEDDING_MODEL", "text-embedding-3-large", "text-embedding-3-small",
+        "3-large costs ~6x per token. 3-small is the new default in 0.1.1+.",
+    ),
+    (
+        "EMBEDDING_DIMENSIONS", "3072", "1536",
+        "Must match the model. Re-seed required if changed (delete + re-seed corpus).",
+    ),
+    (
+        "USE_GROQ_FAST_PATH", "true", "false",
+        "Groq free tier rate-limits surprise installers; OpenAI is the safe default.",
+    ),
+    (
+        "RERANKER_ADAPTER_PATH", "data/models/reranker_ft_v1", "",
+        "FT v1 regressed -5.34pp per Sprint 7.19 audit. Stock BGE is production.",
+    ),
+]
+
+
+def _migrate_stale_env_defaults(existing: dict[str, str]) -> None:
+    """Detect known-stale .env values from older releases and offer to update.
+
+    We don't silently rewrite — embedding-dim changes need a re-seed, and
+    flipping providers mid-config could break things. Just warn the user
+    with the recommended values; they keep manual control."""
+    flagged = []
+    for key, stale, new, why in _STALE_DEFAULTS:
+        current = (existing.get(key) or "").strip()
+        if current.lower() == stale.lower():
+            flagged.append((key, stale, new, why))
+
+    if not flagged:
+        return
+
+    render_info(
+        "Detected .env values from a previous release (these still work, "
+        "but newer defaults are recommended):"
+    )
+    for key, stale, new, why in flagged:
+        new_str = new if new else "(commented out / unset)"
+        console.print(f"  [yellow]{key}={stale}[/yellow] → recommended [green]{new_str}[/green]")
+        console.print(f"    [dim]{why}[/dim]")
+    console.print(
+        "\n[dim]To migrate, edit "
+        f"{Path.home() / '.financebench' / 'repo' / '.env'} manually. "
+        "If you change EMBEDDING_MODEL/DIMENSIONS you'll also need to drop "
+        "+ re-seed the qdrant collection (the dim-mismatch boot check will "
+        "tell you exactly which command).[/dim]\n"
+    )
 
 
 def _parse_env_file(p: Path) -> dict[str, str]:
@@ -220,11 +297,19 @@ def _bring_up_stack(repo_path: Path, compose_file: str) -> None:
         render_error("Docker is not installed or not on PATH. Install Docker Desktop and try again.")
         raise typer.Exit(1)
 
-    cmd = ["docker", "compose", "-f", compose_file, "up", "-d"]
+    # 0.1.2: always pass --build so an image rebuild fires when the underlying
+    # Dockerfile / pyproject.toml changes. Without this, `pip install -U` users
+    # silently kept running the 0.1.0 api image even after the wheel was
+    # upgraded — the M1 hit this with the peft import error.
+    cmd = ["docker", "compose", "-f", compose_file, "up", "-d", "--build"]
     render_info(f"Bringing up the stack: {' '.join(shlex.quote(c) for c in cmd)}")
+    render_info(
+        "(First-time builds take 5-15 min on Apple Silicon — pip resolves "
+        "torch + transformers + langgraph. Subsequent runs use cached layers.)"
+    )
     rc = subprocess.run(cmd, cwd=repo_path, check=False).returncode
     if rc != 0:
-        render_error(f"docker compose up failed (exit {rc}). Check Docker Desktop is running.")
+        render_error(f"docker compose up --build failed (exit {rc}). Check Docker Desktop is running.")
         raise typer.Exit(1)
     render_success("Containers started.")
 

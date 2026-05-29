@@ -5,9 +5,21 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libxcb1 \
     && rm -rf /var/lib/apt/lists/*
+# libxcb1 added in 0.1.2 — docling's PDF renderer needs it for table
+# extraction. Pre-0.1.2 every PDF ingest emitted an ImportError and silently
+# fell back to pypdf (functional but noisy in setup logs).
 
 COPY pyproject.toml README.md ./
+# 0.1.2: install CPU-only torch FIRST so [backend]'s sentence-transformers
+# doesn't pull the 2-4 GB of nvidia-cu* libs as transitive deps. M1 build
+# was burning ~20 min downloading CUDA libraries that ARM64 can't use.
+# Once torch is satisfied from the CPU index, .[backend] sees it as
+# already-installed and skips the GPU variant.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+    torch torchvision
+
 # Backend deps are gated behind the [backend] extra as of 0.1.1 so the
 # PyPI wheel stays lean for CLI installers. The api container needs the
 # full backend toolchain, so we explicitly install with [backend].
@@ -16,9 +28,15 @@ RUN pip install --no-cache-dir ".[backend]"
 # === Runtime stage ===
 FROM python:3.12-slim
 
+# Runtime needs libxcb1 too (the build-stage install only landed in /usr/lib
+# of the builder image; we're copying just site-packages + scripts across).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
 LABEL maintainer="Rishabh" \
-      description="Enterprise RAG Agent API" \
-      version="0.1.1"
+      description="FinanceBench RAG Agent API" \
+      version="0.1.2"
 
 WORKDIR /app
 
