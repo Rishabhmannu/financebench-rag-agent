@@ -1,6 +1,10 @@
 services:
   api:
-    build: .
+    # 0.1.5: build.args.GIT_SHA — see compose.minimal.yml for rationale.
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     ports:
       - "8000:8000"
     env_file: .env

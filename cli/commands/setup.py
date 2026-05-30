@@ -344,6 +344,25 @@ def _bring_up_stack(repo_path: Path, compose_file: str) -> None:
         render_error("Docker is not installed or not on PATH. Install Docker Desktop and try again.")
         raise typer.Exit(1)
 
+    # 0.1.5: capture the host repo's git sha and surface it to docker compose
+    # via the GIT_SHA env var, which compose substitutes into the api service's
+    # build.args block (see compose.minimal.yml + docker-compose.yml). The
+    # Dockerfile's ARG GIT_SHA → ENV GIT_SHA wiring then carries it into the
+    # container where _git_sha() in src/api/main.py reads it. Without this the
+    # banner reports "sha unknown" because the container has no .git/ to call
+    # `git rev-parse HEAD` against. Best-effort — failures fall back to "unknown".
+    env = os.environ.copy()
+    if shutil.which("git"):
+        try:
+            env["GIT_SHA"] = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo_path,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+        except Exception:  # noqa: BLE001
+            pass
+
     # 0.1.2: always pass --build so an image rebuild fires when the underlying
     # Dockerfile / pyproject.toml changes. Without this, `pip install -U` users
     # silently kept running the 0.1.0 api image even after the wheel was
@@ -354,7 +373,7 @@ def _bring_up_stack(repo_path: Path, compose_file: str) -> None:
         "(First-time builds take 5-15 min on Apple Silicon — pip resolves "
         "torch + transformers + langgraph. Subsequent runs use cached layers.)"
     )
-    rc = subprocess.run(cmd, cwd=repo_path, check=False).returncode
+    rc = subprocess.run(cmd, cwd=repo_path, env=env, check=False).returncode
     if rc != 0:
         render_error(f"docker compose up --build failed (exit {rc}). Check Docker Desktop is running.")
         raise typer.Exit(1)

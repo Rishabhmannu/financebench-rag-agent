@@ -123,11 +123,20 @@ def check_injection_llm(text: str) -> tuple[bool, float]:
 # --- PII Detection (lazy singleton for Presidio engines) ---
 _analyzer = None
 _anonymizer = None
+# 0.1.5: failure-sentinel. If initialization fails once (e.g. spaCy model
+# missing), every subsequent _get_presidio_engines() call would re-attempt
+# AnalyzerEngine() — which triggers spaCy's auto-download fallback. On the M1
+# image pre-0.1.5, that was a 400 MB re-download per chat query, eating ~130s
+# of wall time while silently returning "Presidio not available". Once we've
+# decided init can't succeed, short-circuit forever.
+_init_failed = False
 
 
 def _get_presidio_engines():
     """Lazy-initialize Presidio engines (avoids reloading spaCy model on every call)."""
-    global _analyzer, _anonymizer
+    global _analyzer, _anonymizer, _init_failed
+    if _init_failed:
+        return None, None
     if _analyzer is None:
         try:
             from presidio_analyzer import AnalyzerEngine
@@ -138,6 +147,8 @@ def _get_presidio_engines():
             logger.info("Presidio engines initialized successfully")
         except Exception as e:
             logger.warning(f"Failed to initialize Presidio engines: {e}")
+            _init_failed = True
+            return None, None
     return _analyzer, _anonymizer
 
 
@@ -145,7 +156,9 @@ def detect_pii(text: str) -> tuple[str, list[dict]]:
     """Detect and redact PII using Presidio. Returns (sanitized_text, entities)."""
     analyzer, anonymizer = _get_presidio_engines()
     if analyzer is None or anonymizer is None:
-        logger.warning("Presidio not available, skipping PII detection")
+        # No warning log here — _get_presidio_engines logged once at init time;
+        # logging on every call (every guardrails invocation = every chat query)
+        # would flood the log and serves no diagnostic purpose.
         return text, []
 
     try:

@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="FinanceBench RAG Agent API",
     description="Enterprise Financial Document Q&A with RBAC, Guardrails, and Multi-Agent Pipeline",
-    version="0.1.4",
+    version="0.1.5",
     lifespan=lifespan,
 )
 
@@ -113,6 +113,14 @@ app.add_middleware(
 
 @lru_cache(maxsize=1)
 def _git_sha() -> str:
+    # 0.1.5: prefer the GIT_SHA env var (injected at docker build time via
+    # ARG → ENV in the Dockerfile, value passed by the wizard's
+    # --build-arg GIT_SHA=$(git rev-parse HEAD)). Container has no .git/ so
+    # subprocess fallback always returned "unknown" — the banner reported
+    # "sha unknown" on every running container before this.
+    env_sha = os.environ.get("GIT_SHA", "").strip()
+    if env_sha and env_sha != "unknown":
+        return env_sha[:12]
     try:
         out = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL

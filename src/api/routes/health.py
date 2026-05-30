@@ -80,6 +80,21 @@ async def warm():
     if res is not None:
         loaded["guardrails"] = res
 
+    # 4b. Presidio PII detection — spaCy en_core_web_lg loads on first call.
+    # Pre-0.1.5 this triggered a 400 MB pip install --user fallback per chat
+    # query because the model wasn't in the image; 0.1.5 pre-installs the model
+    # in the Dockerfile, but we still warm here so any future regression
+    # (missing model in a new base image, etc.) surfaces as a "Components
+    # failed to load" wizard error instead of silent per-query 130s waste.
+    def _warm_pii():
+        from src.services.guardrails_service import _get_presidio_engines, detect_pii
+        detect_pii("warmup")
+        analyzer, _ = _get_presidio_engines()
+        return "Presidio" if analyzer is not None else "presidio-unavailable"
+    res = _timed("pii_detection", _warm_pii)
+    if res is not None:
+        loaded["pii_detection"] = res
+
     # 5. Entity-extractor LLM — one tiny invoke to warm the HTTP pool.
     def _warm_entity():
         from langchain_core.messages import HumanMessage

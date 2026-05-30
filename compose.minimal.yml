@@ -8,7 +8,14 @@
 
 services:
   api:
-    build: .
+    # 0.1.5: build.args.GIT_SHA — passes the host's `git rev-parse HEAD` (set
+    # in the env by cli/commands/setup.py:_bring_up_stack) into the Dockerfile's
+    # ARG GIT_SHA → ENV GIT_SHA wiring. _git_sha() in src/api/main.py reads
+    # the resulting ENV. Without this the banner reports "sha unknown".
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     ports:
       - "8000:8000"
     env_file: .env

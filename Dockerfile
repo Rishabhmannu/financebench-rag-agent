@@ -6,10 +6,14 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libxcb1 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
-# libxcb1 added in 0.1.2 — docling's PDF renderer needs it for table
-# extraction. Pre-0.1.2 every PDF ingest emitted an ImportError and silently
-# fell back to pypdf (functional but noisy in setup logs).
+# libxcb1 added in 0.1.2 — docling's PDF renderer needs it for table extraction.
+# libgl1 added in 0.1.5 — docling's image-rendering pipeline imports OpenCV
+# which dlopen()s libGL.so.1. Without it, every PDF ingest logs "ImportError:
+# libGL.so.1: cannot open shared object file" and falls back to pypdf. Pypdf
+# is the canonical choice anyway, but the noisy fallback wastes ~30s per PDF
+# trying docling-and-failing during the seed step.
 
 COPY pyproject.toml README.md ./
 # 0.1.2: install CPU-only torch FIRST so [backend]'s sentence-transformers
@@ -25,18 +29,42 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
 # full backend toolchain, so we explicitly install with [backend].
 RUN pip install --no-cache-dir ".[backend]"
 
+# 0.1.5: pre-install spaCy en_core_web_lg into system site-packages while we're
+# still root in the builder stage. presidio_analyzer loads this model the first
+# time detect_pii() runs; without it pre-installed, presidio's auto-download
+# falls back to `pip install --user` (because the runtime container is appuser,
+# not root), the model lands in /home/appuser/.local/ which spaCy's resolver
+# doesn't search, and AnalyzerEngine() raises E050 every single call. The
+# singleton cache never gets populated (see 0.1.5 guardrails_service fix), so
+# every chat query repeats the 400 MB retry loop — ~130s of wasted wall time
+# per query, with PII detection silently disabled. Pre-installing here means
+# the model lives in /usr/local/lib/python3.12/site-packages where appuser can
+# read it but not write it; spaCy finds it; presidio initializes once.
+RUN python -m spacy download en_core_web_lg
+
 # === Runtime stage ===
 FROM python:3.12-slim
 
-# Runtime needs libxcb1 too (the build-stage install only landed in /usr/lib
-# of the builder image; we're copying just site-packages + scripts across).
+# Runtime needs libxcb1 + libgl1 too (the build-stage install only landed in
+# /usr/lib of the builder image; we're copying just site-packages + scripts).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb1 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.1.4"
+      version="0.1.5"
+
+# 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
+# src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/
+# (we deliberately don't COPY .git/ — it would bloat the image), so the banner
+# reports "sha unknown" on every running container. Wizard's
+# _bring_up_stack() passes --build-arg GIT_SHA=$(git rev-parse HEAD) from the
+# host checkout (where .git/ exists), and _git_sha() reads $GIT_SHA before
+# falling back to subprocess.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
 
 WORKDIR /app
 
