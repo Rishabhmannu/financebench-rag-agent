@@ -22,7 +22,6 @@ from cli.doctor.checks import (
     check_git,
     check_platform,
     check_port_free,
-    check_ram,
     check_url_reachable,
 )
 from cli.doctor.render import (
@@ -82,7 +81,6 @@ def run_all_checks(skip_network: bool = False) -> list[CheckResult]:
 
     # Resources
     _run(check_disk_space)
-    _run(check_ram)
 
     # Ports
     for port, service, blocking in _SERVICE_PORTS:

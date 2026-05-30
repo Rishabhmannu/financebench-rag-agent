@@ -101,20 +101,83 @@ def test_port_free():
     assert r.tier == Tier.WARNING  # non-blocking by default
 
 
-def test_port_blocked():
-    # Open a real socket on a random port, then test that doctor sees it
+def test_port_blocked_by_stranger():
+    """Port held by something that isn't our compose stack → FAIL."""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(("127.0.0.1", 0))
     port = s.getsockname()[1]
     s.listen(1)
     try:
-        r = checks.check_port_free(port, "test_service", blocking=True)
+        # Force "not our stack" so we hit the FAIL path
+        with patch("cli.doctor.checks._find_own_stack_container", return_value=None):
+            r = checks.check_port_free(port, "test_service", blocking=True)
         assert r.status == Status.FAIL
         assert r.tier == Tier.BLOCKING
         assert "In use" in r.summary
     finally:
         s.close()
+
+
+def test_port_blocked_by_own_stack_reports_pass():
+    """Port held by our own running compose container → PASS, not FAIL.
+
+    0.1.7 regression fix: pre-0.1.7, doctor would lsof the port, find Docker
+    Desktop's backend PID, and recommend `kill <docker pid>` — which would
+    kill Docker Desktop itself.
+    """
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.listen(1)
+    try:
+        with patch(
+            "cli.doctor.checks._find_own_stack_container", return_value="repo-api-1"
+        ):
+            r = checks.check_port_free(port, "api", blocking=True)
+        assert r.status == Status.PASS
+        assert "repo-api-1" in r.summary
+        assert "your running stack" in r.summary
+        assert r.fix is None  # no "kill" recipe for our own stack
+    finally:
+        s.close()
+
+
+def test_find_own_stack_container_matches_compose_service_pattern():
+    """`docker ps` output with our compose-generated names → matched."""
+    fake_output = (
+        "repo-api-1\t0.0.0.0:8000->8000/tcp\n"
+        "repo-qdrant-1\t0.0.0.0:6333->6333/tcp, 0.0.0.0:6334->6334/tcp\n"
+        "repo-postgres-1\t0.0.0.0:5432->5432/tcp\n"
+        "other-app-1\t0.0.0.0:9999->9999/tcp\n"
+    )
+    with (
+        patch("cli.doctor.checks.shutil.which", return_value="/usr/local/bin/docker"),
+        patch("cli.doctor.checks.subprocess.check_output", return_value=fake_output),
+    ):
+        assert checks._find_own_stack_container(8000) == "repo-api-1"
+        assert checks._find_own_stack_container(6333) == "repo-qdrant-1"
+        assert checks._find_own_stack_container(5432) == "repo-postgres-1"
+        # Port 9999 is held by 'other-app-1' — doesn't match our service suffixes
+        assert checks._find_own_stack_container(9999) is None
+        # Port not held by anyone in the output
+        assert checks._find_own_stack_container(7777) is None
+
+
+def test_find_own_stack_container_handles_no_docker():
+    """If docker isn't on PATH, helper returns None — no crash."""
+    with patch("cli.doctor.checks.shutil.which", return_value=None):
+        assert checks._find_own_stack_container(8000) is None
+
+
+def test_find_own_stack_container_handles_docker_error():
+    """If `docker ps` errors, helper returns None — no crash."""
+    with (
+        patch("cli.doctor.checks.shutil.which", return_value="/usr/local/bin/docker"),
+        patch("cli.doctor.checks.subprocess.check_output", side_effect=Exception("docker down")),
+    ):
+        assert checks._find_own_stack_container(8000) is None
 
 
 # --- Network ---------------------------------------------------------------

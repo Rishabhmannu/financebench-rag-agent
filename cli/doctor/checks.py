@@ -23,9 +23,8 @@ _FINANCEBENCH_DIR = Path.home() / ".financebench"
 _VERSION_CACHE_FILE = _FINANCEBENCH_DIR / "version_check.json"
 _VERSION_CACHE_TTL_S = 3600
 
-# Disk + RAM thresholds (chosen after the 0.1.x install-path cycle).
+# Disk threshold (chosen after the 0.1.x install-path cycle).
 MIN_FREE_DISK_GB = 6.0
-MIN_FREE_RAM_GB = 4.0
 
 
 # --- System ---------------------------------------------------------------
@@ -213,39 +212,58 @@ def check_disk_space(min_free_gb: float = MIN_FREE_DISK_GB) -> CheckResult:
     )
 
 
-def check_ram(min_free_gb: float = MIN_FREE_RAM_GB) -> CheckResult:
-    try:
-        import psutil  # noqa: PLC0415
-    except ImportError:
-        return CheckResult(
-            name="RAM",
-            status=Status.INFO,
-            tier=Tier.INFO,
-            summary="(skipped — psutil not installed)",
-            group="Resources",
-        )
-    vm = psutil.virtual_memory()
-    avail_gb = vm.available / (1024 ** 3)
-    total_gb = vm.total / (1024 ** 3)
-    if avail_gb >= min_free_gb:
-        return CheckResult(
-            name="RAM",
-            status=Status.PASS,
-            tier=Tier.WARNING,
-            summary=f"{avail_gb:.1f} GB free / {total_gb:.0f} GB total",
-            group="Resources",
-        )
-    return CheckResult(
-        name="RAM",
-        status=Status.WARN,
-        tier=Tier.WARNING,
-        summary=f"{avail_gb:.1f} GB free / {total_gb:.0f} GB total (recommend ≥ {min_free_gb:.0f} GB)",
-        fix="Close memory-heavy apps; backend stack uses ~3 GB at idle",
-        group="Resources",
-    )
+# 0.1.7: RAM check removed. The previous psutil.virtual_memory().available
+# reading was too pessimistic on macOS (the OS aggressively caches in RAM and
+# reports `available` low even when memory pressure is fine, plus it pages to
+# SSD-backed swap under pressure). On 16 GB Apple Silicon, "3.2 GB available"
+# triggered a WARN that was almost always false — the system had plenty of
+# headroom. Removing the check entirely is cleaner than trying to engineer a
+# threshold + platform-specific swap logic for what's effectively a non-issue
+# in practice. If we ever see a real OOM regression, a cross-platform RAM
+# check can come back via vm_stat parsing on Darwin and meminfo on Linux.
 
 
 # --- Ports ----------------------------------------------------------------
+
+# Container-name suffixes that docker compose generates for our four services
+# (project_name + "-" + service + "-1"). Used by _find_own_stack_container
+# to recognize "this port is held by MY stack, not a stranger".
+_OWN_SERVICE_SUFFIXES = ("-api-1", "-qdrant-1", "-postgres-1", "-redis-1")
+
+
+def _find_own_stack_container(port: int) -> str | None:
+    """Return the container name (e.g. 'repo-api-1') if `port` is published by
+    one of our compose stack containers. Otherwise None.
+
+    Pre-0.1.7, when the user's own stack was running, doctor would lsof the
+    port, find that Docker Desktop's backend (com.docker.backend) held it,
+    and report "kill <pid>" as the fix — which would terminate Docker
+    Desktop and break the user's stack. Now we check `docker ps` first and
+    distinguish "ours, fine" from "someone else's, problem".
+    """
+    if not shutil.which("docker"):
+        return None
+    try:
+        out = subprocess.check_output(
+            ["docker", "ps", "--format", "{{.Names}}\t{{.Ports}}"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+    port_marker = f":{port}->"
+    for line in out.splitlines():
+        if "\t" not in line:
+            continue
+        name, ports = line.split("\t", 1)
+        if not any(name.endswith(suffix) for suffix in _OWN_SERVICE_SUFFIXES):
+            continue
+        if port_marker in ports:
+            return name
+    return None
+
 
 def _lsof_owner(port: int) -> str | None:
     """Find the PID + command name holding `port`, or None if unknowable.
@@ -280,7 +298,8 @@ def _lsof_owner(port: int) -> str | None:
 
 
 def check_port_free(port: int, service: str, blocking: bool = False) -> CheckResult:
-    """Try to bind 127.0.0.1:port — succeeds iff the port is free."""
+    """Try to bind 127.0.0.1:port. If busy, check if our own stack holds it
+    before reporting a conflict."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.bind(("127.0.0.1", port))
@@ -294,6 +313,20 @@ def check_port_free(port: int, service: str, blocking: bool = False) -> CheckRes
         )
     except OSError:
         sock.close()
+        # 0.1.7: distinguish "our own running stack" from "real conflict". Our
+        # wizard's `up -d --build` is idempotent — re-running with our stack
+        # already up is fine. Pre-0.1.7, doctor would lsof the port, find
+        # Docker Desktop's backend PID, and recommend killing it (which would
+        # take Docker Desktop down). Now: docker ps lookup first.
+        own_container = _find_own_stack_container(port)
+        if own_container is not None:
+            return CheckResult(
+                name=f"Port {port} ({service})",
+                status=Status.PASS,
+                tier=Tier.BLOCKING if blocking else Tier.WARNING,
+                summary=f"in use by {own_container} (your running stack)",
+                group="Ports",
+            )
         owner = _lsof_owner(port) or "unknown process"
         pid_hint = owner.split("PID ")[-1].split(" ")[0] if "PID" in owner else "<pid>"
         return CheckResult(

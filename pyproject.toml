@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.1.6"
+version = "0.1.7"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -37,10 +37,6 @@ dependencies = [
     "httpx>=0.28,<1.0",
     "httpx-sse>=0.4,<1.0",
     "python-dotenv>=1.0,<2.0",
-    # 0.1.6: psutil powers the RAM check in `financebench doctor`. ~600KB on
-    # disk, binary wheels for all platforms. Doctor falls back gracefully if
-    # the import ever fails, so this isn't load-bearing — just nicer UX.
-    "psutil>=5.9,<8.0",
 ]
 
 [project.optional-dependencies]
