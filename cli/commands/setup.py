@@ -121,12 +121,37 @@ def setup(
 
     console.print()
     if verified:
-        render_success("Setup complete. Try: financebench chat")
+        render_success("Setup complete.")
+        # 0.1.8: explicit two-step next-steps block. Pre-0.1.8 the wizard
+        # ended with "Try: financebench chat" — a first-time user had no
+        # signal that login is the prerequisite, what roles exist, or that
+        # /help is the way to discover slash commands.
+        console.print()
+        console.print("[bold]Next steps:[/bold]")
+        console.print(
+            "  [bold cyan]1.[/bold cyan] financebench login -u analyst   "
+            "[dim]# available roles: analyst | finance | hr | clevel | admin[/dim]"
+        )
+        console.print(
+            "  [bold cyan]2.[/bold cyan] financebench chat                "
+            "[dim]# REPL · /help for slash commands · /status for backend info[/dim]"
+        )
+        console.print()
     else:
         render_error(
             "Setup completed with WARNINGS — chat may not work correctly. "
             "See the lines above + `docker compose logs api` for details."
         )
+        console.print()
+        console.print("[bold]Diagnose:[/bold]")
+        console.print(
+            "  [bold cyan]·[/bold cyan] docker compose -f compose.minimal.yml logs api --tail 100"
+        )
+        console.print(
+            "  [bold cyan]·[/bold cyan] financebench doctor   "
+            "[dim]# environment preflight check[/dim]"
+        )
+        console.print()
     console.print(
         "[dim]Tip: export FB_PROFILE=admin (or any name) in different terminals "
         "to keep separate identities for the multi-party HITL demo.[/dim]"

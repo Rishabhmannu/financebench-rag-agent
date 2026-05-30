@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.1.7"
+      version="0.1.8"
 
 # 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
 # src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/

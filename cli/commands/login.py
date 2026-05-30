@@ -54,3 +54,5 @@ def login(
 
     credentials.save(token=token, user_id=user_id, base_url=base_url)
     render_success(f"Logged in as {user_id} (role={role}) -> {base_url}")
+    from cli.render import console
+    console.print("[dim]Next: financebench chat   (interactive REPL · /help for slash commands)[/dim]")

@@ -41,6 +41,7 @@ def upgrade(
     _compose_up(path, compose_file)
     _wait_for_health()
     render_success("Upgrade complete. Volumes preserved — chat history + ingested corpora intact.")
+    console.print("[dim]Next: financebench chat   (the new build is live; banner will show the updated sha)[/dim]")
 
 
 def _resolve_repo(repo_dir: str | None) -> Path:

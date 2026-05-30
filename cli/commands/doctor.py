@@ -32,3 +32,11 @@ def doctor(
     render_report(results, elapsed_s=elapsed)
     if any_blocking_failed(results):
         raise typer.Exit(1)
+    # 0.1.8: when standalone doctor finishes clean (or warnings-only), point
+    # the user at the next step. When called from setup (via _run_doctor in
+    # cli/commands/setup.py), this hint is skipped — setup continues its own
+    # flow, this command isn't on the path.
+    from cli.render import console
+    console.print(
+        "[dim]Next: financebench setup   (bring up the stack — wizard handles env, build, seed, verify)[/dim]"
+    )

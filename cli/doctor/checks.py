@@ -162,28 +162,24 @@ def check_buildkit() -> CheckResult:
 
     env_set = os.environ.get("DOCKER_BUILDKIT") == "1"
 
-    if has_buildx and env_set:
-        return CheckResult(
-            name="Docker Buildkit",
-            status=Status.INFO,
-            tier=Tier.INFO,
-            summary="Enabled (faster cached builds)",
-            group="System",
-        )
+    # 0.1.8: modern Docker Desktop enables Buildkit by default (no env var
+    # needed). Previously we recommended `export DOCKER_BUILDKIT=1` when the
+    # env wasn't set, which was confusing for users on Docker Desktop 23+
+    # where Buildkit is the default. Now we only flag if buildx is actually
+    # missing — the env var nudge is gone.
     if has_buildx:
         return CheckResult(
             name="Docker Buildkit",
             status=Status.INFO,
             tier=Tier.INFO,
-            summary="Available but DOCKER_BUILDKIT not set",
-            fix="Add `export DOCKER_BUILDKIT=1` to your ~/.zshrc (or shell rc) for faster builds",
+            summary="Available",
             group="System",
         )
     return CheckResult(
         name="Docker Buildkit",
         status=Status.INFO,
         tier=Tier.INFO,
-        summary="Unavailable",
+        summary="Unavailable (Docker Desktop 23+ should have it; older docker may need manual install)",
         group="System",
     )
 

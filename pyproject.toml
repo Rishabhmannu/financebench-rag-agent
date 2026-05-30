@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.1.7"
+version = "0.1.8"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -58,7 +58,14 @@ backend = [
     "python-multipart>=0.0.18",
 
     # Vector DB
-    "qdrant-client>=1.13,<2.0",
+    # 0.1.8: pin client tighter to match the qdrant 1.13.2 server image used
+    # by compose.minimal.yml + docker-compose.yml. Pre-pin, pip resolved to
+    # 1.18.x and emitted a UserWarning on every Qdrant call:
+    # "client 1.18.0 is incompatible with server 1.13.2 — minor version
+    # difference must not exceed 1." Functional but log-noisy. Bumping the
+    # server image to a 1.18-compatible release is a 0.2.0-scoped decision
+    # (volume reflow risk); pinning the client is the cheap fix.
+    "qdrant-client>=1.13,<1.15",
     "fastembed>=0.4,<1.0",
 
     # Reranker — sentence-transformers ships the BGE cross-encoder; peft is

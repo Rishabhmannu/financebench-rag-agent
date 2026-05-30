@@ -53,6 +53,7 @@ class ChatSession:
 
 _HELP = """
 Available slash commands:
+  /status            Backend version + sha + identity + session totals (on-demand banner)
   /role <name>       Re-login as analyst | finance | hr | clevel | admin
   /permissions       Show current role's RBAC access (doc types, confidentiality, HITL threshold)
   /thread new        Reset thread (start fresh conversation)
@@ -101,6 +102,9 @@ def handle(text: str, session: ChatSession) -> bool:
     if cmd == "/clear":
         os.system("clear" if os.name != "nt" else "cls")
         return True
+
+    if cmd == "/status":
+        return _handle_status(session)
 
     if cmd == "/role":
         if not args:
@@ -152,6 +156,57 @@ def _safe_int(s: str) -> int:
         return max(1, int(s))
     except (TypeError, ValueError):
         return 20
+
+
+def _handle_status(session: ChatSession) -> bool:
+    """On-demand snapshot of backend version + identity + session totals.
+
+    0.1.8: surfaces the same info as the boot banner but at REPL time. M1
+    test7 user typed `/status` (intuitive name) and got 'Unknown slash
+    command' because the banner-equivalent didn't exist as a slash."""
+    import os
+
+    from cli import __version__ as cli_version
+    from cli.credentials import current_profile
+
+    api_version = api_semver = api_git_sha = None
+    client = APIClient(base_url=session.base_url, token=session.token)
+    try:
+        v = client.get("/version", auth_required=False)
+        api_version = v.get("api_version")
+        api_semver = v.get("semver")
+        api_git_sha = v.get("git_sha")
+    except Exception:  # noqa: BLE001
+        pass  # best-effort; render placeholders below
+    finally:
+        client.close()
+
+    table = Table(show_header=False, show_lines=False, box=None, pad_edge=False)
+    table.add_column("Field", style="dim")
+    table.add_column("Value")
+    table.add_row("Backend URL", session.base_url)
+    table.add_row(
+        "API",
+        f"v{api_version or '?'}  (semver {api_semver or '?'}, sha {(api_git_sha or '?')[:7]})",
+    )
+    table.add_row("CLI", cli_version)
+    table.add_row("Logged in as", f"{session.user_id}  (role={session.role})")
+    table.add_row("Profile", current_profile())
+    fb_profile_env = os.environ.get("FB_PROFILE", "")
+    if fb_profile_env and fb_profile_env != "default":
+        table.add_row("FB_PROFILE", fb_profile_env)
+    table.add_row("Thread", session.thread_id or "[dim](new — first query starts one)[/dim]")
+    table.add_row("Turns this session", str(session.turn_count))
+    table.add_row(
+        "Cumulative cost",
+        f"${session.session_cost_usd:.4f}",
+    )
+    table.add_row(
+        "Cumulative tokens",
+        f"{session.session_tokens_in:,} in / {session.session_tokens_out:,} out",
+    )
+    console.print(table)
+    return True
 
 
 def _handle_permissions(session: ChatSession) -> bool:

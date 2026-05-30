@@ -40,6 +40,14 @@ def down(
         render_error(f"docker compose down failed (exit {rc}).")
         raise typer.Exit(1)
     render_success("Stack stopped." + (" Volumes removed." if volumes else " Volumes preserved."))
+    from cli.render import console
+    if volumes:
+        console.print("[dim]Next: financebench setup   (fresh start — corpora will re-seed)[/dim]")
+    else:
+        console.print(
+            "[dim]Next: financebench setup   (back up; volumes preserved)"
+            "  ·  financebench upgrade   (pull latest + rebuild + restart)[/dim]"
+        )
 
 
 def _resolve_repo(repo_dir: str | None) -> Path:
