@@ -1,0 +1,394 @@
+"""Individual doctor checks. Each function returns a CheckResult.
+
+Each check is small, side-effect-free (read-only), and self-contained so it
+can be unit-tested in isolation by mocking the dependency (`shutil.which`,
+`socket.bind`, `httpx.head`, etc.).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import platform
+import shutil
+import socket
+import subprocess
+import time
+from pathlib import Path
+
+from cli.doctor.types import CheckResult, Status, Tier
+
+# Path the wizard writes to (so doctor can re-use the dir for cache files).
+_FINANCEBENCH_DIR = Path.home() / ".financebench"
+_VERSION_CACHE_FILE = _FINANCEBENCH_DIR / "version_check.json"
+_VERSION_CACHE_TTL_S = 3600
+
+# Disk + RAM thresholds (chosen after the 0.1.x install-path cycle).
+MIN_FREE_DISK_GB = 6.0
+MIN_FREE_RAM_GB = 4.0
+
+
+# --- System ---------------------------------------------------------------
+
+def check_platform() -> CheckResult:
+    machine = platform.machine()
+    system = platform.system()
+    release = platform.release()
+    note = ""
+    if machine in ("arm64", "aarch64") and system == "Darwin":
+        note = " — BGE on CPU (~30s first warm, ~500ms after)"
+    elif machine in ("arm64", "aarch64") and system == "Linux":
+        note = " — ARM64 Linux; should work, less tested than macOS"
+    return CheckResult(
+        name="Platform",
+        status=Status.INFO,
+        tier=Tier.INFO,
+        summary=f"{machine} · {system} {release}{note}",
+        group="System",
+    )
+
+
+def check_docker_installed() -> CheckResult:
+    if not shutil.which("docker"):
+        return CheckResult(
+            name="Docker",
+            status=Status.FAIL,
+            tier=Tier.BLOCKING,
+            summary="Not installed or not on PATH",
+            fix="Install Docker Desktop: https://docs.docker.com/desktop/install/mac-install/",
+            group="System",
+        )
+    try:
+        out = subprocess.check_output(
+            ["docker", "--version"], text=True, stderr=subprocess.DEVNULL, timeout=3
+        ).strip()
+    except Exception:  # noqa: BLE001
+        out = "installed"
+    return CheckResult(
+        name="Docker",
+        status=Status.PASS,
+        tier=Tier.BLOCKING,
+        summary=out,
+        group="System",
+    )
+
+
+def check_docker_running() -> CheckResult:
+    try:
+        subprocess.check_output(
+            ["docker", "info"], text=True, stderr=subprocess.DEVNULL, timeout=4
+        )
+        return CheckResult(
+            name="Docker daemon",
+            status=Status.PASS,
+            tier=Tier.BLOCKING,
+            summary="Running",
+            group="System",
+        )
+    except Exception:  # noqa: BLE001
+        return CheckResult(
+            name="Docker daemon",
+            status=Status.FAIL,
+            tier=Tier.BLOCKING,
+            summary="Not running",
+            fix="Start Docker Desktop and wait for the whale icon to stop animating",
+            group="System",
+        )
+
+
+def check_docker_compose_v2() -> CheckResult:
+    try:
+        out = subprocess.check_output(
+            ["docker", "compose", "version"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+        ).strip()
+        first = out.split("\n", 1)[0]
+        return CheckResult(
+            name="Docker Compose",
+            status=Status.PASS,
+            tier=Tier.BLOCKING,
+            summary=first,
+            group="System",
+        )
+    except Exception:  # noqa: BLE001
+        return CheckResult(
+            name="Docker Compose",
+            status=Status.FAIL,
+            tier=Tier.BLOCKING,
+            summary="v2 not available",
+            fix="Update Docker Desktop; the standalone v1 `docker-compose` is unsupported",
+            group="System",
+        )
+
+
+def check_git() -> CheckResult:
+    if not shutil.which("git"):
+        return CheckResult(
+            name="Git",
+            status=Status.FAIL,
+            tier=Tier.BLOCKING,
+            summary="Not installed",
+            fix="macOS: `xcode-select --install`   ·   Linux: `apt install git`",
+            group="System",
+        )
+    try:
+        out = subprocess.check_output(
+            ["git", "--version"], text=True, stderr=subprocess.DEVNULL, timeout=2
+        ).strip()
+    except Exception:  # noqa: BLE001
+        out = "installed"
+    return CheckResult(
+        name="Git",
+        status=Status.PASS,
+        tier=Tier.BLOCKING,
+        summary=out,
+        group="System",
+    )
+
+
+def check_buildkit() -> CheckResult:
+    has_buildx = False
+    try:
+        subprocess.check_output(
+            ["docker", "buildx", "version"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        )
+        has_buildx = True
+    except Exception:  # noqa: BLE001
+        pass
+
+    env_set = os.environ.get("DOCKER_BUILDKIT") == "1"
+
+    if has_buildx and env_set:
+        return CheckResult(
+            name="Docker Buildkit",
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary="Enabled (faster cached builds)",
+            group="System",
+        )
+    if has_buildx:
+        return CheckResult(
+            name="Docker Buildkit",
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary="Available but DOCKER_BUILDKIT not set",
+            fix="Add `export DOCKER_BUILDKIT=1` to your ~/.zshrc (or shell rc) for faster builds",
+            group="System",
+        )
+    return CheckResult(
+        name="Docker Buildkit",
+        status=Status.INFO,
+        tier=Tier.INFO,
+        summary="Unavailable",
+        group="System",
+    )
+
+
+# --- Resources ------------------------------------------------------------
+
+def check_disk_space(min_free_gb: float = MIN_FREE_DISK_GB) -> CheckResult:
+    home = Path.home()
+    usage = shutil.disk_usage(home)
+    free_gb = usage.free / (1024 ** 3)
+    if free_gb >= min_free_gb:
+        return CheckResult(
+            name="Disk space",
+            status=Status.PASS,
+            tier=Tier.BLOCKING,
+            summary=f"{free_gb:.1f} GB free in $HOME",
+            group="Resources",
+        )
+    return CheckResult(
+        name="Disk space",
+        status=Status.FAIL,
+        tier=Tier.BLOCKING,
+        summary=f"{free_gb:.1f} GB free in $HOME (need ≥ {min_free_gb:.0f} GB)",
+        fix="Free up disk space; image build needs ~3-4 GB plus volumes ~1 GB",
+        group="Resources",
+    )
+
+
+def check_ram(min_free_gb: float = MIN_FREE_RAM_GB) -> CheckResult:
+    try:
+        import psutil  # noqa: PLC0415
+    except ImportError:
+        return CheckResult(
+            name="RAM",
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary="(skipped — psutil not installed)",
+            group="Resources",
+        )
+    vm = psutil.virtual_memory()
+    avail_gb = vm.available / (1024 ** 3)
+    total_gb = vm.total / (1024 ** 3)
+    if avail_gb >= min_free_gb:
+        return CheckResult(
+            name="RAM",
+            status=Status.PASS,
+            tier=Tier.WARNING,
+            summary=f"{avail_gb:.1f} GB free / {total_gb:.0f} GB total",
+            group="Resources",
+        )
+    return CheckResult(
+        name="RAM",
+        status=Status.WARN,
+        tier=Tier.WARNING,
+        summary=f"{avail_gb:.1f} GB free / {total_gb:.0f} GB total (recommend ≥ {min_free_gb:.0f} GB)",
+        fix="Close memory-heavy apps; backend stack uses ~3 GB at idle",
+        group="Resources",
+    )
+
+
+# --- Ports ----------------------------------------------------------------
+
+def _lsof_owner(port: int) -> str | None:
+    """Find the PID + command name holding `port`, or None if unknowable.
+
+    Uses `lsof -ti :PORT` to enumerate PIDs, then `ps -p PID -o comm=` for the
+    process name. Both are macOS + Linux compatible.
+    """
+    if not shutil.which("lsof"):
+        return None
+    try:
+        pids_out = subprocess.check_output(
+            ["lsof", "-ti", f":{port}"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        ).strip()
+        if not pids_out:
+            return None
+        pid = pids_out.splitlines()[0]
+        try:
+            cmd = subprocess.check_output(
+                ["ps", "-p", pid, "-o", "comm="],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            ).strip()
+            return f"PID {pid} ({cmd})"
+        except Exception:  # noqa: BLE001
+            return f"PID {pid}"
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def check_port_free(port: int, service: str, blocking: bool = False) -> CheckResult:
+    """Try to bind 127.0.0.1:port — succeeds iff the port is free."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", port))
+        sock.close()
+        return CheckResult(
+            name=f"Port {port} ({service})",
+            status=Status.PASS,
+            tier=Tier.BLOCKING if blocking else Tier.WARNING,
+            summary="free",
+            group="Ports",
+        )
+    except OSError:
+        sock.close()
+        owner = _lsof_owner(port) or "unknown process"
+        pid_hint = owner.split("PID ")[-1].split(" ")[0] if "PID" in owner else "<pid>"
+        return CheckResult(
+            name=f"Port {port} ({service})",
+            status=Status.FAIL if blocking else Status.WARN,
+            tier=Tier.BLOCKING if blocking else Tier.WARNING,
+            summary=f"In use by {owner}",
+            fix=f"kill {pid_hint}  OR  override the {service} port in compose.minimal.yml",
+            group="Ports",
+        )
+
+
+# --- Network --------------------------------------------------------------
+
+def check_url_reachable(name: str, url: str, timeout: float = 2.0) -> CheckResult:
+    """HEAD request to `url`. Anything <500 counts as reachable."""
+    import httpx  # noqa: PLC0415
+    try:
+        r = httpx.head(url, timeout=timeout, follow_redirects=True)
+        if r.status_code < 500:
+            return CheckResult(
+                name=name,
+                status=Status.PASS,
+                tier=Tier.WARNING,
+                summary="Reachable",
+                group="Network",
+            )
+    except Exception:  # noqa: BLE001
+        pass
+    return CheckResult(
+        name=name,
+        status=Status.WARN,
+        tier=Tier.WARNING,
+        summary="Unreachable",
+        fix=f"Check internet / corporate proxy / VPN. Wizard needs {name} reachable.",
+        group="Network",
+    )
+
+
+def check_cli_version(cache_file: Path = _VERSION_CACHE_FILE) -> CheckResult:
+    """Compare installed CLI version to latest on PyPI. Caches result 1 hour."""
+    import httpx  # noqa: PLC0415
+
+    from cli import __version__ as current
+
+    # Cache lookup
+    latest = None
+    if cache_file.exists():
+        try:
+            cached = json.loads(cache_file.read_text())
+            if time.time() - float(cached.get("timestamp", 0)) < _VERSION_CACHE_TTL_S:
+                latest = cached.get("latest")
+        except Exception:  # noqa: BLE001
+            pass
+
+    if latest is None:
+        try:
+            r = httpx.get(
+                "https://pypi.org/pypi/financebench-rag-agent/json",
+                timeout=2.0,
+            )
+            if r.status_code == 200:
+                latest = r.json().get("info", {}).get("version")
+                if latest:
+                    try:
+                        cache_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                        cache_file.write_text(
+                            json.dumps({"timestamp": time.time(), "latest": latest})
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+        except Exception:  # noqa: BLE001
+            pass
+
+    if latest is None:
+        return CheckResult(
+            name="CLI version",
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary=f"{current} (couldn't reach PyPI)",
+            group="Network",
+        )
+    if current == latest:
+        return CheckResult(
+            name="CLI version",
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary=f"{current} (latest)",
+            group="Network",
+        )
+    return CheckResult(
+        name="CLI version",
+        status=Status.WARN,
+        tier=Tier.WARNING,
+        summary=f"{current} (latest is {latest})",
+        fix="pip install --upgrade financebench-rag-agent",
+        group="Network",
+    )

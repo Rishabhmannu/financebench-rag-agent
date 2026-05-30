@@ -78,11 +78,24 @@ def setup(
     force_seed: bool = typer.Option(
         False, "--force-seed", help="Re-seed even if the collection already exists with points. Default skips if a non-empty collection is detected."
     ),
+    skip_doctor: bool = typer.Option(
+        False, "--skip-doctor", help="Bypass the preflight environment check. Use only if you know what you're doing."
+    ),
+    skip_doctor_network: bool = typer.Option(
+        False, "--skip-doctor-network", help="Run doctor but skip PyPI / GitHub / Docker Hub reachability checks (offline mode)."
+    ),
 ) -> None:
     """Interactive first-run wizard: clones/locates the repo, collects keys,
     brings up the stack, pre-warms, seeds, and verifies. ~5 min on warm
     Docker cache."""
     console.print("[bold]financebench setup[/bold] — one-time wizard.\n")
+
+    # 0.1.6: preflight doctor checks. Catches missing docker / busy ports /
+    # low disk / unreachable PyPI before we ask for API keys or touch the
+    # filesystem. Single-line on clean pass, full report on any warning or
+    # failure. Blocking failures exit with code 1.
+    if not skip_doctor:
+        _run_doctor(skip_network=skip_doctor_network)
 
     repo_path = _resolve_repo_dir(repo_dir)
     console.print(f"[dim]Using repo at:[/dim] {repo_path}")
@@ -115,9 +128,40 @@ def setup(
             "See the lines above + `docker compose logs api` for details."
         )
     console.print(
-        "[dim]Tip: set FB_PROFILE=admin (or any name) in different terminals "
+        "[dim]Tip: export FB_PROFILE=admin (or any name) in different terminals "
         "to keep separate identities for the multi-party HITL demo.[/dim]"
     )
+
+
+def _run_doctor(skip_network: bool = False) -> None:
+    """Run the doctor checks before any wizard work. Exit on blocking failure.
+
+    UX choice (0.1.6): if everything is clean (no warnings, no failures),
+    print a single-line success and move on — keeps the wizard's happy path
+    terse. If anything needs attention, print the full grouped report so
+    the user can see the context.
+    """
+    import time
+
+    from cli.doctor import (
+        any_blocking_failed,
+        any_warnings,
+        render_clean_pass_line,
+        render_report,
+        run_all_checks,
+    )
+
+    t0 = time.monotonic()
+    results = run_all_checks(skip_network=skip_network)
+    elapsed = time.monotonic() - t0
+
+    if any_warnings(results) or any_blocking_failed(results):
+        render_report(results, elapsed_s=elapsed)
+    else:
+        render_clean_pass_line(elapsed)
+
+    if any_blocking_failed(results):
+        raise typer.Exit(1)
 
 
 def _refresh_clone(repo_path: Path) -> None:

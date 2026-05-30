@@ -7,6 +7,7 @@ import typer
 from cli import __version__
 from cli.commands.approvals import app as approvals_app
 from cli.commands.chat import chat
+from cli.commands.doctor import doctor
 from cli.commands.down import down
 from cli.commands.login import login
 from cli.commands.logout import logout
@@ -30,6 +31,7 @@ app.command(name="logout")(logout)
 app.command(name="status")(status)
 app.command(name="upgrade")(upgrade)
 app.command(name="down")(down)
+app.command(name="doctor")(doctor)
 app.add_typer(threads_app, name="threads")
 app.add_typer(approvals_app, name="approvals")
 

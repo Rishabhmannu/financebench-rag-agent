@@ -137,21 +137,35 @@ def log_runtime_components() -> dict:
         "external": {},
     }
 
-    # Git state
-    try:
-        sha = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
-        ).strip()
-        dirty = subprocess.check_output(
-            ["git", "status", "--short"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
-        ).strip()
+    # Git state — prefer GIT_SHA env (set by Dockerfile ARG → ENV) before
+    # subprocess. 0.1.5 fixed `src/api/main.py:_git_sha()` to use the env var
+    # but this second call site was missed; the container has no .git/, so
+    # subprocess failed every boot and the audit log carried git={'error': ...}
+    # for every run_id. 0.1.6: same pattern here.
+    env_sha = os.environ.get("GIT_SHA", "").strip()
+    if env_sha and env_sha != "unknown":
         banner["git"] = {
-            "sha": sha[:12],
-            "dirty": bool(dirty),
-            "n_dirty_files": len([line for line in dirty.splitlines() if line.strip()]),
+            "sha": env_sha[:12],
+            "dirty": False,         # build-time sha; no working-tree concept inside container
+            "n_dirty_files": 0,
+            "source": "env",
         }
-    except Exception as exc:
-        banner["git"] = {"error": f"{type(exc).__name__}: {str(exc)[:80]}"}
+    else:
+        try:
+            sha = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
+            ).strip()
+            dirty = subprocess.check_output(
+                ["git", "status", "--short"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL
+            ).strip()
+            banner["git"] = {
+                "sha": sha[:12],
+                "dirty": bool(dirty),
+                "n_dirty_files": len([line for line in dirty.splitlines() if line.strip()]),
+                "source": "subprocess",
+            }
+        except Exception as exc:
+            banner["git"] = {"error": f"{type(exc).__name__}: {str(exc)[:80]}"}
 
     # Pydantic settings snapshot
     for k in (

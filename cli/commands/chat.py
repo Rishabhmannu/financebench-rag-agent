@@ -215,7 +215,7 @@ def _repl(creds: dict) -> None:
 
     if profile == "default":
         console.print(
-            "[dim]Tip: set FB_PROFILE=admin (or any name) in different terminals "
+            "[dim]Tip: export FB_PROFILE=admin (or any name) in different terminals "
             "to keep separate identities for the multi-party HITL demo.[/dim]"
         )
     console.print("[dim]Type a question, or /help for slash commands. Ctrl+D to exit.[/dim]")
