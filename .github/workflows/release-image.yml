@@ -1,0 +1,145 @@
+name: Build and push API image
+
+# Triggered on every `v*` tag push. Builds the API image on native arm64 and
+# amd64 runners (parallel), then merges into a single multi-arch manifest list
+# tagged with both the full version (e.g. `0.2.0`) and the major.minor (e.g.
+# `0.2`). Wizard's compose.minimal.yml pulls by the full version derived from
+# cli.__version__ so each release is pinned; the `0.2` tag is for users who
+# manually pull a "stay on 0.2.x" mode.
+#
+# Auth: uses the workflow-default GITHUB_TOKEN which has `packages: write`
+# scope for the same repo's GHCR namespace. No PAT setup needed.
+#
+# First-time setup: when the workflow runs for the very first time, the
+# resulting package is PRIVATE by default on GHCR. The repo owner must
+# manually toggle "Package visibility" to Public via the GitHub UI:
+#   https://github.com/users/Rishabhmannu/packages/container/financebench-rag-agent-api/settings
+# Subsequent pushes inherit the public visibility.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: financebench-rag-agent-api
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            short_arch: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            short_arch: arm64
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute lowercase image ref
+        id: image
+        # GHCR requires lowercase namespace. github.repository_owner can be
+        # mixed-case (e.g. "Rishabhmannu") so we explicitly downcase.
+        run: |
+          repo_lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "ref=${{ env.REGISTRY }}/${repo_lc}/${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ steps.image.outputs.ref }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.short_arch }}
+          cache-to: type=gha,scope=${{ matrix.short_arch }},mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.short_arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Extract version tags from git ref
+        id: tags
+        # GITHUB_REF_NAME is e.g. "v0.2.0"; strip leading "v" for the version
+        # tag, then derive the major.minor (e.g. "0.2") for the floating tag.
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          minor=$(echo "$version" | cut -d. -f1-2)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "minor=$minor" >> "$GITHUB_OUTPUT"
+
+      - name: Compute lowercase image ref
+        id: image
+        run: |
+          repo_lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "ref=${{ env.REGISTRY }}/${repo_lc}/${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download all digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t ${{ steps.image.outputs.ref }}:${{ steps.tags.outputs.version }} \
+            -t ${{ steps.image.outputs.ref }}:${{ steps.tags.outputs.minor }} \
+            $(printf '${{ steps.image.outputs.ref }}@sha256:%s ' *)
+
+      - name: Inspect published image
+        run: |
+          docker buildx imagetools inspect \
+            ${{ steps.image.outputs.ref }}:${{ steps.tags.outputs.version }}

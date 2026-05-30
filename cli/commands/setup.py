@@ -432,19 +432,39 @@ def _bring_up_stack(repo_path: Path, compose_file: str) -> None:
         except Exception:  # noqa: BLE001
             pass
 
-    # 0.1.2: always pass --build so an image rebuild fires when the underlying
-    # Dockerfile / pyproject.toml changes. Without this, `pip install -U` users
-    # silently kept running the 0.1.0 api image even after the wheel was
-    # upgraded — the M1 hit this with the peft import error.
-    cmd = ["docker", "compose", "-f", compose_file, "up", "-d", "--build"]
-    render_info(f"Bringing up the stack: {' '.join(shlex.quote(c) for c in cmd)}")
-    render_info(
-        "(First-time builds take 5-15 min on Apple Silicon — pip resolves "
-        "torch + transformers + langgraph. Subsequent runs use cached layers.)"
-    )
+    # 0.2.0: thread FB_IMAGE_TAG so docker compose pulls the matching
+    # ghcr.io/.../financebench-rag-agent-api:<version> for this CLI's version.
+    # See compose.minimal.yml — the image: directive uses ${FB_IMAGE_TAG:-...}.
+    from cli import __version__ as cli_version  # noqa: PLC0415
+
+    env["FB_IMAGE_TAG"] = cli_version
+
+    # 0.2.0: default flow uses the pre-built GHCR image (`docker compose up
+    # -d` pulls if image absent). BUILD_FROM_SOURCE=1 forces a local source
+    # build (slower, ~10 min on M1; needed for dev / pre-release testing /
+    # if GHCR is unreachable).
+    build_from_source = os.environ.get("BUILD_FROM_SOURCE") == "1"
+    if build_from_source:
+        cmd = ["docker", "compose", "-f", compose_file, "up", "-d", "--build"]
+        render_info(f"Bringing up the stack (BUILD_FROM_SOURCE=1): {' '.join(shlex.quote(c) for c in cmd)}")
+        render_info(
+            "(Building from source takes 5-15 min on Apple Silicon — pip "
+            "resolves torch + transformers + langgraph. Cached layers help on re-runs.)"
+        )
+    else:
+        cmd = ["docker", "compose", "-f", compose_file, "up", "-d"]
+        render_info(f"Bringing up the stack: {' '.join(shlex.quote(c) for c in cmd)}")
+        render_info(
+            f"(Pulling pre-built image ghcr.io/...:{cli_version} — ~90s on first "
+            "use, instant on subsequent. Set BUILD_FROM_SOURCE=1 to build locally instead.)"
+        )
+
     rc = subprocess.run(cmd, cwd=repo_path, env=env, check=False).returncode
     if rc != 0:
-        render_error(f"docker compose up --build failed (exit {rc}). Check Docker Desktop is running.")
+        render_error(
+            f"docker compose up failed (exit {rc}). Check Docker Desktop is running. "
+            "If the failure was a GHCR pull error, try: BUILD_FROM_SOURCE=1 financebench setup"
+        )
         raise typer.Exit(1)
     render_success("Containers started.")
 

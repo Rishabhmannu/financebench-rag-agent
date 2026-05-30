@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.1.8"
+      version="0.2.0"
 
 # 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
 # src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/
@@ -65,6 +65,14 @@ LABEL maintainer="Rishabh" \
 # falling back to subprocess.
 ARG GIT_SHA=unknown
 ENV GIT_SHA=${GIT_SHA}
+
+# 0.2.0: silence the onnxruntime "Unknown CPU vendor" warning that fires on
+# every import inside arm64-Linux-on-M1 containers. ORT_LOGGING_LEVEL=3
+# means ERROR-only (default is 2 = WARNING). Test6 A/B falsified the
+# hypothesis that this warning was a perf bottleneck; it's purely cosmetic
+# log noise that surfaces on every script invocation including innocuous
+# ones like `seed_qdrant.py --help`.
+ENV ORT_LOGGING_LEVEL=3
 
 WORKDIR /app
 

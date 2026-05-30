@@ -227,6 +227,49 @@ def check_disk_space(min_free_gb: float = MIN_FREE_DISK_GB) -> CheckResult:
 _OWN_SERVICE_SUFFIXES = ("-api-1", "-qdrant-1", "-postgres-1", "-redis-1")
 
 
+def _published_ports(ports_str: str) -> set[int]:
+    """Parse the `docker ps {{.Ports}}` column into the set of published host
+    ports.
+
+    The column can contain single ports, ranges, IPv6 + IPv4 dual entries,
+    and unpublished ports. Handle each:
+
+      "0.0.0.0:6333->6333/tcp"                                    -> {6333}
+      "0.0.0.0:6333-6334->6333-6334/tcp"                          -> {6333, 6334}
+      "0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp"               -> {8000}
+      "6333/tcp"                                                  -> set() (not published)
+      ""                                                          -> set()
+
+    0.1.8 doctor used `f":{port}->" in ports_str` substring matching, which
+    silently misses range-published ports like qdrant's `6333-6334`. Test9
+    docker ps confirmed: `repo-qdrant-1  0.0.0.0:6333-6334->6333-6334/tcp`
+    — `:6333->` doesn't match `:6333-6334->`. This proper parse fixes it.
+    """
+    out: set[int] = set()
+    for entry in ports_str.split(","):
+        entry = entry.strip()
+        if "->" not in entry:
+            continue  # unpublished port
+        left = entry.split("->", 1)[0]
+        if ":" not in left:
+            continue
+        spec = left.rsplit(":", 1)[1].strip()
+        if not spec:
+            continue
+        if "-" in spec:
+            try:
+                lo, hi = spec.split("-", 1)
+                out.update(range(int(lo), int(hi) + 1))
+            except ValueError:
+                continue
+        else:
+            try:
+                out.add(int(spec))
+            except ValueError:
+                continue
+    return out
+
+
 def _find_own_stack_container(port: int) -> str | None:
     """Return the container name (e.g. 'repo-api-1') if `port` is published by
     one of our compose stack containers. Otherwise None.
@@ -249,14 +292,13 @@ def _find_own_stack_container(port: int) -> str | None:
     except Exception:  # noqa: BLE001
         return None
 
-    port_marker = f":{port}->"
     for line in out.splitlines():
         if "\t" not in line:
             continue
         name, ports = line.split("\t", 1)
         if not any(name.endswith(suffix) for suffix in _OWN_SERVICE_SUFFIXES):
             continue
-        if port_marker in ports:
+        if port in _published_ports(ports):
             return name
     return None
 

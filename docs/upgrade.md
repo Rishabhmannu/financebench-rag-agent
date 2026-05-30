@@ -10,16 +10,39 @@ The premise: **the project is architected so the same user command works for ~90
 financebench upgrade
 ```
 
-What that runs:
+What that runs (0.2.0+):
 
 1. `git status` in `~/.financebench/repo` — refuses if working tree is dirty (override with `--force`)
-2. `git pull --ff-only`
-3. `docker compose pull` (refreshes pinned images: qdrant, postgres, redis-stack)
-4. `docker compose build api` (incorporates the new source code into the api image)
-5. `docker compose up -d --force-recreate api` (restarts the api with the new image; preserves volumes)
-6. Polls `/v1/health` until 200 (or 6 min timeout)
+2. `git pull --ff-only` (still useful for `scripts/`, `docs/`, `.env.example` updates)
+3. `docker compose pull` — pulls the **pre-built API image from GHCR** matching your CLI version, plus refreshes qdrant / postgres / redis pinned images
+4. `docker compose up -d --force-recreate api` (restarts the api with the new image; preserves volumes)
+5. Polls `/v1/health` until 200 (or 6 min timeout)
+
+Total wall time: ~90 seconds on first pull, ~10 seconds on subsequent (image cached locally). Pre-0.2.0 this step was a 5-15 min source build per release; the GHCR multi-arch image (built once in CI) replaces it.
 
 Data preservation: all named volumes survive (`pg_data`, `qdrant_data`, `redis_data`, `hf_cache`) plus the host-mounted `cost_logs/` and `logs/`. Chat history, ingested corpora, cost trail all intact.
+
+### Building from source instead of pulling
+
+For dev work, pre-release verification, or if GHCR is unreachable:
+
+```bash
+financebench upgrade --build
+# or
+BUILD_FROM_SOURCE=1 financebench upgrade
+```
+
+This restores the pre-0.2.0 behavior — `docker compose build api` runs locally (~10 min on M1 with cold cache). Useful when you've modified `src/` and want to test before tagging a release.
+
+### After upgrade — clean up the old local image
+
+Each pull leaves the previous version's image in your local Docker cache (~2.5 GB per version). To free disk:
+
+```bash
+docker image prune -a -f --filter "until=24h"
+```
+
+This keeps containers / images used in the last 24h, evicts the older ones. Run periodically; the GHCR pull will refetch if needed.
 
 ## Recipes by change type
 

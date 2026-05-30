@@ -11,6 +11,7 @@ don't want to silently overwrite user edits.
 
 from __future__ import annotations
 
+import os
 import shlex
 import subprocess
 import time
@@ -26,8 +27,18 @@ def upgrade(
     full: bool = typer.Option(False, "--full", help="Target docker-compose.yml (11 services) instead of compose.minimal.yml."),
     repo_dir: str = typer.Option(None, "--repo-dir"),
     force: bool = typer.Option(False, "--force", help="Allow upgrade even if the cloned repo has uncommitted changes (potentially destructive)."),
+    build: bool = typer.Option(
+        False,
+        "--build",
+        help="Build the api image from source instead of pulling the pre-built GHCR image. Also triggered by BUILD_FROM_SOURCE=1 env var.",
+    ),
 ) -> None:
-    """Pull latest repo + rebuild api image + restart stack."""
+    """Pull latest repo + refresh api image + restart stack.
+
+    Default: docker compose pull (uses the pre-built GHCR image). Use --build
+    or BUILD_FROM_SOURCE=1 to build from source (slower, for dev / pre-release
+    testing).
+    """
     path = _resolve_repo(repo_dir)
     compose_file = "docker-compose.yml" if full else "compose.minimal.yml"
     if not (path / compose_file).exists():
@@ -37,7 +48,11 @@ def upgrade(
     _check_git_clean(path, allow_dirty=force)
     _git_pull(path)
     _compose_pull(path, compose_file)
-    _compose_build_api(path, compose_file)
+    # 0.2.0: build is opt-in. Default flow uses the pre-built GHCR image
+    # pulled in the step above.  --build  or  BUILD_FROM_SOURCE=1  forces
+    # local build from source (slower, ~10 min on M1 with cold cache).
+    if build or os.environ.get("BUILD_FROM_SOURCE") == "1":
+        _compose_build_api(path, compose_file)
     _compose_up(path, compose_file)
     _wait_for_health()
     render_success("Upgrade complete. Volumes preserved — chat history + ingested corpora intact.")
@@ -81,19 +96,67 @@ def _git_pull(path: Path) -> None:
 
 
 def _compose_pull(path: Path, compose_file: str) -> None:
-    """Pull updates for pinned images (qdrant, postgres, redis-stack).
-    Doesn't pull the locally-built api image; that's handled by `build`."""
-    render_info("docker compose pull (pinned images: qdrant, postgres, redis-stack, ...) ...")
-    rc = subprocess.run(["docker", "compose", "-f", compose_file, "pull"], cwd=path, check=False).returncode
+    """Pull updates for all images including the api (from GHCR).
+
+    0.2.0: the api service now has an `image:` directive pointing at GHCR;
+    pull fetches it for the matching FB_IMAGE_TAG. Pre-0.2.0 the api was
+    built locally and this step skipped it.
+    """
+    # Same FB_IMAGE_TAG threading as setup.py — the compose file's
+    # ${FB_IMAGE_TAG:-...} substitution needs this in the env so the right
+    # version of the api image gets pulled.
+    from cli import __version__ as cli_version  # noqa: PLC0415
+
+    env = os.environ.copy()
+    env["FB_IMAGE_TAG"] = cli_version
+
+    render_info(
+        f"docker compose pull (qdrant, postgres, redis-stack, api:{cli_version} from GHCR) ..."
+    )
+    rc = subprocess.run(
+        ["docker", "compose", "-f", compose_file, "pull"],
+        cwd=path,
+        env=env,
+        check=False,
+    ).returncode
     if rc != 0:
-        render_info("compose pull returned non-zero — usually fine (some services have no upstream image).")
+        render_info(
+            "compose pull returned non-zero. If this was a GHCR auth/network "
+            "error, set BUILD_FROM_SOURCE=1 to fall back to a local source build."
+        )
 
 
 def _compose_build_api(path: Path, compose_file: str) -> None:
+    """Build the api image from source.
+
+    0.1.5 added GIT_SHA threading to cli/commands/setup.py:_bring_up_stack
+    but this second call site was missed for three releases — banner reported
+    `sha unknown` on every container started via `financebench upgrade`. Fix
+    is the same pattern: capture host git sha, export to env, docker compose
+    substitutes into build.args.GIT_SHA, Dockerfile ARG → ENV carries it.
+    Same "fixed-one-call-site-missed-the-other" bug class as 0.1.3 guardrails
+    and 0.1.6 event_log; documented as recurring meta-lesson in
+    docs/engineering-log.md.
+    """
+    env = os.environ.copy()
+    import shutil  # noqa: PLC0415
+
+    if shutil.which("git"):
+        try:
+            env["GIT_SHA"] = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=path,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+        except Exception:  # noqa: BLE001
+            pass
+
     render_info("docker compose build api (incorporates the pulled source) ...")
     rc = subprocess.run(
         ["docker", "compose", "-f", compose_file, "build", "api"],
         cwd=path,
+        env=env,
         check=False,
     ).returncode
     if rc != 0:
@@ -102,10 +165,19 @@ def _compose_build_api(path: Path, compose_file: str) -> None:
 
 
 def _compose_up(path: Path, compose_file: str) -> None:
+    # 0.2.0: same FB_IMAGE_TAG threading as _compose_pull — `up -d
+    # --force-recreate` re-resolves the image: directive against the env,
+    # so we need the matching version set here too.
+    from cli import __version__ as cli_version  # noqa: PLC0415
+
+    env = os.environ.copy()
+    env["FB_IMAGE_TAG"] = cli_version
+
     render_info("docker compose up -d (recreates containers; data volumes preserved) ...")
     rc = subprocess.run(
         ["docker", "compose", "-f", compose_file, "up", "-d", "--force-recreate", "api"],
         cwd=path,
+        env=env,
         check=False,
     ).returncode
     if rc != 0:

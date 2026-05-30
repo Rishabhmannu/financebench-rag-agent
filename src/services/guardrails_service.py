@@ -142,7 +142,15 @@ def _get_presidio_engines():
             from presidio_analyzer import AnalyzerEngine
             from presidio_anonymizer import AnonymizerEngine
 
-            _analyzer = AnalyzerEngine()
+            # 0.2.0: supported_languages=["en"] restricts the registry to
+            # English recognizers only. Without it, presidio loads ES/IT/PL
+            # recognizers (CreditCard ES/IT/PL, EsNif, ItDriverLicense, etc.)
+            # and emits 11 WARNING lines per container start about them not
+            # being added because the registry only supports `en`. The
+            # recognizers were never used anyway — finance Q&A doesn't need
+            # Italian fiscal code detection. Test9 captured this noise at
+            # tests/m1-test/financebench-m1-test9.txt:364-374.
+            _analyzer = AnalyzerEngine(supported_languages=["en"])
             _anonymizer = AnonymizerEngine()
             logger.info("Presidio engines initialized successfully")
         except Exception as e:

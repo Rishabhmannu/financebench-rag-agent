@@ -165,6 +165,38 @@ def test_find_own_stack_container_matches_compose_service_pattern():
         assert checks._find_own_stack_container(7777) is None
 
 
+def test_find_own_stack_container_handles_port_range_format():
+    """Docker collapses adjacent published ports into a range — the actual
+    format M1 test9 produced for qdrant. Pre-0.2.0 our substring matcher
+    missed `:6333->` because the string was `:6333-6334->`."""
+    fake_output = (
+        "repo-qdrant-1\t0.0.0.0:6333-6334->6333-6334/tcp, [::]:6333-6334->6333-6334/tcp\n"
+    )
+    with (
+        patch("cli.doctor.checks.shutil.which", return_value="/usr/local/bin/docker"),
+        patch("cli.doctor.checks.subprocess.check_output", return_value=fake_output),
+    ):
+        assert checks._find_own_stack_container(6333) == "repo-qdrant-1"
+        assert checks._find_own_stack_container(6334) == "repo-qdrant-1"
+        # Port 6335 isn't in the range
+        assert checks._find_own_stack_container(6335) is None
+
+
+def test_published_ports_parses_common_formats():
+    """Direct unit test of the helper for clarity on what each input maps to."""
+    assert checks._published_ports("0.0.0.0:8000->8000/tcp") == {8000}
+    assert checks._published_ports(
+        "0.0.0.0:6333-6334->6333-6334/tcp, [::]:6333-6334->6333-6334/tcp"
+    ) == {6333, 6334}
+    assert checks._published_ports("0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp") == {5432}
+    # Unpublished port — no `->` in entry
+    assert checks._published_ports("6333/tcp") == set()
+    # Empty input
+    assert checks._published_ports("") == set()
+    # Malformed entry shouldn't crash
+    assert checks._published_ports("garbage->somewhere") == set()
+
+
 def test_find_own_stack_container_handles_no_docker():
     """If docker isn't on PATH, helper returns None — no crash."""
     with patch("cli.doctor.checks.shutil.which", return_value=None):
