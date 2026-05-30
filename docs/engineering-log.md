@@ -1755,8 +1755,109 @@ The 1.0.0 milestone should be tied to install-path stability validated on multip
 | Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), tagged per release | Cuts M1 install from ~7 min build to ~90s pull. Sidesteps the per-version `pyproject.toml` invalidation that re-downloads ~700 MB torch + ~30 backend deps on every patch bump. GHCR is free for public repos, no rate-limit. | ~1 day: workflow + `compose.minimal.yml` `image:` swap + docs |
 | `scripts/ci_smoke_install.sh` driven by a GitHub Actions workflow on every tag | Would have caught all five 0.1.x install bugs. Runs in a fresh ubuntu-latest container against the just-built image. | ~3 hours |
 | API key validation Layer 2 (live provider ping) | 0.1.4 ships format-check + clickable URLs (Layer 1); Layer 2 issues a single tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. | ~3 hours including the per-provider ping endpoints + per-provider error handling |
-| Yank 0.1.0–0.1.3 from PyPI | After 0.1.4 verifies clean on M1. Cleans the PyPI project page; pinned installs of old versions still work for reproducibility. | 5 minutes (`twine` upload + `pip yank`) |
+| ~~Yank 0.1.0–0.1.3 from PyPI~~ | **DONE (post-0.1.4)** — extended to 0.1.0–0.1.4 once install-path stabilization completed at 0.1.5. `pip install financebench-rag-agent` now resolves to the most recent non-yanked release; pinned `==0.1.2` etc. still works for reproducibility. | 5 min (PyPI web UI) |
 
 ### Methodological reinforcement (third time this rule has earned a log entry)
 
 The pattern across the eval-quality sprints (FT v1 reranker), the post-deploy audit (embedding-dim mismatch), and now the install-path campaign is the same: **silent-failure paths in code or infrastructure compound with config that's read raw and not validated against ground truth at boot or in CI**. The runtime audit closes the code half (boot banner, hard-fail on dim mismatch). The install-path audit closes the infrastructure half. Both belong in the maintainer's standard toolkit, not as one-off responses to the most recent fire.
+
+---
+
+## 0.1.5–0.1.7 — install path stabilized, plus a falsified-hypothesis case study
+
+The 0.1.4 entry ended with "the first release where the install path has been hardened against the five known failure modes." Three more releases followed before the install path was actually clean. Two captured fixes from continued M1 verification; one was a methodological win.
+
+### 0.1.5 — presidio cold-start fix, GIT_SHA env wiring, docling libgl1, and the LLM-Guard hypothesis I had to retract
+
+M1 test6 showed every chat query taking 130–184 seconds with `guardrails` accounting for 80% of wall time. My first hypothesis was LLM Guard's PromptInjection scanner running slowly because of the `onnxruntime cpuid_info warning: Unknown CPU vendor` log line — ARM64 inside Docker on M1 was apparently confusing ONNX's CPU-vendor probe.
+
+The user ran an A/B with `RAG_DISABLE_LLM_GUARD=1` (the existing env-var bypass in [src/services/guardrails_service.py:49-53](../src/services/guardrails_service.py#L49-L53)) and a single chat query. Result: guardrails still took 137 seconds. **LLM Guard wasn't the bottleneck.** My hypothesis was wrong.
+
+A follow-up direct-timing probe of `detect_pii()` inside the running container gave the actual answer:
+- Call 1: 133.89s, 0 entities returned, log noise "Defaulting to user installation... Downloading 400 MB... Failed to initialize Presidio engines: [E050] Can't find model 'en_core_web_lg'... Presidio not available, skipping PII detection"
+- Call 2: 1.80s, 0 entities (fast path through partial cache)
+- Call 3: 135.64s, 0 entities (another full 400 MB redownload)
+
+Two compounding bugs:
+
+1. **`en_core_web_lg` wasn't pre-installed in the image.** When `presidio_analyzer.AnalyzerEngine()` first ran, spaCy triggered an auto-download via `pip install`. Container runs as `appuser` without write access to system site-packages, so pip fell back to `--user` install. spaCy's model resolver doesn't search `~/.local/`, so `AnalyzerEngine()` raised `[E050] Can't find model 'en_core_web_lg'`. The download itself was wasted.
+
+2. **Singleton cache never set after init failure.** [src/services/guardrails_service.py:131](../src/services/guardrails_service.py#L131) only assigned `_analyzer = AnalyzerEngine()` on success; the except path logged a warning but left `_analyzer = None`. Every subsequent `detect_pii()` call re-attempted the heavy init, triggering another 400 MB pip-install retry. PII detection had been silently disabled in production while paying the full failure cost per query — across every release since the demo corpus was first ingested.
+
+Fix in commit `04ab6a4`:
+- `Dockerfile`: pre-install `en_core_web_lg` as root in the builder stage. Model lives in `/usr/local/lib/python3.12/site-packages/en_core_web_lg/` where `appuser` can read it.
+- `guardrails_service.py`: add `_init_failed` sentinel so a failed init short-circuits future calls.
+- `health.py`: add `detect_pii("warmup")` to `/v1/warm` so the wizard surfaces any future presidio breakage as a Components Failed To Load instead of silent 130s-per-query waste.
+
+Plus two unrelated fixes folded in:
+- `GIT_SHA` build-arg / `ENV` wiring across Dockerfile + `src/api/main.py:_git_sha()` + `cli/commands/setup.py:_bring_up_stack`. Container has no `.git/` (deliberately not COPY-ed), so subprocess `git rev-parse HEAD` always returned `unknown`. Wizard now captures the host sha and threads it through `docker compose build.args` → `ARG GIT_SHA` → `ENV GIT_SHA`. Banner reports the real sha.
+- `libgl1` added to both Dockerfile apt-get blocks. docling's image-rendering pipeline `dlopen`s `libGL.so.1`; without it every PDF ingest logged `ImportError: libGL.so.1: cannot open shared object file` and fell back to pypdf. Pypdf is the canonical choice (per `docs/evaluation.md`), but ~30s per PDF was wasted on the try-and-fail.
+
+Measured outcome on M1 (test7): first chat query 229s → 48s; subsequent queries 185s → 44s. Guardrails dropped below the 500ms threshold and stopped appearing in the per-stage breakdown at all (renderer in [cli/render.py:168](../cli/render.py#L168) hides stages under 500ms).
+
+**Methodological reinforcement (fourth instance).** I had circumstantial evidence (the cpuid warning + the magnitude + per-call pattern) that LLM Guard was the bottleneck. I named a fix scope based on that hypothesis. The A/B test took 5 minutes and falsified it cleanly. The credibility rule's most important application isn't "verify before recommending an experiment" — it's "let the experiment kill your hypothesis even when the circumstantial evidence is strong." I should have insisted on the A/B before naming the fix.
+
+### 0.1.6 — financebench doctor preflight + 2 small bug fixes
+
+The 0.1.x install-path campaign had a clear missing tool: an environment preflight check that catches host-side issues (no docker, busy ports, low disk, unreachable PyPI) at wizard time instead of mid-install. Flutter-doctor-style. Shipped as `financebench doctor` in commit `dec4dca`.
+
+14 checks across System / Resources / Ports / Network groups. Three tiers — BLOCKING fails exit the wizard, WARNINGS proceed but flag, INFO sets expectations (e.g. M1 → "BGE on CPU, ~30s first warm"). Each failure ships an actionable fix recipe. Runs in ~0.5–6s depending on network latency; integrates with `financebench setup` as step 0 (single-line success on clean pass, full grouped report on any warning or failure).
+
+Plus two small bugs caught during M1 test7:
+- Banner tip in chat + setup said `set FB_PROFILE=admin`. `set` is tcsh syntax; zsh and bash users need `export FB_PROFILE=admin`. Inconsistent with [cli/credentials.py:14](../cli/credentials.py#L14) which already used `export`.
+- `src/services/event_log.py:143` was the second `git rev-parse HEAD` call site the 0.1.5 GIT_SHA fix didn't reach. Boot banner audit log carried `git={'error': 'FileNotFoundError...'}` for every run_id. Same env-fallback pattern applied here.
+
+### 0.1.7 — doctor refinement after first M1 use (own-stack detection, RAM check removed)
+
+Test8 surfaced two doctor false positives the moment the user's stack was running:
+1. All four service ports (8000, 6333, 5432, 6380) reported `In use by PID 8360 (com.docker.backend)` with fix recipe `kill 8360`. Killing PID 8360 would terminate Docker Desktop itself. The user's own `repo-api-1` / `repo-qdrant-1` / etc. containers were the legitimate port holders; doctor couldn't distinguish "our running stack" from "stranger conflict."
+2. RAM check at `4 GB free` threshold fired WARN at "3.2 GB free / 16 GB total." Accurate by `psutil.virtual_memory().available`, but macOS aggressively caches in RAM and pages to SSD-backed swap under pressure. 3.2 GB available on 16 GB Apple Silicon is not a real problem.
+
+Fixes in commit `8d50097`:
+- `cli/doctor/checks.py`: added `_find_own_stack_container(port)` helper that runs `docker ps --format '{{.Names}}\t{{.Ports}}'` and matches container names ending in `-api-1` / `-qdrant-1` / `-postgres-1` / `-redis-1` (the docker-compose default naming for our four services). When our container is the port holder, doctor reports PASS with `in use by <container> (your running stack)`. Stranger conflicts still FAIL with the kill recipe.
+- `cli/doctor/checks.py` + `__init__.py` + `pyproject.toml`: RAM check removed entirely. Cleaner than engineering a macOS-aware threshold for what's effectively a non-issue. If real OOMs surface later, a `vm_stat`-aware probe can come back as a proper signal.
+- Tests: split the single port test into stranger-vs-own-stack scenarios; added three tests for the helper itself (matching, no-docker, docker-error). Bundle size dropped 37 MB → 36 MB (psutil removed).
+
+### Install path is now stable
+
+The 0.1.x cycle is closed. Eight releases (0.1.0–0.1.7), five real install bugs, two doctor false positives, one falsified hypothesis. Verified M1 install end-to-end on test7 (clean chat at 48s wall, all 8 components warm, RBAC + HITL workflow working). 0.1.5+ are the recommended-install releases on PyPI; 0.1.0–0.1.4 yanked.
+
+---
+
+## 0.2.x roadmap — image distribution, snapshot distribution, ingest UX
+
+The 0.1.x cycle hardened the build-locally install path. 0.2.x sidesteps it instead — pull pre-built images, pull pre-vectorized corpora, point at custom PDF directories. Distribution-layer work.
+
+### Roadmap
+
+| Item | Why | Effort | Notes |
+|---|---|---|---|
+| **0.2.0 — Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), published per `v*` tag via GitHub Actions** | Cuts M1 install from ~7 min build to ~90s pull. Eliminates the per-version `pyproject.toml` invalidation that re-downloads ~700 MB torch + ~30 backend deps on every patch bump. GHCR is free for public repos, no rate-limit. | ~4–5 hours | `compose.minimal.yml` swaps `build: .` for `image: ghcr.io/Rishabhmannu/...` with `BUILD_FROM_SOURCE=1` fallback. `financebench upgrade` becomes `docker compose pull`. |
+| `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | Would have caught all five 0.1.x install bugs. Runs in a fresh ubuntu-latest container against the just-built image. | ~3 hours | Pairs with 0.2.0 image work. |
+| API key live validation (Layer 2) | 0.1.4 ships prefix-format check + clickable URLs (Layer 1); Layer 2 issues one tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. | ~3 hours | Per-provider ping endpoints + per-provider error handling. Defer if 0.2.0 is already large. |
+| **0.2.x — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | Skip the 30–60 min ingest + ~$1–2 OpenAI/Voyage embed cost. Users `financebench setup --corpus financebench-full` and have an FB-eval-ready system in ~3 min. | ~1–2 days | **License: CC-BY-NC-4.0** carries through from FinanceBench. Snapshot must publish under same license. Non-commercial use only — blocks any future SaaS path on this exact corpus. Qdrant supports snapshot export/import natively; HF Hub already hosts Qdrant snapshots as a pattern (`EmergentMethods/en_qdrant_wikipedia`, `Qdrant/arxiv-titles-instructorxl-embeddings`). Anonymous downloads work — no HF token needed. Snapshot size: ~250–800 MB. Wizard needs to auto-configure matching `EMBEDDING_PROVIDER` + dim check at boot. |
+| **0.2.x — `financebench seed --dir <path> [--collection <name>]`** | Trivial extension of `scripts/seed_qdrant.py` (currently hardcoded to `--sample`). Lets a technical user point at any PDF folder and ingest into a custom collection for private-corpus QA. Underlying `ingest_directory()` already takes any Path. | ~30 min | Plus CLI subcommand wrapper (~30 min). Caveat: the LoRA-fine-tuned reranker + tuned prompts are FinanceBench-specific. Performance on unrelated finance docs may differ from the 72.7% headline. The wizard's `--corpus` flag (above) is for replicating eval state; this flag is for custom corpora. |
+| Multi-collection / per-tenant ingest pipeline | Production-grade: per-user collections, REST ingest endpoint, idempotent re-ingest, RBAC at collection level. The minimum for any deployed multi-tenant scenario. | ~1–2 weeks | Significant scope. Only justified if there's actual demand. Architecturally feasible — retrieval node and RBAC service already accept collection name as parameter. |
+| Yank 0.1.5–0.1.6 from PyPI | After 0.1.7+ holds in sustained real use. Same hygiene as the 0.1.0–0.1.4 yank. | 5 minutes | |
+
+### What 0.2.0 does NOT include (deferred or out of scope)
+
+- Web upload UI for documents. Backend has all the plumbing; the user-facing surface doesn't.
+- Real-time ingest with change detection. Current model is batch-only.
+- Embedding-provider swap without re-ingest. Embedding-dim is locked at collection-create time; swapping providers requires a fresh collection + boot-banner fingerprint match.
+- File types beyond PDF (DOCX, XLSX, slides). Pypdf is the ingestion engine; docling is fallback for tables but underperforms.
+- Per-chunk ACLs. RBAC is at document-type granularity, not chunk granularity.
+
+### Project framing — utility analysis (added 2026-05-30 strategic review)
+
+The 0.2.x roadmap addresses the install-path / distribution / ingest UX. It does not move the project from "production-shaped reference implementation" to "deployed product." That is a distinct decision with much larger scope. Recording the framing here so future-self doesn't re-litigate it:
+
+**Primary value of this project is portfolio + learning, not deployed product.** The CC-BY-NC license on FinanceBench precludes any commercial path on the FB corpus regardless of engineering work. For commercial deployment, the corpus would have to be original (e.g., own-ingested EDGAR filings via the `edgartools` already in `[scripts]` extras, or paid-licensed data). For the portfolio path, the codebase + engineering log + evaluation methodology + 0.1.x install-path campaign + κ=0.932 judge calibration are the asset — the snapshot distribution and `--dir` ingest extend the demonstration without changing the framing.
+
+Three real utility angles, in honest order of strength:
+
+1. **Portfolio / interview signal** (strongest). The system + engineering log + the documented falsified-hypothesis cycles (Multi-HyDE null, calculator regression, FT-v1 reranker silent inactivity, embedding-dim audit, LLM Guard falsification, 0.1.x install bugs) demonstrate rigor that's rare at the junior-engineer level.
+2. **Teaching / reference value** (medium). The 16-node LangGraph pattern, audit-first protocol, doctor preflight pattern, and the engineering log itself are reusable for other engineers building RAG systems. The Sprint 7.19 boot-banner + dim-mismatch hard-fail pattern is worth a standalone blog post.
+3. **Functional utility for a determined individual user** (weak but real). Someone with their own SEC filings, Docker familiarity, and CC-BY-NC-acceptable use can install and get value. Total addressable users in this exact intersection: low.
+
+Pre-empting the "is this a startup?" question: no, not without (a) licensed corpus, (b) hosted multi-tenant deployment, (c) 6–12 months of product / sales / compliance work, and (d) competing against AlphaSense / Hebbia. Not in scope for an individual portfolio project. The methodological process documented here transfers to any senior IC role at any AI-adjacent company — that's the asset.
