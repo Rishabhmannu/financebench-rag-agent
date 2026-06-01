@@ -207,23 +207,6 @@ jobs:
           sed -i 's|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=sk-ant-placeholder-not-used-by-health-smoke|' .env
           sed -i 's|^JWT_SECRET=.*|JWT_SECRET=verify-job-jwt-secret-not-for-prod|' .env
 
-      - name: Pre-create bind-mount targets with permissive perms
-        # compose.minimal.yml bind-mounts ./logs and ./cost_logs into the
-        # container at /app/logs and /app/cost_logs. The container runs as
-        # appuser (UID 1000). On Docker Desktop / macOS, file-sharing
-        # translates host UIDs transparently, so M1 users don't hit this.
-        # On raw Linux (the CI runner) the bind mount preserves ownership:
-        # the runner is `runner` (UID 1001), so logs/ created via mkdir
-        # would be owned by 1001 — appuser can't write. The runtime then
-        # PermissionErrors on the first attach_file_handler() call, the
-        # lifespan dies, /v1/health never comes up.
-        #
-        # Pre-create with 777 so any in-container user can write. Smoke-
-        # only — production users should leave the default umask.
-        run: |
-          mkdir -p logs cost_logs
-          chmod 777 logs cost_logs
-
       - name: docker compose pull (api from GHCR + qdrant/postgres/redis)
         env:
           FB_IMAGE_TAG: ${{ steps.target.outputs.version }}

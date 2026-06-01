@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.2.1"
+      version="0.2.2"
 
 # 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
 # src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/
@@ -73,6 +73,12 @@ ENV GIT_SHA=${GIT_SHA}
 # log noise that surfaces on every script invocation including innocuous
 # ones like `seed_qdrant.py --help`.
 ENV ORT_LOGGING_LEVEL=3
+
+# 0.2.2: suppress upstream deprecation warnings that fire from uvicorn's own
+# websockets/protobuf imports BEFORE src/__init__.py runs the in-process
+# filters. Applied at Python startup via PYTHONWARNINGS so it catches the
+# import-machinery warnings that filterwarnings() can't.
+ENV PYTHONWARNINGS="ignore:websockets.legacy is deprecated:DeprecationWarning,ignore:websockets.server.WebSocketServerProtocol is deprecated:DeprecationWarning,ignore:Type google.protobuf.pyext._message:DeprecationWarning"
 
 WORKDIR /app
 

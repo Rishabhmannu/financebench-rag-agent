@@ -17,7 +17,7 @@ services:
     # FB_IMAGE_TAG is set by the wizard from cli.__version__ so each release
     # pulls the matching image. The :-0.2.0 fallback covers users running
     # docker compose by hand.
-    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.2.0}
+    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.2.2}
     # 0.1.5: build.args.GIT_SHA — passes the host's `git rev-parse HEAD` (set
     # in the env by cli/commands/setup.py:_bring_up_stack) into the Dockerfile's
     # ARG GIT_SHA → ENV GIT_SHA wiring. _git_sha() in src/api/main.py reads
@@ -44,8 +44,17 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data
-      - ./cost_logs:/app/cost_logs
-      - ./logs:/app/logs
+      # 0.2.2: cost_logs + logs are NAMED VOLUMES (not bind mounts) so they
+      # inherit the in-image appuser ownership. Bind-mounting host directories
+      # on raw Linux (no Docker Desktop UID translation) gave the container's
+      # appuser UID 1000 a host directory owned by whoever ran `docker compose
+      # up` — typically UID 1001 on Ubuntu — and event_log.py's first
+      # logs/run_*.jsonl open() raised PermissionError. CI's 0.2.1 verify job
+      # hit this; the Linux-install path needed a chmod 777 workaround. Named
+      # volumes sidestep the UID question entirely. Access host-side via
+      # `financebench logs` (which docker-execs into the container).
+      - api_logs:/app/logs
+      - api_cost_logs:/app/cost_logs
       - hf_cache:/home/appuser/.cache/huggingface
     restart: unless-stopped
     healthcheck:
@@ -108,6 +117,8 @@ volumes:
   pg_data:
   redis_data:
   hf_cache:
+  api_logs:
+  api_cost_logs:
 
 networks:
   rag-net:

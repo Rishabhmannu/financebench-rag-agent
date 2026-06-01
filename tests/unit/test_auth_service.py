@@ -94,7 +94,7 @@ def test_wrong_secret_raises_http_exception():
         "exp": datetime.now(timezone.utc) + timedelta(hours=1),
         "iss": "rag-agent-auth",
     }
-    bad_token = jwt.encode(payload, "completely-wrong-secret", algorithm="HS256")
+    bad_token = jwt.encode(payload, "completely-wrong-secret-padded-to-32-bytes", algorithm="HS256")
 
     with pytest.raises(HTTPException) as exc_info:
         decode_token(bad_token)

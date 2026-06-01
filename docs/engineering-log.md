@@ -1833,14 +1833,15 @@ The 0.1.x cycle hardened the build-locally install path. 0.2.x sidesteps it inst
 | Item | Status | Effort | Notes |
 |---|---|---|---|
 | **0.2.0 — Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), published per `v*` tag via GitHub Actions** | **DONE (shipped 2026-05-30, commit `5e0919b`)** | ~4–5 hours actual | `compose.minimal.yml` got `image: ghcr.io/rishabhmannu/...:${FB_IMAGE_TAG:-0.2.0}` alongside existing `build:` block. `financebench upgrade` defaults to `docker compose pull`. M1 first-pull was 470s (not 90s — image larger than predicted). See "0.2.0 — install path closed" section below for the outcome narrative. |
-| `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | **IN PROGRESS (current sprint)** | ~3 hours | Two-tier design: cheap PR/push smoke (wheel install + CLI + doctor --skip-network) catches wheel/import regressions; heavy tag-push smoke (compose up + `/v1/health` + doctor) catches 3-4 of the 5 0.1.x install-bug classes. |
-| API key live validation (Layer 2) | Pending — 0.2.x | ~3 hours | 0.1.4 ships prefix-format check + clickable URLs (Layer 1); Layer 2 issues one tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. |
+| `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | **DONE (0.2.1, commits `383bbb3` + `e2e22a4`)** | ~3 hours | Two-tier design: cheap PR/push smoke (wheel install + CLI + doctor --skip-network) catches wheel/import regressions; heavy tag-push verify (compose up + `/v1/health` + semver match) catches container/image regressions. CI verify job hit a Linux bind-mount UID PermissionError on first 0.2.1 run; workaround was `chmod 777 logs cost_logs` in CI. Real fix landed in 0.2.2 — see Linux bind-mount UID row below. |
+| API key live validation (Layer 2) | Pending — 0.2.3 | ~3 hours | 0.1.4 ships prefix-format check + clickable URLs (Layer 1); Layer 2 issues one tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. |
 | **0.2.x — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | Pending | ~1–2 days | **License: CC-BY-NC-4.0** carries through from FinanceBench. Snapshot must publish under same license. Non-commercial use only — blocks any future SaaS path on this exact corpus. Qdrant supports snapshot export/import natively; HF Hub already hosts Qdrant snapshots as a pattern (`EmergentMethods/en_qdrant_wikipedia`, `Qdrant/arxiv-titles-instructorxl-embeddings`). Anonymous downloads work — no HF token needed. Snapshot size: ~250–800 MB. Wizard needs to auto-configure matching `EMBEDDING_PROVIDER` + dim check at boot. |
 | `financebench seed --dir <path> [--collection <name>]` | **DONE (script in 0.1.8 commit `0dbc3e9`; CLI wrapper in 0.2.1)** | ~30 min script + ~30 min CLI wrapper | Script-level flags via `scripts/seed_qdrant.py`. 0.2.1 ships `financebench seed` as a top-level CLI command — thin `docker compose exec api` wrapper that translates host paths to container paths under the `./data:/app/data` bind mount. Caveat: the tuned prompts + reranker are FinanceBench-specific, so accuracy on non-FB corpora may differ from the 72.67% headline. |
 | Multi-collection / per-tenant ingest pipeline | Pending | ~1–2 weeks | Production-grade: per-user collections, REST ingest endpoint, idempotent re-ingest, RBAC at collection level. Only justified if there's actual demand. Architecturally feasible — retrieval node and RBAC service already accept collection name as parameter. |
 | Yank 0.1.5–0.1.8 from PyPI | **DONE** | 5 minutes | Yanked 0.1.0 → 0.1.8 after 0.2.0 verified clean on M1 (test10). PyPI now resolves `financebench-rag-agent` → 0.2.0; pinned installs of older versions still work. |
-| Image size reduction (new — surfaced post-0.2.0 ship) | Pending — 0.2.x | ~1 day | M1 test10 first-pull was 470s (~2.5-3 GB per arch). Slimmer base image + drop docling (pypdf is canonical) + multi-stage layer pruning — estimated 30-50% reduction plausible. |
-| Pydantic serialization warnings during grading (new — surfaced in test10) | Pending — 0.2.1 candidate | 1-3 hours | 8+ identical `UserWarning` per chat query from `pydantic/main.py:475` about `GradeResult.parsed` field. Cosmetic; likely from LangChain's structured-output wrapper interacting with pydantic v2's strict serializer. Not a regression — would have been firing throughout 0.1.x but only visible when tailing API logs immediately post-query. |
+| Image size reduction (new — surfaced post-0.2.0 ship) | Pending — 0.3.1 | ~1 day | M1 test10 first-pull was 470s (~2.5-3 GB per arch). Slimmer base image + drop docling (pypdf is canonical) + spaCy model swap (lg → md saves ~700 MB) + multi-stage layer pruning — estimated 30-50% reduction plausible. |
+| ~~Pydantic serialization warnings during grading~~ → broader upstream-warning suppression | **DONE (0.2.2)** | ~2 hours actual | Audit found ZERO pydantic warnings on the runtime path. Real noise was 5 upstream warnings: 1 langgraph (`allowed_objects`), 2 protobuf (Python 3.14 prep), 2 websockets (uvicorn deps), plus 1 test fixture (23-byte JWT secret). Fix: `src/_quiet.py` filter module + `src/__init__.py` early-load + `pyproject` pytest addopts + Dockerfile `ENV PYTHONWARNINGS` for entrypoint-level warnings (uvicorn imports websockets before any `src.*` runs). Test-fixture secret padded to 32 bytes. See "0.2.2 — silent install/runtime polish" section below for the surprise: the original "pydantic warnings" prediction was wrong; the actual mechanism (`surface_langchain_deprecation_warnings()` re-inserting at filter position 0 twice — once each from `langchain_core/__init__.py` and `langchain/__init__.py`) took the longest to debug. |
+| Linux bind-mount UID PermissionError (new — surfaced in CI on 0.2.1) | **DONE (0.2.2)** | ~30 min | `compose.minimal.yml` bind-mounted `./logs` and `./cost_logs` from host. On macOS Docker Desktop, UID translation papered over the in-container `appuser` (UID 1000) vs host UID mismatch. On raw Linux (CI runner UID 1001, plus any Ubuntu user), the bind mount preserves ownership and `event_log.attach_file_handler()` PermissionErrors on first JSONL write. Fix: switch both paths to named volumes (`api_logs`, `api_cost_logs`) so the volume inherits in-image appuser ownership. New `financebench logs` CLI command replaces host-side `tail logs/run_*.jsonl` — wraps `docker compose logs api` and `docker compose exec api tail /app/logs/run_*.jsonl --event-log`. CI verify job's `chmod 777` workaround removed. |
 
 ### What 0.2.0 does NOT include (deferred or out of scope)
 
@@ -1934,3 +1935,56 @@ The mistake I keep making: fixing the call site I'm currently looking at without
 See the table in §"0.2.x roadmap — image distribution, snapshot distribution, ingest UX" above. Items now marked `DONE`: GHCR image, yank 0.1.5-0.1.8, partial seed --dir flag. `IN PROGRESS`: CI smoke install workflow (current sprint after this entry). `Pending`: HF snapshot, API key Layer 2, `financebench seed` CLI subcommand wrapper, multi-collection ingest, image-size reduction, pydantic warning investigation.
 
 The 0.x install-path arc is closed. **The portfolio narrative** — 9 releases, 5 install bugs, 2 doctor false positives, 1 falsified hypothesis (LLM Guard), 3 instances of the same fixed-one-site bug pattern, all documented — is itself the strongest asset the project produces.
+
+---
+
+## 0.2.2 — silent install/runtime polish (shipped 2026-06-01)
+
+Two unrelated items bundled because both were cheap hygiene fixes with deterministic verification:
+
+1. **Upstream warning audit + suppression** (originally framed as "pydantic warning fix")
+2. **Linux bind-mount UID handling** (named volumes for `logs` + `cost_logs` + new `financebench logs` CLI)
+
+### #1: the audit reframed the problem
+
+The 0.2.0 ship note predicted the noise was from `GradeResult.parsed` field on LangChain's structured-output wrapper. Audit found **zero pydantic warnings** on either the import path or the runtime path (exercised a real chat call against a local uvicorn pointed at the existing qdrant/postgres/redis stack — call got past auth/router/entity-extractor before failing at the reranker on a NumPy 1.x/2.x ABI break unrelated to project code).
+
+Actual noise inventory:
+
+| Warning | Source | Fix |
+|---|---|---|
+| `LangChainPendingDeprecationWarning: allowed_objects` | `langgraph 0.6.11 → langchain_core.load.load.Reviver()` constructor | Filter — only fixed in langgraph 1.x (major bump) |
+| `DeprecationWarning: protobuf ScalarMapContainer` (×2) | C-extension PyType_Spec, Python 3.14 prep | Filter — upstream-only fix |
+| `DeprecationWarning: websockets.legacy / WebSocketServerProtocol` (×2) | uvicorn[standard] websockets adapter | Filter — upstream-only fix |
+| `InsecureKeyLengthWarning: HMAC 23 bytes` | `tests/unit/test_auth_service.py:97` JWT test fixture | Pad to 32 bytes (real fix at source) |
+
+The credibility-rule sequence was: predict pydantic warnings → audit ran with `pytest -W default::DeprecationWarning` AND `uvicorn` boot → measurement returned a different (smaller) list → recommend smaller-than-predicted fix. This is exactly the loop CLAUDE.md prescribes for sprint planning.
+
+### The interesting debugging wrinkle
+
+A naive `src/_quiet.py` with three `warnings.filterwarnings(...)` calls didn't suppress the langgraph warning. Tracing the filter state at the moment of warning issuance showed `("default", None, LangChainPendingDeprecationWarning)` filters ABOVE mine in the list — even though my filters had been installed first. Root cause: BOTH `langchain_core/__init__.py:19` AND `langchain/__init__.py:42` call `surface_langchain_deprecation_warnings()` at import time, which `filterwarnings(..., 0)` insert at position 0, pushing my filters down. The fix is to force both packages to import inside `_quiet.py` then re-install my filters on top.
+
+Three places needed entrypoint-level handling because filters install during import:
+
+| Layer | File | Why |
+|---|---|---|
+| In-process (langgraph, protobuf, websockets) | `src/_quiet.py` (new) + `src/__init__.py` (1-line import) | `src/__init__.py` runs on first `src.*` import — covers tests, eval scripts, and the API boot path |
+| Pytest collection-phase (protobuf via langsmith) | `pyproject.toml [tool.pytest.ini_options] addopts = ["-W", "ignore:..."]` | pytest reads `addopts` from ini BEFORE running its plugin loaders that pull protobuf |
+| Pre-`src.*` (uvicorn websockets adapter) | `Dockerfile ENV PYTHONWARNINGS="ignore:websockets..."` | uvicorn imports websockets BEFORE loading the app target, so even `src/__init__.py` runs too late. PYTHONWARNINGS applies at Python startup — before any imports. |
+
+### #2: the Linux bind-mount fix
+
+`compose.minimal.yml` had bind-mounted `./logs` and `./cost_logs` from host. macOS Docker Desktop's UID translation hides this for M1 users. Raw Linux preserves UID; CI runner (UID 1001) + container appuser (UID 1000) collide → PermissionError on `event_log.attach_file_handler()`'s first JSONL write → lifespan dies → `/v1/health` never comes up.
+
+CI's first 0.2.1 verify-job run hit this; workaround was `mkdir -p logs cost_logs && chmod 777 logs cost_logs` before `docker compose up`. Real fix: switch both to named volumes (`api_logs`, `api_cost_logs`). Named volumes inherit the in-image directory's ownership on first mount — `appuser` owns `/app/logs` per the existing `RUN chown -R appuser:appuser /app` in the Dockerfile, so the volume is appuser-owned from the start. Trade-off: host can no longer `tail logs/run_*.jsonl` directly. Mitigation: `financebench logs` and `financebench logs --event-log` commands wrap `docker compose logs api` and `docker compose exec api tail /app/logs/run_*.jsonl` respectively.
+
+The CI verify-job `chmod 777` workaround is now removed; the verify job is shorter and the bug is gone at the compose-config layer instead of papered over per-runner.
+
+### What didn't ship
+
+- Migration helper for existing 0.1.x → 0.2.2 users with valuable host-side logs. Anyone upgrading loses the host-side history. Acceptable because (a) logs are debugging artifacts, not data; (b) `financebench logs` recovers access; (c) named volumes don't auto-clean on `docker compose down` (only on `down -v`), so existing volumes survive image upgrades.
+- spaCy `en_core_web_lg` → `en_core_web_md` swap. Deferred to 0.3.1 image-size sprint where it gets measured against PII detection precision before committing.
+
+### Methodological note — speculation correctly caught
+
+The 0.2.0 ship note predicted what the pydantic warning fix would look like. The 0.2.2 audit falsified that prediction in two ways: (a) no pydantic warnings actually fire, (b) the upstream warnings that DO fire have a more interesting suppression problem (the `surface_langchain_deprecation_warnings()` race) than any pydantic question would have raised. Honest report-back before committing to the original sprint shape saved the wasted work.
