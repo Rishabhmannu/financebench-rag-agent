@@ -20,6 +20,16 @@ on:
   push:
     tags:
       - 'v*'
+  # 0.2.x heavy-smoke verification: workflow_dispatch lets us manually
+  # re-trigger the verify job against an existing release tag — useful
+  # when iterating the heavy smoke without cutting a new release.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to verify against (e.g. v0.2.0). Skips build + merge; only runs verify."
+        required: true
+        type: string
+        default: "v0.2.0"
 
 env:
   REGISTRY: ghcr.io
@@ -27,6 +37,9 @@ env:
 
 jobs:
   build:
+    # Only run build + merge on tag push. On workflow_dispatch we're
+    # verifying an existing image, so skip the rebuild.
+    if: github.event_name == 'push'
     permissions:
       contents: read
       packages: write
@@ -92,6 +105,7 @@ jobs:
 
   merge:
     needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -143,3 +157,95 @@ jobs:
         run: |
           docker buildx imagetools inspect \
             ${{ steps.image.outputs.ref }}:${{ steps.tags.outputs.version }}
+
+  # Heavy install-path smoke. Pulls the just-published GHCR image, spins
+  # up the minimal stack on a fresh ubuntu-latest runner, waits for
+  # /v1/health, then verifies the deployed semver matches the tag.
+  #
+  # Catches runtime regressions that the cheap smoke (smoke-install.yml)
+  # can't — container start failures, missing deps inside the image,
+  # health endpoint hangs, version-string drift between the wheel and
+  # the image.
+  #
+  # Triggers:
+  #   - automatically after merge succeeds on tag push
+  #   - manually via workflow_dispatch with an `tag` input — useful for
+  #     re-running against an existing release without cutting a new one.
+  verify:
+    needs: merge
+    # always() so that on workflow_dispatch (where merge is skipped) the
+    # second clause still fires.
+    if: always() && (needs.merge.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Determine tag + version
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${{ github.ref_name }}"
+          fi
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repo at the verified tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.tag }}
+
+      - name: Create placeholder .env from .env.example
+        # The smoke checks /v1/health (which doesn't authenticate against
+        # any LLM provider) and /version (also unauth). So we can run the
+        # backend with placeholder keys — no real API calls fire.
+        run: |
+          cp .env.example .env
+          sed -i 's|^OPENAI_API_KEY=.*|OPENAI_API_KEY=sk-placeholder-not-used-by-health-smoke|' .env
+          sed -i 's|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=sk-ant-placeholder-not-used-by-health-smoke|' .env
+          sed -i 's|^JWT_SECRET=.*|JWT_SECRET=verify-job-jwt-secret-not-for-prod|' .env
+
+      - name: docker compose pull (api from GHCR + qdrant/postgres/redis)
+        env:
+          FB_IMAGE_TAG: ${{ steps.target.outputs.version }}
+        run: |
+          docker compose -f compose.minimal.yml pull
+
+      - name: docker compose up -d
+        env:
+          FB_IMAGE_TAG: ${{ steps.target.outputs.version }}
+        run: |
+          docker compose -f compose.minimal.yml up -d
+
+      - name: Wait for /v1/health 200 (max 5 min)
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fs http://localhost:8000/v1/health > /dev/null 2>&1; then
+              echo "API healthy after probe ${i} (~$((i * 5))s)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "ERROR: /v1/health did not return 200 within 5 min"
+          docker compose -f compose.minimal.yml logs api --tail 200
+          exit 1
+
+      - name: Verify /version semver matches the tag
+        env:
+          EXPECTED: ${{ steps.target.outputs.version }}
+        run: |
+          payload=$(curl -fs http://localhost:8000/version)
+          echo "/version payload: $payload"
+          actual=$(echo "$payload" | python3 -c "import json, sys; print(json.load(sys.stdin)['semver'])")
+          echo "Backend semver: $actual  (expected: $EXPECTED)"
+          if [ "$actual" != "$EXPECTED" ]; then
+            echo "ERROR: backend semver $actual doesn't match tag $EXPECTED"
+            exit 1
+          fi
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose -f compose.minimal.yml down -v 2>&1 | tail -20
