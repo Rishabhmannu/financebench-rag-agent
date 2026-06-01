@@ -11,6 +11,7 @@ from cli.commands.doctor import doctor
 from cli.commands.down import down
 from cli.commands.login import login
 from cli.commands.logout import logout
+from cli.commands.seed import seed
 from cli.commands.setup import setup
 from cli.commands.status import status
 from cli.commands.threads import app as threads_app
@@ -25,6 +26,7 @@ app = typer.Typer(
 )
 
 app.command(name="setup")(setup)
+app.command(name="seed")(seed)
 app.command(name="login")(login)
 app.command(name="chat")(chat)
 app.command(name="logout")(logout)
