@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.2.3"
+version = "0.3.0"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -110,6 +110,13 @@ backend = [
 
     # Migrations
     "alembic>=1.13,<2.0",
+
+    # 0.3.0: HF snapshot consumer side (financebench seed --from-hf). pyarrow
+    # is needed for chunks.parquet read; huggingface_hub is already pulled
+    # transitively by sentence-transformers/transformers but pinned here so
+    # the seed_from_hf.py path doesn't break if those swap pullers.
+    "pyarrow>=15.0,<25.0",
+    "huggingface_hub>=0.26,<1.0",
 ]
 
 test = [

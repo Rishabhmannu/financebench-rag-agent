@@ -1835,7 +1835,7 @@ The 0.1.x cycle hardened the build-locally install path. 0.2.x sidesteps it inst
 | **0.2.0 — Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), published per `v*` tag via GitHub Actions** | **DONE (shipped 2026-05-30, commit `5e0919b`)** | ~4–5 hours actual | `compose.minimal.yml` got `image: ghcr.io/rishabhmannu/...:${FB_IMAGE_TAG:-0.2.0}` alongside existing `build:` block. `financebench upgrade` defaults to `docker compose pull`. M1 first-pull was 470s (not 90s — image larger than predicted). See "0.2.0 — install path closed" section below for the outcome narrative. |
 | `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | **DONE (0.2.1, commits `383bbb3` + `e2e22a4`)** | ~3 hours | Two-tier design: cheap PR/push smoke (wheel install + CLI + doctor --skip-network) catches wheel/import regressions; heavy tag-push verify (compose up + `/v1/health` + semver match) catches container/image regressions. CI verify job hit a Linux bind-mount UID PermissionError on first 0.2.1 run; workaround was `chmod 777 logs cost_logs` in CI. Real fix landed in 0.2.2 — see Linux bind-mount UID row below. |
 | API key live validation (Layer 2) | **DONE (0.2.3)** | ~3 hours | New `cli/key_probe.py` with one probe per provider: OpenAI / Anthropic / Groq use free `GET /v1/models`; Voyage uses a 1-token embedding (~$0.00002). Wired into `setup` (per-key after Layer 1 prefix check, gated by `--skip-key-probe` or `--skip-doctor-network`) and `doctor` (4 new checks under the "API keys" group, gated by `--skip-network`). Network failures fall through to "saved as-is" with a warning so offline installs still work. Bad-key (401/403) reports the provider's dashboard URL for re-issue. |
-| **0.2.x — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | Pending | ~1–2 days | **License: CC-BY-NC-4.0** carries through from FinanceBench. Snapshot must publish under same license. Non-commercial use only — blocks any future SaaS path on this exact corpus. Qdrant supports snapshot export/import natively; HF Hub already hosts Qdrant snapshots as a pattern (`EmergentMethods/en_qdrant_wikipedia`, `Qdrant/arxiv-titles-instructorxl-embeddings`). Anonymous downloads work — no HF token needed. Snapshot size: ~250–800 MB. Wizard needs to auto-configure matching `EMBEDDING_PROVIDER` + dim check at boot. |
+| **0.3.0 — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | **DONE (0.3.0)** | ~3 hours actual | Live at https://huggingface.co/datasets/cmpunkmannu/financebench-voyage-finance-2-embeddings (CC BY-NC 4.0, public, 460 MB parquet, 68,059 chunks across 84 SEC filings, dense voyage-finance-2 1024d + sparse BM25). Format: parquet + manifest.json + README.md (no native Qdrant snapshot — chose parquet because it's framework-agnostic, restorable to any vector DB, and readable from any RAG stack without HF tooling). New `scripts/export_to_hf.py` (Qdrant scroll → parquet + manifest + frozen README) + `scripts/seed_from_hf.py` (download → bulk upsert into Qdrant). `financebench seed --from-hf <slug>` CLI flag wires the consumer side. Round-trip verified end-to-end (top-3 query results match exactly between source and restored collection). |
 | `financebench seed --dir <path> [--collection <name>]` | **DONE (script in 0.1.8 commit `0dbc3e9`; CLI wrapper in 0.2.1)** | ~30 min script + ~30 min CLI wrapper | Script-level flags via `scripts/seed_qdrant.py`. 0.2.1 ships `financebench seed` as a top-level CLI command — thin `docker compose exec api` wrapper that translates host paths to container paths under the `./data:/app/data` bind mount. Caveat: the tuned prompts + reranker are FinanceBench-specific, so accuracy on non-FB corpora may differ from the 72.67% headline. |
 | Multi-collection / per-tenant ingest pipeline | Pending | ~1–2 weeks | Production-grade: per-user collections, REST ingest endpoint, idempotent re-ingest, RBAC at collection level. Only justified if there's actual demand. Architecturally feasible — retrieval node and RBAC service already accept collection name as parameter. |
 | Yank 0.1.5–0.1.8 from PyPI | **DONE** | 5 minutes | Yanked 0.1.0 → 0.1.8 after 0.2.0 verified clean on M1 (test10). PyPI now resolves `financebench-rag-agent` → 0.2.0; pinned installs of older versions still work. |
@@ -2056,3 +2056,89 @@ Smoke-tested locally — all four probes against this repo's `.env` keys returne
 
 - HF snapshot (0.3.0) — needs your input on dataset slug + approve-before-public-upload, deferred to a dedicated release.
 - Image size reduction (0.3.1) — deferred to last because the size decisions (drop docling? spacy lg → md?) depend on knowing the final 0.3.0 image content.
+
+---
+
+## 0.3.0 — pre-vectorized FinanceBench snapshot on HuggingFace Hub (shipped 2026-06-01)
+
+The first 0.3.x release. Drops new-user time-to-first-query from ~30 min + ~$5-15 (re-embed 360 PDFs through Voyage's API) to **~3 min + $0** (download a pre-computed parquet, bulk-upsert into Qdrant). The CLI consumer side is `financebench seed --from-hf <slug>`; the dataset is public at https://huggingface.co/datasets/cmpunkmannu/financebench-voyage-finance-2-embeddings.
+
+### What shipped
+
+| Piece | Location | Purpose |
+|---|---|---|
+| Export script (producer side) | `scripts/export_to_hf.py` | Qdrant scroll → parquet + manifest.json + frozen README.md. Streams batches via PyArrow's `ParquetWriter` so peak memory stays bounded for 68k-point collections. `--upload` mode wraps `huggingface_hub.HfApi.upload_folder()`. |
+| Restore script (consumer side, runs in container) | `scripts/seed_from_hf.py` | `huggingface_hub.snapshot_download` → drop + recreate Qdrant collection (dense 1024 cosine + sparse BM25) → bulk upsert in batches of 256. Verifies manifest's `dense_dim` matches the consumer pipeline at restore time; hard-fails on mismatch. |
+| CLI wrapper | `cli/commands/seed.py` `--from-hf` flag | Mutexes with `--sample`/`--dir`, threads `--collection` + `--revision`, docker-execs the in-container restore script. |
+| Backend deps | `pyproject.toml [backend]` | Added explicit `pyarrow>=15.0,<25.0` (needed for parquet read inside the container — was incidentally pulled by streamlit/datasets in dev envs but NOT by anything in the backend tree) and `huggingface_hub>=0.26,<1.0` (already transitive via sentence-transformers but pinned to insulate against upstream churn). |
+| Round-trip verification | `scripts/_roundtrip_verify.py` (not shipped) | Download published parquet → restore to `financebench_test_roundtrip` collection → query a known chunk's vector against both collections → confirm top-3 IDs match exactly. Run once before the public release; verified clean. |
+
+### The dataset
+
+| | |
+|---|---|
+| Slug | `cmpunkmannu/financebench-voyage-finance-2-embeddings` |
+| Visibility | Public, CC BY-NC 4.0 |
+| Files | `chunks.parquet` (460 MB), `manifest.json` (1.2 KB), `README.md` (4.2 KB) |
+| Chunks | 68,059 |
+| Documents | 84 distinct SEC filings (10-K / 10-Q / 8-K / earnings) |
+| Dense vectors | voyage/voyage-finance-2, 1024-dim, cosine |
+| Sparse vectors | BM25 tokens via Qdrant fastembed |
+| Export time | 30s from running Qdrant (~2200 points/s scroll rate) |
+| Upload time | ~3 min at 2.5 MB/s |
+
+### The "non-stale by design" README
+
+User concern at sprint kickoff: the project's GitHub README and the PyPI description have both drifted from current state in past iterations. The HF dataset README is a **frozen artifact** — once published, it describes what was uploaded at that timestamp, not what the project looks like now. The contract I designed for:
+
+**In the HF README:**
+- What's in the parquet file (counts, schema, sector breakdown)
+- Frozen pipeline config that produced it (parser, embedding model, distance metric)
+- Snapshot timestamp + generator project version pin
+- Single line of "Prerequisites" pointing to project's `docs/setup.md`
+- License + citation
+
+**Explicitly NOT in the HF README** (anything that drifts):
+- Current FinanceBench pass-rate (changes — points to `docs/evaluation.md` instead)
+- Current pipeline architecture (16-node graph, reranker tier — changes — points to `docs/`)
+- Project version numbers other than the one used to generate THIS snapshot (frozen)
+- "Production-grade" framing or any subjective quality claim
+- Full pip install / docker / .env walkthrough (lives in setup.md)
+
+The mechanical guarantee: README is regenerated from `manifest.json` at export time. If the corpus, parser, or embedding model ever changes, the path forward is publishing a NEW dataset (`...-voyage-finance-3-embeddings`), not editing this one. This README doesn't ever need to be re-published except as part of a fresh snapshot.
+
+### Why parquet + manifest, not a native Qdrant snapshot
+
+Qdrant supports native snapshot export/import. Considered briefly but rejected:
+
+- Parquet is **framework-agnostic** — anyone with pandas/pyarrow can load it without HF tooling, into Pinecone, Weaviate, FAISS, or a custom pipeline. Native Qdrant snapshots couple consumers to Qdrant.
+- Parquet has a **stable, documented schema** that's portable across vector DB versions. Native snapshot format is internal to Qdrant and can change between minor versions.
+- Native snapshots include indexing structures (HNSW graphs) that are rebuilt on import anyway — no real cold-start advantage.
+- The README's "Direct parquet (any RAG stack — no project setup needed)" snippet would not work with a native snapshot. That snippet is the point — making the dataset usable beyond just this project's CLI.
+
+Cost: restore takes ~70s for 68k points to re-index from the bulk upsert. Acceptable trade vs the portability gain.
+
+### Round-trip verification (the safety net)
+
+Before announcing the dataset I ran the full producer→consumer cycle as a one-off:
+
+1. Downloaded published `chunks.parquet` from HF (78s for 460 MB)
+2. Created a fresh `financebench_test_roundtrip` Qdrant collection
+3. Bulk-upserted all 68,059 points (56s)
+4. Grabbed one chunk from the original `financebench_corpus_pypdf_voyage_finance2` collection
+5. Used its dense vector as a query against BOTH the source and the restored test collection
+6. Compared top-3 IDs
+
+Result: identical top-3 IDs in identical order. Vectors round-tripped without precision loss, point IDs preserved, collection config matches. The contract `financebench seed --from-hf` promises to users is verified.
+
+### One judgment-call moment
+
+The original README draft just said "FinanceBench (SEC filings: 10-K, 10-Q, 8-K, earnings releases)" without a document count. The actual collection has 84 documents — which is a real, frozen fact about THIS snapshot that helps future users decide if it's relevant to them. Adding `Documents | 84 distinct SEC filings` + a 9-row sector breakdown table to the README mid-flight wasn't in the original plan but was the right call. **Frozen facts ABOUT the snapshot are good; frozen facts about the project surrounding the snapshot are the staleness trap.**
+
+### What this enables for portfolio framing
+
+The dataset card on HF Hub becomes a recruiter-discoverable artifact in its own right: someone searching "voyage-finance-2" or "financebench" finds it via HF, opens the README, sees the project link, and lands on the repo with context already loaded. The dataset is now in the HF tag index for `embeddings`, `rag`, `financial-qa`, `voyage`, `qdrant`, `financebench`, `arxiv:2311.11944`. None of those required marketing — just publishing the artifact with accurate tags.
+
+### What's next in 0.3.x
+
+- 0.3.1 — image size reduction. Deferred from earlier because the size decisions (drop docling? spacy lg → md? slim base image?) need to be made AGAINST the final 0.3.0 image content. Now that 0.3.0 is the canonical base, the measurement + reduction sprint can begin.
