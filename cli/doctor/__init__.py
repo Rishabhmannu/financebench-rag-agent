@@ -13,6 +13,7 @@ from __future__ import annotations
 import time
 
 from cli.doctor.checks import (
+    check_api_key,
     check_buildkit,
     check_cli_version,
     check_disk_space,
@@ -60,6 +61,16 @@ _NETWORK_TARGETS = [
     ("Docker Hub", "https://registry-1.docker.io/v2/"),
 ]
 
+# API keys to live-probe in network mode. (key_name, required).
+# Mirrors cli/commands/setup.py:_API_KEY_PROMPTS — keep in sync if either side
+# changes which providers are required vs optional.
+_API_KEY_CHECKS = [
+    ("OPENAI_API_KEY", True),
+    ("ANTHROPIC_API_KEY", True),
+    ("VOYAGE_API_KEY", False),
+    ("GROQ_API_KEY", False),
+]
+
 
 def run_all_checks(skip_network: bool = False) -> list[CheckResult]:
     """Run every check in order. Each check times itself."""
@@ -92,4 +103,24 @@ def run_all_checks(skip_network: bool = False) -> list[CheckResult]:
             _run(check_url_reachable, name, url)
         _run(check_cli_version)
 
+        # API key live probes — only when network is available and an .env exists.
+        # Try the repo location used by setup/upgrade, fall back to cwd.
+        env_path = _locate_env_file()
+        for key_name, required in _API_KEY_CHECKS:
+            _run(check_api_key, key_name, required, env_path)
+
     return results
+
+
+def _locate_env_file():
+    """Best-effort .env discovery for the API key checks."""
+    from pathlib import Path  # noqa: PLC0415
+
+    candidates = [
+        Path.home() / ".financebench" / "repo" / ".env",
+        Path.cwd() / ".env",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None

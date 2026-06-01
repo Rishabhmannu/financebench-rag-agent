@@ -404,6 +404,88 @@ def check_url_reachable(name: str, url: str, timeout: float = 2.0) -> CheckResul
     )
 
 
+def check_api_key(key_name: str, required: bool, env_path: Path | None = None) -> CheckResult:
+    """Live Layer 2 probe of an API key against its provider.
+
+    0.2.3: reads the key from .env (or os.environ if .env not found), runs
+    the matching probe from cli.key_probe. Catches revoked / wrong-account /
+    expired keys that pass the wizard's prefix check at install time.
+    """
+    from cli.key_probe import PROBES, ProbeStatus  # noqa: PLC0415
+
+    # Read from .env first (wizard writes there), fall back to live env.
+    value = ""
+    if env_path and env_path.exists():
+        try:
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith(f"{key_name}=") and not line.startswith("#"):
+                    value = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    break
+        except OSError:
+            pass
+    if not value:
+        value = os.environ.get(key_name, "")
+
+    tier = Tier.BLOCKING if required else Tier.INFO
+
+    if not value:
+        if required:
+            return CheckResult(
+                name=key_name,
+                status=Status.FAIL,
+                tier=tier,
+                summary="Not set",
+                fix="Run `financebench setup` and provide the key when prompted.",
+                group="API keys",
+            )
+        return CheckResult(
+            name=key_name,
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary="Not set (optional)",
+            group="API keys",
+        )
+
+    probe = PROBES.get(key_name)
+    if probe is None:
+        return CheckResult(
+            name=key_name,
+            status=Status.INFO,
+            tier=Tier.INFO,
+            summary="Set (no probe configured)",
+            group="API keys",
+        )
+
+    result = probe(value)
+    if result.status is ProbeStatus.OK:
+        return CheckResult(
+            name=key_name,
+            status=Status.PASS,
+            tier=Tier.WARNING if required else Tier.INFO,
+            summary=f"Live probe: accepted by provider (•••{value[-4:]})",
+            group="API keys",
+        )
+    if result.status is ProbeStatus.BAD_KEY:
+        return CheckResult(
+            name=key_name,
+            status=Status.FAIL if required else Status.WARN,
+            tier=tier,
+            summary=f"Live probe: {result.message}",
+            fix="Re-run `financebench setup` with a fresh key from the linked dashboard.",
+            group="API keys",
+        )
+    # NETWORK_ERROR
+    return CheckResult(
+        name=key_name,
+        status=Status.WARN,
+        tier=Tier.WARNING,
+        summary=f"Live probe skipped: {result.message}",
+        fix="Re-run doctor when network is available. Key format may still be valid.",
+        group="API keys",
+    )
+
+
 def check_cli_version(cache_file: Path = _VERSION_CACHE_FILE) -> CheckResult:
     """Compare installed CLI version to latest on PyPI. Caches result 1 hour."""
     import httpx  # noqa: PLC0415

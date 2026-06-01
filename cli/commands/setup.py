@@ -84,6 +84,9 @@ def setup(
     skip_doctor_network: bool = typer.Option(
         False, "--skip-doctor-network", help="Run doctor but skip PyPI / GitHub / Docker Hub reachability checks (offline mode)."
     ),
+    skip_key_probe: bool = typer.Option(
+        False, "--skip-key-probe", help="Skip the live Layer 2 validation that probes each provider with the entered key. Useful if you know your keys are good and want to avoid the extra network round-trip."
+    ),
 ) -> None:
     """Interactive first-run wizard: clones/locates the repo, collects keys,
     brings up the stack, pre-warms, seeds, and verifies. ~5 min on warm
@@ -101,7 +104,7 @@ def setup(
     console.print(f"[dim]Using repo at:[/dim] {repo_path}")
 
     env_path = repo_path / ".env"
-    _wizard_env_file(env_path)
+    _wizard_env_file(env_path, skip_key_probe=skip_key_probe or skip_doctor_network)
 
     compose_file = "docker-compose.yml" if full else "compose.minimal.yml"
     _ensure_compose_file_exists(repo_path, compose_file)
@@ -258,9 +261,17 @@ def _resolve_repo_dir(repo_dir: str | None) -> Path:
     return DEFAULT_CLONE_PATH
 
 
-def _wizard_env_file(env_path: Path) -> None:
+def _wizard_env_file(env_path: Path, skip_key_probe: bool = False) -> None:
     """Prompt for API keys; write/update .env. Existing keys preserved
-    unless the user enters a new value."""
+    unless the user enters a new value.
+
+    0.2.3: after the Layer 1 prefix check, each newly-entered key runs through
+    a live Layer 2 probe (one tiny request to the provider). Catches revoked /
+    wrong-account / expired keys before the wizard proceeds. Network failures
+    fall through to "saved as-is" with a warning so offline installs still work.
+    """
+    from cli.key_probe import PROBES, ProbeStatus  # noqa: PLC0415
+
     existing = _parse_env_file(env_path) if env_path.exists() else {}
 
     if existing:
@@ -296,6 +307,23 @@ def _wizard_env_file(env_path: Path) -> None:
                     f"re-run setup to correct."
                 )
             new_values[key] = entered
+
+            if not skip_key_probe and key in PROBES:
+                console.print("  [dim]Validating with provider...[/dim]")
+                result = PROBES[key](entered)
+                if result.status is ProbeStatus.OK:
+                    console.print(f"  [green]✓ {result.message}[/]")
+                elif result.status is ProbeStatus.BAD_KEY:
+                    console.print(f"  [red]✗ {result.message}[/]")
+                    console.print(
+                        "  [yellow]Saved anyway — re-run setup to correct, or proceed knowing "
+                        "the backend will fail on first call with this provider.[/]"
+                    )
+                else:
+                    console.print(
+                        f"  [yellow]⚠ couldn't validate live ({result.message}). "
+                        "Saved as-is.[/]"
+                    )
         elif required and not current:
             render_error(f"{key} is required to start the API.")
             raise typer.Exit(1)

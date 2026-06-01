@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.2.2"
+      version="0.2.3"
 
 # 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
 # src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/
@@ -111,8 +111,20 @@ RUN chown -R appuser:appuser /app
 # root-owned, appuser can't write, BGE/docling downloads fail with PermissionError,
 # and sentence-transformers ends up loading a partial model cache that raises
 # "Unrecognized model in BAAI/bge-reranker-v2-m3". (0.1.3 M1 hit this.)
-RUN mkdir -p /home/appuser/.cache/huggingface && \
-    chown -R appuser:appuser /home/appuser/.cache
+#
+# 0.2.3: same pattern for /app/logs and /app/cost_logs. 0.2.2 switched both
+# from bind mounts to named volumes (api_logs, api_cost_logs) to fix the
+# Linux UID issue — but only switching compose.minimal.yml is half the fix.
+# The named volume inherits in-image ownership only if the directory exists
+# in the image. We don't COPY logs/ or cost_logs/ (they're runtime artifacts),
+# so the mount point was being created on the fly by docker as root:root.
+# appuser PermissionError'd on the first event_log.attach_file_handler() →
+# lifespan died → /v1/health never came up. 0.2.2 verify caught this; the
+# fix was missed because I didn't grep the Dockerfile for the hf_cache
+# pattern when writing the compose switch. (Fifth documented instance of
+# "fixed one call site, missed the other" — see engineering-log.md.)
+RUN mkdir -p /home/appuser/.cache/huggingface /app/logs /app/cost_logs && \
+    chown -R appuser:appuser /home/appuser/.cache /app/logs /app/cost_logs
 USER appuser
 
 EXPOSE 8000

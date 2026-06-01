@@ -1834,14 +1834,14 @@ The 0.1.x cycle hardened the build-locally install path. 0.2.x sidesteps it inst
 |---|---|---|---|
 | **0.2.0 — Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), published per `v*` tag via GitHub Actions** | **DONE (shipped 2026-05-30, commit `5e0919b`)** | ~4–5 hours actual | `compose.minimal.yml` got `image: ghcr.io/rishabhmannu/...:${FB_IMAGE_TAG:-0.2.0}` alongside existing `build:` block. `financebench upgrade` defaults to `docker compose pull`. M1 first-pull was 470s (not 90s — image larger than predicted). See "0.2.0 — install path closed" section below for the outcome narrative. |
 | `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | **DONE (0.2.1, commits `383bbb3` + `e2e22a4`)** | ~3 hours | Two-tier design: cheap PR/push smoke (wheel install + CLI + doctor --skip-network) catches wheel/import regressions; heavy tag-push verify (compose up + `/v1/health` + semver match) catches container/image regressions. CI verify job hit a Linux bind-mount UID PermissionError on first 0.2.1 run; workaround was `chmod 777 logs cost_logs` in CI. Real fix landed in 0.2.2 — see Linux bind-mount UID row below. |
-| API key live validation (Layer 2) | Pending — 0.2.3 | ~3 hours | 0.1.4 ships prefix-format check + clickable URLs (Layer 1); Layer 2 issues one tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. |
+| API key live validation (Layer 2) | **DONE (0.2.3)** | ~3 hours | New `cli/key_probe.py` with one probe per provider: OpenAI / Anthropic / Groq use free `GET /v1/models`; Voyage uses a 1-token embedding (~$0.00002). Wired into `setup` (per-key after Layer 1 prefix check, gated by `--skip-key-probe` or `--skip-doctor-network`) and `doctor` (4 new checks under the "API keys" group, gated by `--skip-network`). Network failures fall through to "saved as-is" with a warning so offline installs still work. Bad-key (401/403) reports the provider's dashboard URL for re-issue. |
 | **0.2.x — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | Pending | ~1–2 days | **License: CC-BY-NC-4.0** carries through from FinanceBench. Snapshot must publish under same license. Non-commercial use only — blocks any future SaaS path on this exact corpus. Qdrant supports snapshot export/import natively; HF Hub already hosts Qdrant snapshots as a pattern (`EmergentMethods/en_qdrant_wikipedia`, `Qdrant/arxiv-titles-instructorxl-embeddings`). Anonymous downloads work — no HF token needed. Snapshot size: ~250–800 MB. Wizard needs to auto-configure matching `EMBEDDING_PROVIDER` + dim check at boot. |
 | `financebench seed --dir <path> [--collection <name>]` | **DONE (script in 0.1.8 commit `0dbc3e9`; CLI wrapper in 0.2.1)** | ~30 min script + ~30 min CLI wrapper | Script-level flags via `scripts/seed_qdrant.py`. 0.2.1 ships `financebench seed` as a top-level CLI command — thin `docker compose exec api` wrapper that translates host paths to container paths under the `./data:/app/data` bind mount. Caveat: the tuned prompts + reranker are FinanceBench-specific, so accuracy on non-FB corpora may differ from the 72.67% headline. |
 | Multi-collection / per-tenant ingest pipeline | Pending | ~1–2 weeks | Production-grade: per-user collections, REST ingest endpoint, idempotent re-ingest, RBAC at collection level. Only justified if there's actual demand. Architecturally feasible — retrieval node and RBAC service already accept collection name as parameter. |
 | Yank 0.1.5–0.1.8 from PyPI | **DONE** | 5 minutes | Yanked 0.1.0 → 0.1.8 after 0.2.0 verified clean on M1 (test10). PyPI now resolves `financebench-rag-agent` → 0.2.0; pinned installs of older versions still work. |
 | Image size reduction (new — surfaced post-0.2.0 ship) | Pending — 0.3.1 | ~1 day | M1 test10 first-pull was 470s (~2.5-3 GB per arch). Slimmer base image + drop docling (pypdf is canonical) + spaCy model swap (lg → md saves ~700 MB) + multi-stage layer pruning — estimated 30-50% reduction plausible. |
 | ~~Pydantic serialization warnings during grading~~ → broader upstream-warning suppression | **DONE (0.2.2)** | ~2 hours actual | Audit found ZERO pydantic warnings on the runtime path. Real noise was 5 upstream warnings: 1 langgraph (`allowed_objects`), 2 protobuf (Python 3.14 prep), 2 websockets (uvicorn deps), plus 1 test fixture (23-byte JWT secret). Fix: `src/_quiet.py` filter module + `src/__init__.py` early-load + `pyproject` pytest addopts + Dockerfile `ENV PYTHONWARNINGS` for entrypoint-level warnings (uvicorn imports websockets before any `src.*` runs). Test-fixture secret padded to 32 bytes. See "0.2.2 — silent install/runtime polish" section below for the surprise: the original "pydantic warnings" prediction was wrong; the actual mechanism (`surface_langchain_deprecation_warnings()` re-inserting at filter position 0 twice — once each from `langchain_core/__init__.py` and `langchain/__init__.py`) took the longest to debug. |
-| Linux bind-mount UID PermissionError (new — surfaced in CI on 0.2.1) | **DONE (0.2.2)** | ~30 min | `compose.minimal.yml` bind-mounted `./logs` and `./cost_logs` from host. On macOS Docker Desktop, UID translation papered over the in-container `appuser` (UID 1000) vs host UID mismatch. On raw Linux (CI runner UID 1001, plus any Ubuntu user), the bind mount preserves ownership and `event_log.attach_file_handler()` PermissionErrors on first JSONL write. Fix: switch both paths to named volumes (`api_logs`, `api_cost_logs`) so the volume inherits in-image appuser ownership. New `financebench logs` CLI command replaces host-side `tail logs/run_*.jsonl` — wraps `docker compose logs api` and `docker compose exec api tail /app/logs/run_*.jsonl --event-log`. CI verify job's `chmod 777` workaround removed. |
+| Linux bind-mount UID PermissionError (new — surfaced in CI on 0.2.1) | **DONE (0.2.3 — first try in 0.2.2 missed the Dockerfile half)** | ~30 min + ~10 min for the second-order fix | `compose.minimal.yml` bind-mounted `./logs` and `./cost_logs` from host. On macOS Docker Desktop, UID translation papered over the in-container `appuser` (UID 1000) vs host UID mismatch. On raw Linux (CI runner UID 1001, plus any Ubuntu user), the bind mount preserves ownership and `event_log.attach_file_handler()` PermissionErrors on first JSONL write. **0.2.2 fix** switched both paths to named volumes (`api_logs`, `api_cost_logs`) but missed pre-creating `/app/logs` and `/app/cost_logs` in the Dockerfile — named volumes inherit in-image ownership only if the directory exists in the image, otherwise docker creates the mount point as root:root. CI verify caught it (same error class, second order). **0.2.3** adds the matching `RUN mkdir -p /app/logs /app/cost_logs && chown -R appuser:appuser ...` next to the existing hf_cache mkdir. The hf_cache pattern was the existing reference I should have grepped for — fifth documented instance of "fixed one call site, missed the other". `financebench logs` and `financebench logs --event-log` CLI commands replace host-side `tail logs/run_*.jsonl` — wraps `docker compose logs api` and `docker compose exec api tail /app/logs/run_*.jsonl`. CI verify job's `chmod 777` workaround removed. |
 
 ### What 0.2.0 does NOT include (deferred or out of scope)
 
@@ -1988,3 +1988,71 @@ The CI verify-job `chmod 777` workaround is now removed; the verify job is short
 ### Methodological note — speculation correctly caught
 
 The 0.2.0 ship note predicted what the pydantic warning fix would look like. The 0.2.2 audit falsified that prediction in two ways: (a) no pydantic warnings actually fire, (b) the upstream warnings that DO fire have a more interesting suppression problem (the `surface_langchain_deprecation_warnings()` race) than any pydantic question would have raised. Honest report-back before committing to the original sprint shape saved the wasted work.
+
+---
+
+## 0.2.3 — Dockerfile half of the Linux-UID fix + API key Layer 2 (shipped 2026-06-01)
+
+0.2.3 ships two things: (a) the second-order fix the 0.2.2 verify job caught, and (b) the originally-scoped API key live validation. Bundled because the 0.2.2 git tag was deleted before any PyPI upload, so the version-skip is internal only.
+
+### The 0.2.2 verify failure — fifth documented instance of "fixed one call site, missed the other"
+
+0.2.2 switched `compose.minimal.yml`'s `./logs` and `./cost_logs` bind mounts to named volumes (`api_logs`, `api_cost_logs`) to dodge the Linux UID mismatch. That's the compose-side fix. **It needed a matching Dockerfile-side fix that I missed.**
+
+Named volumes inherit the in-image directory's ownership on first mount. That works for `hf_cache` because `Dockerfile:108-115` pre-creates `/home/appuser/.cache/huggingface` with appuser ownership before `USER appuser`. The volume sees the existing appuser-owned directory and inherits the perms.
+
+For `/app/logs` and `/app/cost_logs`, the directories never existed in the image (they're runtime artifacts — we don't `COPY` them). Docker created the mount points on the fly as `root:root`. `appuser` PermissionError'd on the first `event_log.attach_file_handler()` open() → lifespan died → `/v1/health` never came up → CI verify timed out at 5 min.
+
+The fix is a 2-line addition next to the existing hf_cache mkdir:
+
+```dockerfile
+RUN mkdir -p /home/appuser/.cache/huggingface /app/logs /app/cost_logs && \
+    chown -R appuser:appuser /home/appuser/.cache /app/logs /app/cost_logs
+```
+
+The hf_cache pattern (with its comment explaining exactly why pre-creation matters for named volumes) was right above the line I needed to add. The fix protocol from the engineering-log entry on the 0.2.0 third-instance miss said:
+
+> When fixing a bug related to a config / env var / import path / subprocess invocation, before declaring the fix complete: `grep -rn '<the relevant string>' src/ cli/ scripts/` and confirm every match is either (a) correctly handled by the fix or (b) intentionally outside scope.
+
+I didn't grep the Dockerfile for `mkdir -p` or `chown` patterns when writing the 0.2.2 compose-side fix. Fifth time the protocol catches this AFTER I've already shipped the broken version. Going forward I'll generalize "grep src/ cli/ scripts/" to also include Dockerfile + compose YAML when the change crosses container/host boundaries.
+
+### What this means for 0.2.2 as an artifact
+
+The 0.2.2 git commit (`d8ad1d6`) stays in `main`'s history — it's accurate work, just incomplete. The `v0.2.2` tag was deleted (local + remote) before any PyPI upload, so:
+
+- PyPI: 0.2.3 is the next version after 0.2.1
+- GHCR: `:0.2.2` image exists but is broken (verify failed). Will be supplanted by `:0.2.3` and nobody will pull it because CLI 0.2.3 threads `FB_IMAGE_TAG=0.2.3`. Left in place as a historical artifact rather than deleted.
+- Compose fallback: bumped to `:0.2.3` so manual `docker compose up` users don't accidentally grab `:0.2.2`.
+
+### API key Layer 2 validation (the originally-scoped 0.2.3 work)
+
+Layer 1 (shipped in 0.1.4) checks the prefix format. Catches typos and provider-mismatched pastes but misses revoked / wrong-account / expired keys.
+
+Layer 2 issues one tiny request per provider:
+
+| Provider | Endpoint | Cost |
+|---|---|---|
+| OpenAI | `GET /v1/models` | Free |
+| Anthropic | `GET /v1/models` | Free |
+| Voyage | `POST /v1/embeddings` (1-token, model=voyage-finance-2) | ~$0.00002 |
+| Groq | `GET /openai/v1/models` | Free |
+
+New `cli/key_probe.py` module with one function per provider returning a `ProbeResult(status, message)` where `status` is `OK` / `BAD_KEY` / `NETWORK_ERROR`. Wired into:
+
+- **`financebench setup`** — per-key, after the existing prefix check. Gated by `--skip-key-probe` (new) or `--skip-doctor-network` (existing offline flag). Network errors fall through to "saved as-is" with a yellow warning so airgapped installs still work. Bad-key (401/403) reports the provider's dashboard URL for re-issue but saves the key anyway (user can re-run setup or just accept that one call will fail).
+- **`financebench doctor`** — four new checks under the "API keys" group, gated by `--skip-network`. Required keys (OPENAI, ANTHROPIC) FAIL when missing or bad; optional keys (VOYAGE, GROQ) WARN or INFO. Network errors render as WARN with "skip and re-run when online".
+
+Smoke-tested locally — all four probes against this repo's `.env` keys returned `OK` with the masked tail printed (`Live probe: accepted by provider (•••yZMA)`). The wizard side also displays the per-key result inline:
+
+```
+  OpenAI API key (required — embeddings + gpt-4o-mini)
+  Get one at: https://platform.openai.com/api-keys
+  [current: ••••••XXXX] >
+  Validating with provider...
+  ✓ OpenAI accepted the key
+```
+
+### What's still pending in 0.2.x
+
+- HF snapshot (0.3.0) — needs your input on dataset slug + approve-before-public-upload, deferred to a dedicated release.
+- Image size reduction (0.3.1) — deferred to last because the size decisions (drop docling? spacy lg → md?) depend on knowing the final 0.3.0 image content.
