@@ -1830,15 +1830,17 @@ The 0.1.x cycle hardened the build-locally install path. 0.2.x sidesteps it inst
 
 ### Roadmap
 
-| Item | Why | Effort | Notes |
+| Item | Status | Effort | Notes |
 |---|---|---|---|
-| **0.2.0 — Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), published per `v*` tag via GitHub Actions** | Cuts M1 install from ~7 min build to ~90s pull. Eliminates the per-version `pyproject.toml` invalidation that re-downloads ~700 MB torch + ~30 backend deps on every patch bump. GHCR is free for public repos, no rate-limit. | ~4–5 hours | `compose.minimal.yml` swaps `build: .` for `image: ghcr.io/Rishabhmannu/...` with `BUILD_FROM_SOURCE=1` fallback. `financebench upgrade` becomes `docker compose pull`. |
-| `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | Would have caught all five 0.1.x install bugs. Runs in a fresh ubuntu-latest container against the just-built image. | ~3 hours | Pairs with 0.2.0 image work. |
-| API key live validation (Layer 2) | 0.1.4 ships prefix-format check + clickable URLs (Layer 1); Layer 2 issues one tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. | ~3 hours | Per-provider ping endpoints + per-provider error handling. Defer if 0.2.0 is already large. |
-| **0.2.x — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | Skip the 30–60 min ingest + ~$1–2 OpenAI/Voyage embed cost. Users `financebench setup --corpus financebench-full` and have an FB-eval-ready system in ~3 min. | ~1–2 days | **License: CC-BY-NC-4.0** carries through from FinanceBench. Snapshot must publish under same license. Non-commercial use only — blocks any future SaaS path on this exact corpus. Qdrant supports snapshot export/import natively; HF Hub already hosts Qdrant snapshots as a pattern (`EmergentMethods/en_qdrant_wikipedia`, `Qdrant/arxiv-titles-instructorxl-embeddings`). Anonymous downloads work — no HF token needed. Snapshot size: ~250–800 MB. Wizard needs to auto-configure matching `EMBEDDING_PROVIDER` + dim check at boot. |
-| **0.2.x — `financebench seed --dir <path> [--collection <name>]`** | Trivial extension of `scripts/seed_qdrant.py` (currently hardcoded to `--sample`). Lets a technical user point at any PDF folder and ingest into a custom collection for private-corpus QA. Underlying `ingest_directory()` already takes any Path. | ~30 min | Plus CLI subcommand wrapper (~30 min). Caveat: the LoRA-fine-tuned reranker + tuned prompts are FinanceBench-specific. Performance on unrelated finance docs may differ from the 72.7% headline. The wizard's `--corpus` flag (above) is for replicating eval state; this flag is for custom corpora. |
-| Multi-collection / per-tenant ingest pipeline | Production-grade: per-user collections, REST ingest endpoint, idempotent re-ingest, RBAC at collection level. The minimum for any deployed multi-tenant scenario. | ~1–2 weeks | Significant scope. Only justified if there's actual demand. Architecturally feasible — retrieval node and RBAC service already accept collection name as parameter. |
-| Yank 0.1.5–0.1.6 from PyPI | After 0.1.7+ holds in sustained real use. Same hygiene as the 0.1.0–0.1.4 yank. | 5 minutes | |
+| **0.2.0 — Pre-built API image on GHCR, multi-arch (linux/amd64 + linux/arm64), published per `v*` tag via GitHub Actions** | **DONE (shipped 2026-05-30, commit `5e0919b`)** | ~4–5 hours actual | `compose.minimal.yml` got `image: ghcr.io/rishabhmannu/...:${FB_IMAGE_TAG:-0.2.0}` alongside existing `build:` block. `financebench upgrade` defaults to `docker compose pull`. M1 first-pull was 470s (not 90s — image larger than predicted). See "0.2.0 — install path closed" section below for the outcome narrative. |
+| `scripts/ci_smoke_install.sh` driven by GitHub Actions on every tag | **IN PROGRESS (current sprint)** | ~3 hours | Two-tier design: cheap PR/push smoke (wheel install + CLI + doctor --skip-network) catches wheel/import regressions; heavy tag-push smoke (compose up + `/v1/health` + doctor) catches 3-4 of the 5 0.1.x install-bug classes. |
+| API key live validation (Layer 2) | Pending — 0.2.x | ~3 hours | 0.1.4 ships prefix-format check + clickable URLs (Layer 1); Layer 2 issues one tiny request per key to catch expired / revoked / wrong-account keys before the wizard proceeds. |
+| **0.2.x — Pre-vectorized FinanceBench Qdrant snapshot on HuggingFace Hub** | Pending | ~1–2 days | **License: CC-BY-NC-4.0** carries through from FinanceBench. Snapshot must publish under same license. Non-commercial use only — blocks any future SaaS path on this exact corpus. Qdrant supports snapshot export/import natively; HF Hub already hosts Qdrant snapshots as a pattern (`EmergentMethods/en_qdrant_wikipedia`, `Qdrant/arxiv-titles-instructorxl-embeddings`). Anonymous downloads work — no HF token needed. Snapshot size: ~250–800 MB. Wizard needs to auto-configure matching `EMBEDDING_PROVIDER` + dim check at boot. |
+| `financebench seed --dir <path> [--collection <name>]` | **PARTIAL (shipped 2026-05-30, commit `0dbc3e9`)** | ~30 min | Script-level flags exposed via `scripts/seed_qdrant.py --dir / --collection`. CLI top-level subcommand wrapper (`financebench seed`) still pending. Caveat: the tuned prompts + reranker are FinanceBench-specific, so accuracy on non-FB corpora may differ from the 72.67% headline. |
+| Multi-collection / per-tenant ingest pipeline | Pending | ~1–2 weeks | Production-grade: per-user collections, REST ingest endpoint, idempotent re-ingest, RBAC at collection level. Only justified if there's actual demand. Architecturally feasible — retrieval node and RBAC service already accept collection name as parameter. |
+| Yank 0.1.5–0.1.8 from PyPI | **DONE** | 5 minutes | Yanked 0.1.0 → 0.1.8 after 0.2.0 verified clean on M1 (test10). PyPI now resolves `financebench-rag-agent` → 0.2.0; pinned installs of older versions still work. |
+| Image size reduction (new — surfaced post-0.2.0 ship) | Pending — 0.2.x | ~1 day | M1 test10 first-pull was 470s (~2.5-3 GB per arch). Slimmer base image + drop docling (pypdf is canonical) + multi-stage layer pruning — estimated 30-50% reduction plausible. |
+| Pydantic serialization warnings during grading (new — surfaced in test10) | Pending — 0.2.1 candidate | 1-3 hours | 8+ identical `UserWarning` per chat query from `pydantic/main.py:475` about `GradeResult.parsed` field. Cosmetic; likely from LangChain's structured-output wrapper interacting with pydantic v2's strict serializer. Not a regression — would have been firing throughout 0.1.x but only visible when tailing API logs immediately post-query. |
 
 ### What 0.2.0 does NOT include (deferred or out of scope)
 
@@ -1861,3 +1863,74 @@ Three real utility angles, in honest order of strength:
 3. **Functional utility for a determined individual user** (weak but real). Someone with their own SEC filings, Docker familiarity, and CC-BY-NC-acceptable use can install and get value. Total addressable users in this exact intersection: low.
 
 Pre-empting the "is this a startup?" question: no, not without (a) licensed corpus, (b) hosted multi-tenant deployment, (c) 6–12 months of product / sales / compliance work, and (d) competing against AlphaSense / Hebbia. Not in scope for an individual portfolio project. The methodological process documented here transfers to any senior IC role at any AI-adjacent company — that's the asset.
+
+---
+
+## 0.2.0 — install path closed (shipped 2026-05-30)
+
+The pre-built GHCR image work. Eight 0.1.x patches + one minor (0.2.0) = nine releases to make the install path actually work on a fresh M1. The 0.x install-path arc is now closed.
+
+### What shipped (commit `5e0919b`)
+
+| Change | Effect |
+|---|---|
+| `.github/workflows/release-image.yml` (new, ~145 lines) | Matrix build on native runners (`ubuntu-latest` for amd64, `ubuntu-24.04-arm` for arm64), push-by-digest, merge into manifest list with `:0.2.0` + `:0.2` tags. GITHUB_TOKEN auth (no PAT setup). First-time published package is private; repo owner toggled to public via GitHub UI for anonymous pulls. |
+| `compose.minimal.yml` + `docker-compose.yml` | `image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.2.0}` directive alongside existing `build:` block. Compose pulls by default; `up -d --build` falls back to local build. |
+| `cli/commands/setup.py` + `upgrade.py` | Thread `FB_IMAGE_TAG=<cli_version>` through env. Default flow is `docker compose pull`; `BUILD_FROM_SOURCE=1` or `financebench upgrade --build` forces source build. |
+| `cli/commands/upgrade.py` GIT_SHA threading in `_compose_build_api` | **Third instance** of the "fixed-one-call-site-missed-the-other" bug pattern (see meta-lesson below). Same `env=` pass-through as the 0.1.5 setup.py fix. |
+| `cli/doctor/checks.py` port-range parser | Test9 diagnostic was the entire investigation — `docker ps` returned `0.0.0.0:6333-6334->6333-6334/tcp` for qdrant's two-port mapping; 0.1.7's substring matcher `:6333->` silently missed it. New `_published_ports()` helper expands ranges and handles IPv4+IPv6 dual entries. |
+| `Dockerfile` `ENV ORT_LOGGING_LEVEL=3` | Silences onnxruntime "Unknown CPU vendor" warning that fires on every script invocation inside arm64-Linux containers on M1. Test6 A/B falsified the perf hypothesis; cosmetic noise only. |
+| `src/services/guardrails_service.py` `AnalyzerEngine(supported_languages=["en"])` | Restricts presidio registry to English. Pre-0.2.0 it emitted 11 WARNING lines per container start about Spanish/Italian/Polish recognizers not being registered (the registry only supports `en` and we want it that way). |
+| `docs/upgrade.md` | New "default workflow" narrative (pull-by-default), `BUILD_FROM_SOURCE=1` escape hatch, `docker image prune -a -f --filter "until=24h"` recipe for evicting stale 0.1.x local images after upgrade. |
+| Tests | 27 doctor unit tests pass (was 23) — +2 for port-range parser, +2 for the `_published_ports` helper unit tests. |
+
+Total: +394 / −31 lines across 13 files.
+
+### M1 verification (test10)
+
+| Signal | Result |
+|---|---|
+| `pip install --upgrade financebench-rag-agent` 0.1.8 → 0.2.0 | 220 KB wheel pulled from PyPI |
+| `docker compose pull` of GHCR image | **470.6s** on first pull — bigger than the 90s I predicted |
+| Container start + `/v1/health` 200 | 15s |
+| Banner shows `(semver 0.2.0, sha 5e0919b)` | Real sha — three-release-old GIT_SHA bug class closed |
+| Doctor (full check) | `12 passed · 3 info`, zero warnings — port-range parser fix verified |
+| `[✓] Port 6333 (qdrant) in use by repo-qdrant-1 (your running stack)` | The asymmetric "qdrant only" miss from test9 is gone |
+| Chat query (Apple FY2023 revenue) | 42.7s wall, conf 1.00, citations correct, sub-500ms guardrails |
+
+### One prediction miss to document
+
+I predicted ~90s first-pull from GHCR; actual was **470s on M1** (~7.8 min). Image is larger than I estimated — ~2.5-3 GB per arch (torch + sentence-transformers + spaCy + presidio + onnxruntime + base Python). Subsequent pulls reuse cached layers and drop dramatically; the first-pull cost is paid once per machine.
+
+Still strictly better than the ~10 min source build that every 0.1.x release paid (and that build would re-run on every patch version). But the user-facing first-install experience is closer to 5-8 minutes than the 90 seconds I'd led with. Image-size reduction is now a real 0.2.x sprint candidate (added to roadmap).
+
+### New finding for 0.2.x — pydantic serialization warnings
+
+Test10 surfaced 8+ identical warnings per chat query in the API logs:
+
+```
+WARNI [py.warnings] /usr/local/lib/python3.12/site-packages/pydantic/main.py:475:
+  UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected `none` - serialized value may not be as expected
+    [field_name='parsed', input_value=GradeResult(relevant=True...), input_type=GradeResult])
+```
+
+Fires once per chunk graded. **Not a regression** — would have been firing throughout the 0.1.x cycle but only visible when tailing API logs immediately post-query, which we didn't do before test10. Likely from LangChain's structured-output wrapper interacting with pydantic v2's strict serializer; the wrapper declares `parsed: T | None = None` on its response model and pydantic flags the type mismatch when an actual `GradeResult` instance is set. Cosmetic only; correctness verified by the test10 chat answer being right.
+
+### Meta-lesson — fourth documented instance of "fixed one call site, missed the other"
+
+The 0.2.0 GIT_SHA-in-upgrade.py miss is the **third documented instance** of this pattern (counting only the install-path cycle; if we count the runtime-audit cycle, it's the fourth instance overall — the embedding-dim fingerprint had the same shape).
+
+1. **0.1.3** — guardrails import typo in `src/api/routes/health.py:76` (`from src.services.guardrails import ...` — wrong module name). `src/graph/nodes/guardrails.py:7` already used the correct `guardrails_service` module. Health was the new call site I'd just written; graph nodes were the existing one I didn't check.
+2. **0.1.6** — GIT_SHA env fallback added to `src/api/main.py:_git_sha()`. `src/services/event_log.py:143` was the second call site doing `git rev-parse HEAD` directly, and was missed.
+3. **0.2.0** — GIT_SHA env threading added to `cli/commands/setup.py:_bring_up_stack`. `cli/commands/upgrade.py:_compose_build_api` was the second call site running docker compose build with env passthrough, and was missed.
+
+The mistake I keep making: fixing the call site I'm currently looking at without grepping for siblings. The fix protocol is now:
+
+> When fixing a bug related to a config / env var / import path / subprocess invocation, before declaring the fix complete: `grep -rn '<the relevant string>' src/ cli/ scripts/` and confirm every match is either (a) correctly handled by the fix or (b) intentionally outside scope. The 30-second grep would have caught all three of these at PR time.
+
+### Updated 0.2.x roadmap status
+
+See the table in §"0.2.x roadmap — image distribution, snapshot distribution, ingest UX" above. Items now marked `DONE`: GHCR image, yank 0.1.5-0.1.8, partial seed --dir flag. `IN PROGRESS`: CI smoke install workflow (current sprint after this entry). `Pending`: HF snapshot, API key Layer 2, `financebench seed` CLI subcommand wrapper, multi-collection ingest, image-size reduction, pydantic warning investigation.
+
+The 0.x install-path arc is closed. **The portfolio narrative** — 9 releases, 5 install bugs, 2 doctor false positives, 1 falsified hypothesis (LLM Guard), 3 instances of the same fixed-one-site bug pattern, all documented — is itself the strongest asset the project produces.
