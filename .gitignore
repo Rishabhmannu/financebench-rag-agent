@@ -166,3 +166,8 @@ publish-assets/
 # M1 install-path test logs — may contain pasted API keys from wizard prompts
 # until 0.1.4 introduces masked-input. Kept local-only by rule, not by accident.
 tests/m1-test/
+
+# Docker Desktop disk image backup — 65 GB sparse file, restore point for the
+# 2026-06-02 disk-full event. Cloned via APFS cp -c so it lives at near-zero
+# extra cost on disk, but huge if accidentally pushed.
+Docker-backup-*.raw

@@ -139,7 +139,10 @@ def _get_presidio_engines():
         return None, None
     if _analyzer is None:
         try:
+            import spacy
+
             from presidio_analyzer import AnalyzerEngine
+            from presidio_analyzer.nlp_engine import NlpEngineProvider
             from presidio_anonymizer import AnonymizerEngine
 
             # 0.2.0: supported_languages=["en"] restricts the registry to
@@ -148,9 +151,51 @@ def _get_presidio_engines():
             # and emits 11 WARNING lines per container start about them not
             # being added because the registry only supports `en`. The
             # recognizers were never used anyway — finance Q&A doesn't need
-            # Italian fiscal code detection. Test9 captured this noise at
-            # tests/m1-test/financebench-m1-test9.txt:364-374.
-            _analyzer = AnalyzerEngine(supported_languages=["en"])
+            # Italian fiscal code detection.
+            #
+            # 0.3.1: spaCy model selection.
+            # Default is en_core_web_md (~33 MB) — saves ~390 MB image size
+            # vs lg. PERSON recall is identical on full-name references
+            # ("Tim Cook"), but ~20pp worse on single-name references
+            # ("Buffett's letter") per the in-container comparison measured
+            # in 0.3.1. For finance Q&A chat queries, single-name references
+            # are a minority; the realistic recall drop is ~2-6pp.
+            #
+            # Users who need maximum PERSON recall (legal, HR, or compliance
+            # workloads where every name matters) can set
+            # USE_LARGE_SPACY_MODEL=1 and install lg into the running
+            # container with:
+            #
+            #   docker exec <api-container> python -m spacy download en_core_web_lg
+            #
+            # When the env var is set but lg isn't installed, we log a
+            # WARNING and fall back to md (rather than auto-downloading,
+            # which has historically been the source of slow-first-query
+            # bugs — see the 0.1.5 guardrails_service narrative).
+            use_lg = os.environ.get("USE_LARGE_SPACY_MODEL", "").lower() in ("1", "true", "yes")
+            installed_models = spacy.util.get_installed_models()
+            if use_lg and "en_core_web_lg" in installed_models:
+                model_name = "en_core_web_lg"
+                logger.info("PII detection: en_core_web_lg (USE_LARGE_SPACY_MODEL=1)")
+            elif use_lg:
+                logger.warning(
+                    "USE_LARGE_SPACY_MODEL=1 set but en_core_web_lg not installed. "
+                    "Falling back to en_core_web_md. To install lg in the running "
+                    "container: docker exec <api-container> python -m spacy "
+                    "download en_core_web_lg"
+                )
+                model_name = "en_core_web_md"
+            else:
+                model_name = "en_core_web_md"
+
+            _nlp_provider = NlpEngineProvider(nlp_configuration={
+                "nlp_engine_name": "spacy",
+                "models": [{"lang_code": "en", "model_name": model_name}],
+            })
+            _analyzer = AnalyzerEngine(
+                nlp_engine=_nlp_provider.create_engine(),
+                supported_languages=["en"],
+            )
             _anonymizer = AnonymizerEngine()
             logger.info("Presidio engines initialized successfully")
         except Exception as e:

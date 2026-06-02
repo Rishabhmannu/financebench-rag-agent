@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.3.0"
+version = "0.3.1"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -78,7 +78,16 @@ backend = [
     "peft>=0.13,<2.0",
 
     # Document parsing
-    "docling>=2.70,<3.0",
+    # 0.3.1: docling moved to the optional [docling] extra. pypdf is the
+    # canonical parser (per the credibility-rule eval evidence — docling
+    # underperforms pypdf by ~29pp on RAGAS faith + ctx_prec). Dropping
+    # docling + its OpenCV/opencv-libs dependency family saves ~180 MB
+    # uncompressed. The ingestion code in src/ingestion/docling_loader.py
+    # already handles ImportError gracefully (line 64-68 returns None and
+    # the chunker falls back to per-page pypdf chunking automatically).
+    # Users who want docling: pip install ".[docling]" — but they also
+    # need libxcb1 + libgl1 system packages for the OpenCV runtime, which
+    # the 0.3.1 Dockerfile no longer installs.
     "pypdf>=5.0,<7.0",
 
     # Embedding providers
@@ -117,6 +126,14 @@ backend = [
     # the seed_from_hf.py path doesn't break if those swap pullers.
     "pyarrow>=15.0,<25.0",
     "huggingface_hub>=0.26,<1.0",
+]
+
+# 0.3.1: docling extra — installs docling + its OpenCV deps for users who
+# want the (slower, lower-accuracy) docling parser path. Container users
+# also need libxcb1 + libgl1 system packages; the 0.3.1 Dockerfile no
+# longer pre-installs them.
+docling = [
+    "docling>=2.70,<3.0",
 ]
 
 test = [

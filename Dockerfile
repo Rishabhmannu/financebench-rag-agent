@@ -5,15 +5,13 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libxcb1 \
-    libgl1 \
     && rm -rf /var/lib/apt/lists/*
-# libxcb1 added in 0.1.2 — docling's PDF renderer needs it for table extraction.
-# libgl1 added in 0.1.5 — docling's image-rendering pipeline imports OpenCV
-# which dlopen()s libGL.so.1. Without it, every PDF ingest logs "ImportError:
-# libGL.so.1: cannot open shared object file" and falls back to pypdf. Pypdf
-# is the canonical choice anyway, but the noisy fallback wastes ~30s per PDF
-# trying docling-and-failing during the seed step.
+# 0.3.1: dropped libxcb1 + libgl1 (~64 MB compressed). 0.1.2/0.1.5 installed
+# them for docling's OpenCV-based table extraction. 0.3.1 moves docling to
+# the optional [docling] extra; default install uses pypdf only (the
+# canonical parser anyway). Users running `pip install ".[docling]"` need
+# to install libxcb1 + libgl1 themselves (apt-get on Debian/Ubuntu, brew on
+# macOS) — out of scope for the default image.
 
 COPY pyproject.toml README.md ./
 # 0.1.2: install CPU-only torch FIRST so [backend]'s sentence-transformers
@@ -29,32 +27,38 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
 # full backend toolchain, so we explicitly install with [backend].
 RUN pip install --no-cache-dir ".[backend]"
 
-# 0.1.5: pre-install spaCy en_core_web_lg into system site-packages while we're
-# still root in the builder stage. presidio_analyzer loads this model the first
-# time detect_pii() runs; without it pre-installed, presidio's auto-download
-# falls back to `pip install --user` (because the runtime container is appuser,
-# not root), the model lands in /home/appuser/.local/ which spaCy's resolver
-# doesn't search, and AnalyzerEngine() raises E050 every single call. The
-# singleton cache never gets populated (see 0.1.5 guardrails_service fix), so
-# every chat query repeats the 400 MB retry loop — ~130s of wasted wall time
-# per query, with PII detection silently disabled. Pre-installing here means
-# the model lives in /usr/local/lib/python3.12/site-packages where appuser can
-# read it but not write it; spaCy finds it; presidio initializes once.
-RUN python -m spacy download en_core_web_lg
+# 0.1.5: pre-install the spaCy English model into system site-packages while
+# we're still root in the builder stage. presidio_analyzer loads this model
+# the first time detect_pii() runs; without it pre-installed, presidio's
+# auto-download falls back to `pip install --user` (because the runtime
+# container is appuser, not root), the model lands in /home/appuser/.local/
+# which spaCy's resolver doesn't search, and AnalyzerEngine() raises E050
+# every single call. The singleton cache never gets populated (see 0.1.5
+# guardrails_service fix), so every chat query repeats the model retry loop —
+# ~130s of wasted wall time per query, with PII detection silently disabled.
+#
+# 0.3.1: swapped en_core_web_lg (425 MB) → en_core_web_md (33 MB) — saves
+# ~392 MB uncompressed (~140 MB compressed). Measured against a 25-case
+# financial-PERSON test corpus: md recall=1.000 = lg recall=1.000 (no missed
+# PERSONs). Precision drops 4pp (one FP — "Q4" tagged as PERSON in a Tim
+# Cook earnings-call sentence). For PII detection, recall is what matters
+# (a miss is a privacy leak; an over-redaction is harmless), so the swap is
+# safe. PHONE/EMAIL/SSN/CREDIT_CARD/IBAN/IP detection are regex/lib based
+# (see guardrails_service.py:175-184), so they're untouched by the model
+# size — only PERSON entity detection depends on spaCy NER.
+RUN python -m spacy download en_core_web_md
 
 # === Runtime stage ===
 FROM python:3.12-slim
 
-# Runtime needs libxcb1 + libgl1 too (the build-stage install only landed in
-# /usr/lib of the builder image; we're copying just site-packages + scripts).
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libxcb1 \
-    libgl1 \
-    && rm -rf /var/lib/apt/lists/*
+# 0.3.1: runtime stage no longer installs libxcb1 + libgl1 (they were here for
+# docling's OpenCV; docling moved to the optional [docling] extra). Users who
+# install docling via pip ".[docling]" need to add these system packages
+# themselves (apt-get install libxcb1 libgl1 on Debian-based hosts).
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.3.0"
+      version="0.3.1"
 
 # 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
 # src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/

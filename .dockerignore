@@ -7,6 +7,17 @@ data/raw/
 qdrant_data/
 pg_data/
 
+# Docker Desktop disk image backups (65 GB sparse files — disastrous if shipped)
+Docker-backup-*.raw
+
+# Local-only large artifacts that may exist mid-development
+dist/hf-snapshot-*/
+publish-assets/
+
+# Runtime artifacts that should never be baked in
+logs/
+cost_logs/
+
 # Python artifacts
 __pycache__/
 *.py[cod]
