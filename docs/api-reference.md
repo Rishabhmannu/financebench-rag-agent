@@ -524,4 +524,4 @@ None enforced at the API layer in dev. The free Groq tier applies its own per-mi
 
 ## CORS
 
-`allow_origins` comes from `settings.CORS_ORIGINS`. Default (`["http://localhost:3000","http://localhost:7860"]`) covers the Next.js dev server and the legacy Gradio app. In production, the `@model_validator` in [settings.py](../src/config/settings.py) blocks startup if `ENVIRONMENT=production` and `CORS_ORIGINS` contains `"*"`.
+`allow_origins` comes from `settings.CORS_ORIGINS` (default `["*"]` for local dev). In production, the `@model_validator` in [settings.py](../src/config/settings.py) blocks startup if `ENVIRONMENT=production` and `CORS_ORIGINS` contains `"*"`.

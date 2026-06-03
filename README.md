@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/financebench-rag-agent.svg)](https://pypi.org/project/financebench-rag-agent/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
-[![Tests](https://img.shields.io/badge/tests-337%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-342%20passing-brightgreen.svg)]()
 [![FinanceBench](https://img.shields.io/badge/FinanceBench-72.7%25%20pass-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/LICENSE)
 

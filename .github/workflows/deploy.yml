@@ -1,8 +1,9 @@
 name: Deploy to AWS
 
+# Reference AWS ECS deploy pipeline — manual-trigger only; not wired to live
+# infrastructure. Kept as a CD-pattern reference, not an active deployment.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}

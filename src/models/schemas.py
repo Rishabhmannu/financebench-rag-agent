@@ -95,8 +95,8 @@ class TokenResponse(BaseModel):
     Sprint 9 frontend handoff: includes the full identity tuple so the UI
     header can render `name (role)` and the department subtitle on first
     paint — saves a separate `/auth/me` round-trip on the login redirect.
-    The contract is additive (no fields removed) so existing Gradio client
-    keeps working.
+    The contract is additive (no fields removed) so existing clients
+    keep working.
     """
 
     access_token: str

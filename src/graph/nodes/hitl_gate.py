@@ -14,6 +14,11 @@ AMOUNT_PATTERN = re.compile(
     r"\$[\d,]+(?:\.\d{1,2})?(?:\s*(?:million|billion|trillion|thousand|M|B|T|k))?", re.IGNORECASE
 )
 
+# No real figure in this corpus reaches $10T; larger parses come from a
+# malformed generated draft (stray zero-groups) and are treated as noise so
+# the gate never reports a nonsensical amount.
+_SANE_MAX_AMOUNT = 1e13
+
 
 def _extract_max_amount(text: str) -> float:
     """Extract the largest dollar amount mentioned in the text."""
@@ -32,9 +37,11 @@ def _extract_max_amount(text: str) -> float:
                 break
         try:
             amount = float(cleaned) * multiplier
-            max_amount = max(max_amount, amount)
         except ValueError:
             continue
+        if amount > _SANE_MAX_AMOUNT:
+            continue
+        max_amount = max(max_amount, amount)
     return max_amount
 
 

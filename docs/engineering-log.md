@@ -2263,3 +2263,31 @@ Result: **337 passed, 0 failed.** The README test badge previously read "337 pas
 - **Audit the wheel + sdist + Docker image before every tag push.** The 60-script bloat was discoverable via a one-line `tar tzf` on every release since 0.1.0. Nobody ran it. Added to the pre-shipping checklist.
 - **"It's plain text so it's portable" is wrong.** A `.tape` file is plain text, but its *content* (conda env name, absolute home path) was M4-Pro-specific. Portability = format + content + dependencies.
 - **A green-looking test badge can lie.** "Known flakes" carried across releases turned out to be stale tests masking nothing — but the badge had been overstating the passing count the whole time. Stale tests are a credibility liability even when the product is fine.
+
+## 0.3.3 — demo recordings + repo hygiene (shipped 2026-06-04)
+
+Re-recorded the three demo GIFs (RBAC, HITL, conversation memory) against the 0.3.2 stack, plus a batch of small hygiene fixes. The substance of this release is in the recording process, which surfaced several lessons worth keeping.
+
+### The recording saga (VHS → asciinema)
+
+The RBAC and memory demos are deterministic single-terminal flows, so **VHS** scripted tapes work well — with one fix: a hidden warm-up query before recording. Cold start (first reranker load) takes 60-70s; the original tapes' fixed `Sleep` values were shorter than the real query time, so the tape typed the next command *into the still-running one* and desynced (the RBAC `clevel` login failed with "Invalid credentials" because the password was typed into a busy process, not the prompt). Fix: warm the server models in the `Hide` block so on-camera queries run warm and predictable.
+
+The HITL demo is different: it's a **two-party, asynchronous, cross-terminal** flow (finance blocks at the gate → admin approves in a second session → finance's poll-wait releases the answer). VHS records one terminal and fires keystrokes on fixed timers — the worst case for an async flow whose timing depends on the other pane. After repeated desyncs, pivoted to **asciinema + tmux**: tmux provides the two panes inside one terminal, asciinema captures the session *live* (you drive the cross-pane timing by hand), then the cast is trimmed and rendered to GIF with `agg`. Captured as a runbook at `scripts/internal/demo/record-hitl.md`.
+
+Format gotcha logged: asciinema 3.x writes asciicast **v3**; `agg` reads **v2**. `agg` fails with "expected value at line 1 column 1" on a v3 file — convert with `asciinema convert -f asciicast-v2` first.
+
+### Two findings from the HITL recording
+
+1. **Stale approvals persist (by design) — clear the queue before recording.** Pending approvals live in Postgres, not per-session memory, so a request submitted earlier survives admin login/logout. That durability is a real strength, but a leftover request from an earlier test showed up in the approver inbox on camera. Durable queue = good; showing a stale item = clear it first.
+2. **A generated draft can balloon a dollar amount.** A "$500,000" query produced a draft answer containing a nonsensical `$500,000,000,000,000,000`, which the HITL gate faithfully reported (it takes the max amount found in the draft + query). The amount-extraction now ignores parses above a $10T sane ceiling (`src/graph/nodes/hitl_gate.py`) so the gate can never display a garbage figure; covered by `tests/unit/test_hitl_gate.py`. The demo also switched to an invoice-amount query, which reads a real document figure ($197,653) instead of a round number a draft can inflate.
+
+### Other hygiene
+
+- **`Deploy to AWS` workflow gated to manual.** It ran on every push and failed every time (wrong test extra → `ModuleNotFoundError`, and no live AWS target — the project has never been deployed). It was a perpetual red X on the Actions tab. Switched to `workflow_dispatch` only and labeled it a reference CD pipeline, not an active deployment.
+- **Doc/comment accuracy.** Corrected the CORS default in `docs/api-reference.md` (it claimed `["localhost:3000","localhost:7860"]`; the real default is `["*"]` for dev, blocked in production) and dropped a stale "Gradio client" mention now that the Gradio frontend is gone.
+- **Test count 337 → 342** (the new `test_hitl_gate.py`); badge updated to match.
+
+### Deferred (intentional)
+
+- Node 20→24 GitHub Action runtime bumps — non-blocking deprecation warnings (forced June 2026); deferred to a normal-push commit rather than risking CI behavior on a release tag.
+- README polish (≤90-line trim, a three-GIF Demos section, publication-grade architecture diagrams via Excalidraw/Figma, gif optimization) — a dedicated pass, not bundled here.

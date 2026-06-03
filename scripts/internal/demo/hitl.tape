@@ -1,5 +1,9 @@
-# Multi-party HITL demo: finance submits a $500K query, sees Pending;
+# Multi-party HITL demo: finance submits a high-value query, sees Pending;
 # admin (separate FB_PROFILE) reviews + approves.
+#
+# NOTE: the SHIPPED two-pane hitl.gif (finance + admin side by side) is recorded
+# live with asciinema + tmux — see record-hitl.md in this folder. This VHS tape
+# is a single-terminal fallback (one terminal, FB_PROFILE switch).
 #
 # Run: vhs scripts/internal/demo/hitl.tape  (~110s)
 # Output: docs/demos/hitl.gif
