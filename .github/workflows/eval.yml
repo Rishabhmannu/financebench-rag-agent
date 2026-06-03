@@ -7,6 +7,10 @@ on:
       - "src/config/prompts.py"
       - "tests/evaluation/**"
 
+env:
+  # Opt actions into Node24 ahead of the June 2026 Node20 removal (Linux runners).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     runs-on: ubuntu-latest
