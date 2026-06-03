@@ -292,7 +292,7 @@ def _maybe_empty_mps_cache() -> None:
 
 def _load_dataset(limit: int | None = None) -> list[dict]:
     if not FB_QA_PATH.exists():
-        print(f"ERROR: {FB_QA_PATH} missing. Run scripts/download_financebench.py first.")
+        print(f"ERROR: {FB_QA_PATH} missing. Run scripts/internal/data_prep/download_financebench.py first.")
         sys.exit(1)
     data = [json.loads(line) for line in open(FB_QA_PATH)]
     if limit:
@@ -673,7 +673,7 @@ def score_with_deepeval(
     """
     cmd = [
         sys.executable,
-        "scripts/score_deepeval.py",
+        "scripts/internal/eval/score_deepeval.py",
         "--cache",
         str(cache_path),
         "--output",
@@ -717,7 +717,7 @@ def score_with_patronus(
     """Run Patronus fuzzy-match via direct REST helper script.
 
     We intentionally avoid Patronus SDK here due to observed OpenTelemetry
-    incompatibility in our env; `scripts/score_patronus.py` uses `/v1/evaluate`
+    incompatibility in our env; `scripts/internal/eval/score_patronus.py` uses `/v1/evaluate`
     directly and supports retries/resume.
     """
     if not settings.PATRONUS_API_KEY:
@@ -731,7 +731,7 @@ def score_with_patronus(
 
     cmd = [
         sys.executable,
-        "scripts/score_patronus.py",
+        "scripts/internal/eval/score_patronus.py",
         "--cache",
         str(cache_path),
         "--output",
@@ -1081,7 +1081,7 @@ def main():
         # Best-effort pass labels for diagnostics if pass_rate extraction worked.
         if "patronus_fuzzy_match_pass_rate" in scores["patronus"]:
             # run_experiment currently returns only aggregate; per-sample labels are
-            # tracked separately by scripts/score_patronus.py.
+            # tracked separately by scripts/internal/eval/score_patronus.py.
             patronus_pass_labels = None
 
     # --- Local correctness LLM judge (replaces Patronus for pass labels) ---

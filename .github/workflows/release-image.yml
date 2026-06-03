@@ -249,3 +249,61 @@ jobs:
         if: always()
         run: |
           docker compose -f compose.minimal.yml down -v 2>&1 | tail -20
+
+  # 0.3.2: Trusted Publisher (PEP 740 / OIDC) PyPI upload. Runs only after the
+  # GHCR image is verified healthy — so users who `pip install` the new wheel
+  # are guaranteed the matching `:X.Y.Z` image is already pullable from GHCR.
+  #
+  # PyPI side config: https://pypi.org/manage/project/financebench-rag-agent/settings/publishing/
+  #   Owner: Rishabhmannu
+  #   Repository name: financebench-rag-agent
+  #   Workflow name: release-image.yml
+  #   Environment name: pypi
+  # Once that's configured, this job uploads via OIDC — no API token in the
+  # workflow, no PYPI_API_TOKEN secret needed. The `pypi` environment
+  # additionally allows a manual approval gate before the upload step fires.
+  #
+  # Skips on workflow_dispatch (that path is for re-verifying an existing
+  # release against its already-published image; nothing new to publish).
+  publish-pypi:
+    needs: verify
+    if: github.event_name == 'push' && needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/financebench-rag-agent/${{ github.ref_name }}
+    permissions:
+      id-token: write  # required for PyPI Trusted Publisher OIDC handshake
+
+    steps:
+      - name: Checkout repo at the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tool
+        run: pip install --upgrade build
+
+      - name: Build wheel + sdist
+        run: python -m build
+
+      - name: Sanity check artifacts
+        run: |
+          ls -lh dist/
+          version="${GITHUB_REF_NAME#v}"
+          if ! ls dist/financebench_rag_agent-"$version"-py3-none-any.whl > /dev/null 2>&1; then
+            echo "ERROR: expected wheel for version $version not found in dist/"
+            exit 1
+          fi
+          echo "Built artifacts match tag $GITHUB_REF_NAME"
+
+      - name: Publish to PyPI via OIDC
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Default index URL is PyPI; OIDC token is auto-discovered from the
+        # job's id-token permission. No password or token needed.

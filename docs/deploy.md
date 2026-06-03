@@ -7,7 +7,7 @@ This document is for users who want to run the backend stack themselves on a lap
 | Profile | Services | When to use | Memory |
 |---|---|---|---|
 | **Minimal** (`compose.minimal.yml`) | 4: `api`, `qdrant`, `postgres`, `redis` | Day-to-day use, demos, single-tenant install. Cost tracking still works via on-disk `cost_logs/cost_log.jsonl`. | ~2.2 GB at peak |
-| **Full** (`docker-compose.yml`) | 11: minimal + `litellm` + Langfuse stack (6 services) + legacy Gradio frontend | When you want the Langfuse trace UI at `:3000`, centralized LLM cost dashboards, semantic cache, model gateway | ~5 GB at peak |
+| **Full** (`docker-compose.yml`) | 11: minimal + `litellm` + Langfuse stack (6 services) | When you want the Langfuse trace UI at `:3000`, centralized LLM cost dashboards, semantic cache, model gateway | ~5 GB at peak |
 
 The minimal stack drops LiteLLM by setting `LITELLM_URL=""`, which makes `src/services/llm_factory.py` fall back to direct provider SDKs (Anthropic, OpenAI, Voyage, Groq). Verified in code at [src/services/llm_factory.py:89-97](../src/services/llm_factory.py#L89). Per-call cost is still tracked by the LangChain callback handler ([src/services/cost_tracker.py:249](../src/services/cost_tracker.py#L249)) and written to `cost_logs/cost_log.jsonl` regardless of which stack you run.
 

@@ -1,7 +1,7 @@
 # Conversation memory demo: follow-up queries resolve against thread history.
 # Query resolver rewrites "And Microsoft?" using the prior Apple Q.
 #
-# Run: vhs scripts/demo/memory.tape  (~140s)
+# Run: vhs scripts/internal/demo/memory.tape  (~140s)
 # Output: docs/demos/memory.gif
 
 Output "docs/demos/memory.gif"
@@ -15,15 +15,9 @@ Set TypingSpeed 45ms
 Set PlaybackSpeed 1.0
 
 Hide
-Type "source /opt/anaconda3/etc/profile.d/conda.sh && conda activate agentic-ai"
-Enter
-Sleep 1s
 Type "setopt interactive_comments"
 Enter
 Sleep 300ms
-Type "cd /Users/rishabh/Documents/Documents/Agentic-AI-Course/CampusX-LangGraph-Course"
-Enter
-Sleep 500ms
 Type "unset FB_PROFILE && rm -f ~/.financebench/profiles/default.json"
 Enter
 Sleep 500ms

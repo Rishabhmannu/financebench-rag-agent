@@ -42,10 +42,12 @@ def client():
 
 @patch("src.api.routes.threads.list_threads_for_user", new_callable=AsyncMock)
 def test_list_threads_filters_by_user(mock_list, client):
+    _owner = {"user_id": "finance", "name": "Test finance", "role": "finance", "department": "x"}
+    _ts = {"created_at": "2026-01-01T00:00:00Z", "last_activity_at": "2026-01-02T00:00:00Z"}
     mock_list.return_value = (
         [
-            {"thread_id": "t1", "created_at_estimate": "x", "updated_at_estimate": "y", "checkpoint_count": 4},
-            {"thread_id": "t2", "created_at_estimate": "x2", "updated_at_estimate": "y2", "checkpoint_count": 2},
+            {"thread_id": "t1", "checkpoint_count": 4, **_owner, **_ts},
+            {"thread_id": "t2", "checkpoint_count": 2, **_owner, **_ts},
         ],
         2,
     )
@@ -74,23 +76,23 @@ def test_list_threads_requires_auth(client):
     assert resp.status_code in (401, 403)
 
 
-@patch("src.api.routes.threads.get_thread_owner", new_callable=AsyncMock)
+@patch("src.services.thread_service.get_thread_owner_role", new_callable=AsyncMock)
 def test_get_thread_blocks_cross_user(mock_owner, client):
-    mock_owner.return_value = "different-user"  # someone else's thread
+    mock_owner.return_value = ("different-user", "finance", "Different User", "x")  # someone else's thread
     resp = client.get("/threads/abc", headers={"Authorization": f"Bearer {_token('finance')}"})
     assert resp.status_code == 403
 
 
-@patch("src.api.routes.threads.get_thread_owner", new_callable=AsyncMock)
+@patch("src.services.thread_service.get_thread_owner_role", new_callable=AsyncMock)
 def test_get_thread_404_when_not_found(mock_owner, client):
-    mock_owner.return_value = None
+    mock_owner.return_value = (None, None, None, None)
     resp = client.get("/threads/abc", headers={"Authorization": f"Bearer {_token()}"})
     assert resp.status_code == 404
 
 
-@patch("src.api.routes.threads.get_thread_owner", new_callable=AsyncMock)
+@patch("src.services.thread_service.get_thread_owner_role", new_callable=AsyncMock)
 def test_get_thread_returns_messages(mock_owner, client):
-    mock_owner.return_value = "finance"
+    mock_owner.return_value = ("finance", "finance", "Test finance", "x")
 
     fake_graph = MagicMock()
     fake_state = MagicMock()

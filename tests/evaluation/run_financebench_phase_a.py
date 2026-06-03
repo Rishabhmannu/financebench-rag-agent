@@ -83,7 +83,7 @@ def _build_initial_state(question: str) -> dict:
 
 def fb_record(rid: str) -> dict:
     if not FB_QA_PATH.exists():
-        print(f"ERROR: {FB_QA_PATH} not found. Run scripts/download_financebench.py first.")
+        print(f"ERROR: {FB_QA_PATH} not found. Run scripts/internal/data_prep/download_financebench.py first.")
         sys.exit(1)
     for line in open(FB_QA_PATH):
         rec = json.loads(line)

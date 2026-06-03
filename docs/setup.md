@@ -27,14 +27,11 @@ cp .env.example .env
 docker compose up -d
 
 # Generate and seed sample financial documents
-python scripts/download_sample_data.py
+python scripts/internal/data_prep/download_sample_data.py
 python scripts/seed_qdrant.py --sample
 
 # Start the API server with hot reload
 make run                    # http://localhost:8000
-
-# (Legacy) Gradio frontend
-make frontend               # http://localhost:7860
 ```
 
 ## Local development — Next.js frontend (Sprint 9)
@@ -106,7 +103,6 @@ For full request/response schemas see [`api-reference.md`](api-reference.md).
 src/
   api/              FastAPI app + routes (auth, chat, threads, documents, hitl, ingest, admin, health)
   config/           Settings, RBAC config, prompt templates
-  frontend/         Gradio ChatInterface (legacy — to be retired in Sprint 9.5)
   graph/
     nodes/          14 LangGraph nodes including research_agent.py subgraph
     edges.py        5 conditional edge routing functions

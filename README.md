@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/financebench-rag-agent.svg)](https://pypi.org/project/financebench-rag-agent/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
-[![Tests](https://img.shields.io/badge/tests-340%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-337%20passing-brightgreen.svg)]()
 [![FinanceBench](https://img.shields.io/badge/FinanceBench-72.7%25%20pass-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/LICENSE)
 
@@ -13,9 +13,15 @@ A multi-agent RAG system for role-based access-controlled financial document Q&A
 
 ```bash
 pip install financebench-rag-agent
-financebench setup     # brings up the 4-service docker stack, seeds a sample corpus
-financebench login -u analyst    # password analyst123
+financebench setup                    # brings up the 4-service docker stack, seeds 8 sample PDFs
+financebench login -u analyst         # password analyst123
 financebench chat
+```
+
+For the full 360-PDF FinanceBench corpus (skips ~$5-15 of Voyage embedding cost + ~30 min ingest):
+
+```bash
+financebench seed --from-hf cmpunkmannu/financebench-voyage-finance-2-embeddings
 ```
 
 ![RBAC role-switch demo](https://raw.githubusercontent.com/Rishabhmannu/financebench-rag-agent/main/docs/demos/rbac.gif)
@@ -24,25 +30,11 @@ Multi-party HITL approval workflow and conversation memory have their own walkth
 
 ## Architecture
 
-> *The mermaid diagram below renders as a flowchart on [GitHub](https://github.com/Rishabhmannu/financebench-rag-agent#architecture). PyPI's markdown renderer doesn't support mermaid — readers there see the source and the prose summary that follows.*
-
-```mermaid
-flowchart TD
-    Q([Query + JWT]) --> RBAC[rbac_gate<br/>JWT to Qdrant filter]
-    RBAC --> Guard[guardrails<br/>regex to LLM Guard to LLM classifier]
-    Guard -->|blocked| Block([blocked])
-    Guard --> Route{router}
-    Route -->|simple_lookup| Direct[retrieval → reranker → grader → generator]
-    Route -->|research_required| Agent[[research_agent subgraph<br/>decompose → retrieve → grade → sufficiency → synthesize<br/>5-turn cap]]
-    Direct --> Halu[hallucination_checker]
-    Agent --> Halu
-    Halu -->|ungrounded, retry up to 2| Direct
-    Halu --> HITL{hitl_gate}
-    HITL -->|amount above role threshold| Pause([pause for human approval])
-    HITL --> Out([Answer + sources])
-```
+![Architecture: 16-node LangGraph with RBAC gate, guardrails cascade, simple vs research-agent routing, hallucination check, and HITL approval](https://raw.githubusercontent.com/Rishabhmannu/financebench-rag-agent/main/docs/diagrams/architecture.png)
 
 A router classifies each query as a simple lookup or research-required. Simple lookups take the fast direct path (retrieval → BGE reranker → grader → Claude generator); research queries enter a multi-turn subgraph that decomposes the question, retrieves per sub-question, grades sufficiency, and synthesizes a final answer. RBAC is enforced at the Qdrant payload-filter level — agentic queries cannot bypass access control. High-stakes answers (above a per-role dollar threshold) pause via LangGraph's `interrupt()` for multi-party human approval, with state checkpointed to Postgres so the workflow survives container restarts.
+
+<sub>Diagram source: [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) (Mermaid). Regenerate: `mmdc -i docs/diagrams/architecture.mmd -o docs/diagrams/architecture.png -c docs/diagrams/mermaid-config.json --backgroundColor white --width 1600 --scale 2`.</sub>
 
 ## Tech stack
 

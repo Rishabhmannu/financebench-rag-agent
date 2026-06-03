@@ -11,6 +11,7 @@ don't want to silently overwrite user edits.
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import subprocess
@@ -21,6 +22,60 @@ import typer
 
 from cli.commands.setup import DEFAULT_CLONE_PATH
 from cli.render import console, render_error, render_info, render_success
+
+
+_NOTICES_FILE = Path.home() / ".financebench" / "upgrade_notices_seen.json"
+
+
+# 0.3.2: one-time upgrade notices keyed by a stable slug. Printed once per
+# CLI install, persisted to ~/.financebench/upgrade_notices_seen.json. Add
+# new entries when shipping a behavior change that doesn't break anything
+# in the default flow but matters for a subset of users (e.g., PII-sensitive
+# or extra-dependent workloads). Keep the body short — five lines max — and
+# always include the release notes URL so the user can read the full story.
+_NOTICES: list[tuple[str, str]] = [
+    (
+        "0.3.1-spacy-docling",
+        (
+            "[bold]0.3.1 changed two backend defaults[/bold] (image pull is ~530 MB smaller):\n"
+            "  • spaCy [bold]en_core_web_lg → en_core_web_md[/bold]. PERSON PII recall is\n"
+            "    identical on full names; drops ~20pp on single-name references like\n"
+            "    \"Buffett\" or \"Dimon\". For compliance/HR/legal workloads, set\n"
+            "    [cyan]USE_LARGE_SPACY_MODEL=1[/cyan] in .env and run:\n"
+            "      [dim]docker exec <api-container> python -m spacy download en_core_web_lg[/dim]\n"
+            "  • [bold]docling[/bold] moved to optional [cyan]\\[docling][/cyan] extra. Default ingestion uses\n"
+            "    pypdf (canonical anyway). Install with: [dim]pip install \".\\[docling]\"[/dim]\n"
+            "  Release notes: https://github.com/Rishabhmannu/financebench-rag-agent/releases/tag/v0.3.1"
+        ),
+    ),
+]
+
+
+def _show_pending_notices() -> None:
+    """Print any one-time notices the user hasn't acknowledged yet, then
+    record them as seen so next upgrade doesn't repeat the same message."""
+    seen: set[str] = set()
+    if _NOTICES_FILE.exists():
+        try:
+            seen = set(json.loads(_NOTICES_FILE.read_text()).get("seen", []))
+        except (OSError, ValueError):
+            pass
+
+    for slug, body in _NOTICES:
+        if slug in seen:
+            continue
+        console.print()
+        console.print(f"[yellow]ℹ  one-time notice (you'll see this once):[/yellow]")
+        console.print(body)
+        console.print()
+        seen.add(slug)
+
+    try:
+        _NOTICES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _NOTICES_FILE.write_text(json.dumps({"seen": sorted(seen)}, indent=2) + "\n")
+    except OSError:
+        # Non-fatal — worst case the notice fires again on next upgrade.
+        pass
 
 
 def upgrade(
@@ -44,6 +99,10 @@ def upgrade(
     if not (path / compose_file).exists():
         render_error(f"{compose_file} not found at {path}")
         raise typer.Exit(1)
+
+    # 0.3.2: print any one-time upgrade notices the user hasn't acknowledged
+    # yet. Done before the pull so they can read it while git + docker work.
+    _show_pending_notices()
 
     _check_git_clean(path, allow_dirty=force)
     _git_pull(path)

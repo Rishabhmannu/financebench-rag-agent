@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.3.1"
+version = "0.3.2"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -200,7 +200,10 @@ exclude = [
   "data/models/**",
   "data/training/**",
   "docs/demos/**",
-  "tests/evaluation/eval_results/**",
+  "docs/research/**",
+  "scripts/internal/**",
+  "tests/evaluation/**",
+  "tests/integration/**",
   "web/**",
   "**/__pycache__/**",
   "**/*.pyc",

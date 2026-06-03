@@ -4,7 +4,7 @@ Per-process singleton writes JSONL events to logs/run_<timestamp>.jsonl.
 Configure via EVENT_LOG_PATH or LOGS_DIR env vars (auto-named otherwise).
 
 Companion to Python's logging module — the latter writes free-form strings
-for humans; this writes structured fields for scripts/show_run.py and jq.
+for humans; this writes structured fields for scripts/internal/debug/show_run.py and jq.
 
 Usage at a graph-node decision point:
     from src.services.event_log import emit

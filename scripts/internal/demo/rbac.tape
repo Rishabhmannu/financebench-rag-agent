@@ -1,7 +1,7 @@
 # RBAC role-switch demo: analyst hits the wall on confidential docs;
 # clevel re-login unlocks the same query.
 #
-# Run: vhs scripts/demo/rbac.tape  (~90s)
+# Run: vhs scripts/internal/demo/rbac.tape  (~90s)
 # Output: docs/demos/rbac.gif
 
 Output "docs/demos/rbac.gif"
@@ -15,15 +15,9 @@ Set TypingSpeed 45ms
 Set PlaybackSpeed 1.0
 
 Hide
-Type "source /opt/anaconda3/etc/profile.d/conda.sh && conda activate agentic-ai"
-Enter
-Sleep 1s
 Type "setopt interactive_comments"
 Enter
 Sleep 300ms
-Type "cd /Users/rishabh/Documents/Documents/Agentic-AI-Course/CampusX-LangGraph-Course"
-Enter
-Sleep 500ms
 Type "unset FB_PROFILE && rm -rf ~/.financebench/profiles/default.json"
 Enter
 Sleep 500ms

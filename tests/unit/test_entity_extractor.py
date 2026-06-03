@@ -111,9 +111,10 @@ def test_extract_year_ignores_out_of_range_years():
     assert _extract_year("Founded in 1976, Apple...") is None
 
 
-def test_extract_year_picks_first_match():
-    # Our regex returns the first 20XX year found — acceptable for simple queries
-    assert _extract_year("Compare 2022 to 2023 revenue") == 2022
+def test_extract_year_picks_latest():
+    # Multi-year queries target the latest year — the fiscal year of the source
+    # 10-K, which discusses all comparison years inside (see _extract_year docstring).
+    assert _extract_year("Compare 2022 to 2023 revenue") == 2023
 
 
 # ---------------------------------------------------------------------------

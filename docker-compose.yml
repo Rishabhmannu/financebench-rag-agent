@@ -2,7 +2,7 @@ services:
   api:
     # 0.2.0: image: + build: dual setup. See compose.minimal.yml for the
     # full rationale. Same FB_IMAGE_TAG + BUILD_FROM_SOURCE behavior.
-    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.2.0}
+    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.3.2}
     # 0.1.5: build.args.GIT_SHA — see compose.minimal.yml for rationale.
     build:
       context: .
@@ -14,6 +14,8 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - POSTGRES_HOST=postgres
+      - RESULT_CACHE_REDIS_HOST=redis
+      - RESULT_CACHE_REDIS_PORT=6379
     depends_on:
       qdrant:
         condition: service_healthy
@@ -24,27 +26,7 @@ services:
       - hf_cache:/home/appuser/.cache/huggingface
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
-    networks:
-      - rag-net
-
-  frontend:
-    build: .
-    command: python -m src.frontend.gradio_app
-    ports:
-      - "7860:7860"
-    environment:
-      - API_URL=http://api:8000
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
       interval: 30s
       timeout: 5s
       start_period: 15s

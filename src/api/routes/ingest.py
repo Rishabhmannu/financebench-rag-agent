@@ -26,7 +26,7 @@ async def ingest_documents(user: User = Depends(get_current_user)):
 
     sample_dir = Path("data/sample")
     if not sample_dir.exists():
-        raise HTTPException(status_code=404, detail="No sample data directory found. Run scripts/download_sample_data.py first.")
+        raise HTTPException(status_code=404, detail="No sample data directory found. Run scripts/internal/data_prep/download_sample_data.py first.")
 
     pdf_files = list(sample_dir.glob("*.pdf"))
     if not pdf_files:

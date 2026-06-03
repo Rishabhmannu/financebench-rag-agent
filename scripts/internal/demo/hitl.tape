@@ -1,7 +1,7 @@
 # Multi-party HITL demo: finance submits a $500K query, sees Pending;
 # admin (separate FB_PROFILE) reviews + approves.
 #
-# Run: vhs scripts/demo/hitl.tape  (~110s)
+# Run: vhs scripts/internal/demo/hitl.tape  (~110s)
 # Output: docs/demos/hitl.gif
 
 Output "docs/demos/hitl.gif"
@@ -15,15 +15,9 @@ Set TypingSpeed 45ms
 Set PlaybackSpeed 1.0
 
 Hide
-Type "source /opt/anaconda3/etc/profile.d/conda.sh && conda activate agentic-ai"
-Enter
-Sleep 1s
 Type "setopt interactive_comments"
 Enter
 Sleep 300ms
-Type "cd /Users/rishabh/Documents/Documents/Agentic-AI-Course/CampusX-LangGraph-Course"
-Enter
-Sleep 500ms
 Type "rm -f ~/.financebench/profiles/finance.json ~/.financebench/profiles/admin.json"
 Enter
 Sleep 500ms

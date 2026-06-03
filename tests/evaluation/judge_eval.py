@@ -44,7 +44,7 @@ TEST_RETEST_N = 20
 TEST_RETEST_RUNS = 3
 PARALLEL_PER_JUDGE = 8
 
-# Baseline prompt — copied from scripts/run_devset.py (current production judge)
+# Baseline prompt — copied from scripts/internal/eval/run_devset.py (current production judge)
 BASELINE_PROMPT = """You are evaluating whether a generated answer correctly answers a financial question, given a gold reference answer extracted from the source document.
 
 Be strict. Mark PASS only if the generated answer conveys the same factual content as the gold. Mark FAIL for:

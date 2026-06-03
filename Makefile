@@ -1,4 +1,4 @@
-.PHONY: run dev frontend test test-unit test-integration eval lint format ingest seed-db jwt docker-up docker-down docker-all docker-build docker-prod docker-logs docker-ps docker-restart check clean migrate migrate-down migrate-create migrate-current
+.PHONY: run dev test test-unit test-integration eval lint format ingest seed-db jwt docker-up docker-down docker-all docker-build docker-prod docker-logs docker-ps docker-restart check clean migrate migrate-down migrate-create migrate-current
 
 # --- Development ---
 run:
@@ -6,9 +6,6 @@ run:
 
 dev: docker-up
 	uvicorn src.api.main:app --reload --port 8000
-
-frontend:
-	python -m src.frontend.gradio_app
 
 # --- Testing ---
 test:
@@ -33,7 +30,7 @@ format:
 
 # --- Data ---
 ingest:
-	python scripts/ingest_documents.py --input data/raw/ --collection financial_docs
+	python scripts/internal/data_prep/ingest_documents.py --input data/raw/ --collection financial_docs
 
 seed-db:
 	python scripts/seed_qdrant.py --sample
@@ -65,7 +62,7 @@ docker-ps:
 	docker compose ps
 
 docker-restart:
-	docker compose restart api frontend
+	docker compose restart api
 
 # --- Migrations (Sprint 9.0: alembic for the roles table; will grow) ---
 migrate:

@@ -1005,7 +1005,7 @@ Web research surfaced [arXiv 2506.14084](https://arxiv.org/abs/2506.14084) which
 
 ### Investigation 3 — 4-way fair comparison
 
-Built `scripts/eval_grader_models_compare.py` to test 4 backends on:
+Built `scripts/internal/eval/eval_grader_models_compare.py` to test 4 backends on:
 - **100-pair balanced sample** (50 random gold positives + 50 same-doc non-retrieved hard negatives) → precision, recall, F1, accuracy
 - **363-gold-chunk recall set** (same as Diag 3) → gold-chunk recall + per-Q full/partial/zero buckets
 
@@ -1047,9 +1047,9 @@ All 5 fixed in the v2 re-run. Groq paced at 6s/call to stay under 18K tokens/min
 
 The two models trade off precision vs recall. On the metric most aligned with downstream pass rate (gold-chunk recall on the 363-pair set), Haiku wins. The 1.2pp F1 gap is within plausible single-run variance for Haiku at temperature=0 — `ChatAnthropic` does not accept a `seed` parameter, so Haiku's output is "near-deterministic" but not bit-stable, whereas gpt-4o-mini is seeded at 42 via [`src/services/llm_factory.py:72`](src/services/llm_factory.py#L72). Three additional methodology caveats remain that could legitimately shift the picture further:
 
-  - **Provider-specific structured-output mechanics.** `with_structured_output(GradeResult)` at [`scripts/eval_grader_models_compare.py:89`](scripts/eval_grader_models_compare.py#L89) resolves to OpenAI's native `json_schema` (strict=True) for gpt-4o-mini, but Anthropic tool-use for Haiku. The two mechanisms inject different overhead into the prompt and enforce schema differently. This is what production uses, so the comparison is fair to production — but it is *not* a same-prompt comparison of the two models.
-  - **Role text in `HumanMessage`, not `SystemMessage`.** `GRADER_PROMPT` at [`src/config/prompts.py:188`](src/config/prompts.py#L188) begins *"You are a relevance grader…"* and is wrapped in `HumanMessage` at [`scripts/eval_grader_models_compare.py:92`](scripts/eval_grader_models_compare.py#L92). Anthropic's documented best practice puts persona text in the `system` field; OpenAI is more flexible. ~~Likely understates Haiku.~~ **Falsified by Sprint 7.17 follow-up**: re-ran Haiku with role text routed to `SystemMessage`; gold-chunk recall dropped −4.4pp (0.719 → 0.675), balanced F1 dropped −1.4pp (0.814 → 0.800). The production prompt shape is already optimal for Claude on this `with_structured_output` path. Haiku has no hidden capability we were leaving on the table.
-  - **Same-doc negatives may be too easy.** [`build_balanced_sample`](scripts/eval_grader_models_compare.py#L225-L264) picks negatives as "any chunk in the same doc not in the gold list," which in a 10-K includes structurally trivial chunks (signature pages, exhibit lists). Inflates precision relative to production where the reranker has already filtered to topically-similar chunks.
+  - **Provider-specific structured-output mechanics.** `with_structured_output(GradeResult)` at [`scripts/internal/eval/eval_grader_models_compare.py:89`](../scripts/internal/eval/eval_grader_models_compare.py#L89) resolves to OpenAI's native `json_schema` (strict=True) for gpt-4o-mini, but Anthropic tool-use for Haiku. The two mechanisms inject different overhead into the prompt and enforce schema differently. This is what production uses, so the comparison is fair to production — but it is *not* a same-prompt comparison of the two models.
+  - **Role text in `HumanMessage`, not `SystemMessage`.** `GRADER_PROMPT` at [`src/config/prompts.py:188`](src/config/prompts.py#L188) begins *"You are a relevance grader…"* and is wrapped in `HumanMessage` at [`scripts/internal/eval/eval_grader_models_compare.py:92`](../scripts/internal/eval/eval_grader_models_compare.py#L92). Anthropic's documented best practice puts persona text in the `system` field; OpenAI is more flexible. ~~Likely understates Haiku.~~ **Falsified by Sprint 7.17 follow-up**: re-ran Haiku with role text routed to `SystemMessage`; gold-chunk recall dropped −4.4pp (0.719 → 0.675), balanced F1 dropped −1.4pp (0.814 → 0.800). The production prompt shape is already optimal for Claude on this `with_structured_output` path. Haiku has no hidden capability we were leaving on the table.
+  - **Same-doc negatives may be too easy.** [`build_balanced_sample`](../scripts/internal/eval/eval_grader_models_compare.py#L225-L264) picks negatives as "any chunk in the same doc not in the gold list," which in a 10-K includes structurally trivial chunks (signature pages, exhibit lists). Inflates precision relative to production where the reranker has already filtered to topically-similar chunks.
 
 Cost ratio is real: Haiku is 6.8× more expensive per eval at parity of pass-rate impact. But "the published 2026 best-practice for Haiku-as-grader doesn't transfer" — the earlier framing of this finding — is **not what the evidence supports** at this measurement budget. The evidence supports "the gap is below our single-run noise floor, with split signals across metrics."
 
@@ -1651,7 +1651,7 @@ A senior reviewer should read this section *before* the achievements section. I'
 2. **72.7% sits above FinGEAR EMNLP 2025 SOTA (~55%) by +18pp and inside the Bedrock production-RAG band (~70%), but well below the top-published Mafin (~99%).** Adjusted-actionable rate (excluding 9 FinanceBench dataset errors): 77.3%. Patronus's original FinanceBench paper baselines were 38-43%. The 47.3% headline that drove the original campaign was a judge artifact — see Sprint 7.13/7.14 audit findings.
 3. **Frontend (Sprint 9) is partial.** Sprint 9.1 vertical slice (login + streaming chat) is built and the BFF wiring works, but the smoke test caught an environment-variable issue (`LITELLM_URL` pointing to a docker-internal hostname while running uvicorn on the host) that's still pending fix. Sidebar history, HITL UI, admin panel, citation PDF viewer are not yet built.
 4. **Feature-flagged-off experiments left in source.** `ENABLE_GRADER_EMPTY_CONTEXT_FALLBACK`, `ENABLE_LTR_GATE`, `ENABLE_CALCULATOR_TOOL` all `=False`. The code is preserved as research record but adds surface area to the repo. A cleaner version would delete or move to a `experiments/` branch.
-5. **Multi-judge eval all uses gpt-4o-mini.** RAGAS + DeepEval + correctness all judged by the same model family. A cleaner eval would diversify judges to control for judge-family bias (the [`scripts/dual_judge_check.py`](../scripts/dual_judge_check.py) script exists but wasn't used as the canonical gate).
+5. **Multi-judge eval all uses gpt-4o-mini.** RAGAS + DeepEval + correctness all judged by the same model family. A cleaner eval would diversify judges to control for judge-family bias (the [`scripts/internal/eval/dual_judge_check.py`](../scripts/internal/eval/dual_judge_check.py) script exists but wasn't used as the canonical gate).
 6. **GraphRAG never tried.** Would likely be the biggest single quality lever remaining (FinGEAR shows the gap). Estimated 2–3 weeks of work, deferred until after the Sprint 7.10 levers above.
 7. **No production-deployment ops.** No load testing, no horizontal scaling validation, no incident response runbooks. The Langfuse + LiteLLM stack would work in production but hasn't been stress-tested.
 
@@ -2226,3 +2226,40 @@ Users who explicitly want docling: `pip install ".[docling]"` plus host-level `a
 2. **My "lg=md recall=1.000" report after the 25-case test.** True on full names; not true on single-name references. The user trusted me when I said "clear go". They were right to question further when I proposed implementation — and the extended test caught the gap. Without that catch, we'd have shipped a recall regression with no opt-out. **Lesson logged: when comparing models for a recall-critical use case, test BOTH phrasing patterns common in the production input distribution before declaring equivalence.**
 
 Both are recorded here in the same spirit as the earlier "Multi-HyDE +11.2% prediction", "docling tables near-miss", and "0.3.0 pydantic warning prediction" entries: the credibility rule earned itself a 6th and 7th case study, both caught BEFORE shipping. The protocol works when followed.
+
+## 0.3.2 — package hygiene + Trusted Publisher (shipped 2026-06-03)
+
+A polish release. No runtime behavior change for the typical PyPI/Docker user; the work was a pre-shipping audit of the eight distribution surfaces (wheel, sdist, Docker image, both compose files, GitHub + PyPI READMEs, GHCR tags, releases) — surfaces nobody had systematically inspected before. The audit found hygiene gaps shippable on every release back to 0.1.0.
+
+### Audit first (per the protocol)
+
+`tar tzf dist/financebench_rag_agent-0.3.1.tar.gz | wc -l` = **251 entries**. `docker run --entrypoint sh ... -c "ls /app/scripts" | wc -l` = **60 files**. Of those 60 scripts, exactly **2** are exec'd at runtime (`seed_qdrant.py`, `seed_from_hf.py`); the rest are training/eval/debug/data-prep/smoke tooling that a consumer never touches. The sdist additionally shipped `tests/evaluation/` (50+ benchmark-framework files), `tests/integration/`, and `docs/research/` (internal methodology notes). None broke the product — the wheel was always clean — but they made the package read as noisy when browsed, which is a credibility cost on a portfolio project.
+
+### Actions
+
+| Change | Effect |
+|---|---|
+| 54 `.py` + 3 `.sh` + 3 `.tape` moved into `scripts/internal/{train,eval,debug,data_prep,smoke,maintenance,demo}/` via `git mv` | Top-level `scripts/` now holds only `seed_qdrant.py`, `seed_from_hf.py`, `generate_jwt.py` |
+| `pyproject.toml [sdist].exclude` += `scripts/internal/**`, `tests/evaluation/**`, `tests/integration/**`, `docs/research/**` (superseding the narrower `tests/evaluation/eval_results/**`) | sdist **251 → 153 entries** |
+| `Dockerfile`: `COPY scripts/ scripts/` → `COPY scripts/seed_qdrant.py scripts/seed_from_hf.py scripts/` | Docker `/app/scripts` 60 → 2 files |
+| Deleted `src/frontend/` (legacy Gradio app, discarded when the CLI became canonical) + cleaned its refs in `docker-compose.yml`, `Makefile`, `docs/setup.md`, `docs/deploy.md` | Removes `gradio_app.py` from the **wheel** too — the exclude-only half-measure would have left it shipping in the wheel |
+| PyPI **Trusted Publisher** (PEP 740 OIDC): new `publish-pypi` job in `release-image.yml`, gated on the `verify` health-probe job | First-ever OIDC upload this release; no long-lived PyPI token in CI |
+| One-time upgrade notice (`cli/commands/upgrade.py`) for the 0.3.1 spaCy/docling default changes, marker at `~/.financebench/upgrade_notices_seen.json` | Idempotent; fires once |
+| Architecture diagram rendered to PNG (`docs/diagrams/architecture.png`); README embeds the PNG | PyPI's README renderer does not support Mermaid |
+| Tape portability: dropped the `conda activate agentic-ai` + hardcoded `/Users/rishabh/...` lines from each tape's `Hide` block | The tapes silently mis-recorded on any machine but the M4 Pro (incl. the M1) — see the lesson below |
+| Dev `docker-compose.yml` Finding-F fixes: added `RESULT_CACHE_REDIS_HOST/PORT` to the api service, healthcheck `/health` → `/v1/health`, stale `FB_IMAGE_TAG` default `0.2.0` → `0.3.2` | Full-stack self-hosters; `compose.minimal.yml` (CI-verified) was already correct |
+
+### The "5 known flakes" were stale tests, not product bugs
+
+Every release back to 0.2.x quoted "5 pre-existing flakes" in its verification table (see the 0.3.1 entry above) and carried them as acceptable. Applying the audit-first protocol to the *test suite* — not just the image — root-caused all five, and none was a product regression:
+
+- **4 `test_threads_routes.py` tests** mocked `get_thread_owner` (the old 2-tuple) and stubbed `app.state.pool = object()`. The `GET /threads/{id}` handler had since switched to `get_thread_owner_role` (4-tuple, the Track-2 owner-block change) and the list handler gained owner/timestamp enrichment fields. The bare-object pool then hit `pool.connection()` and the stale row shape `KeyError`'d. Fix: patch `src.services.thread_service.get_thread_owner_role` (the handler imports it function-locally, so the route-module patch target was also wrong) and update the mock row shape.
+- **1 `test_entity_extractor.py` test** asserted `_extract_year("Compare 2022 to 2023 revenue") == 2022` ("first match"), but `_extract_year` deliberately returns `max(years)` — the latest year is the fiscal year of the source 10-K, which discusses all comparison years inside (documented in the function docstring). The test was asserting behavior the code had intentionally moved away from. Fixed the test to match the contract (`== 2023`), not the code to match the stale test.
+
+Result: **337 passed, 0 failed.** The README test badge previously read "337 passing" while 5 actually failed — it was conflating *collected* with *passing*. The badge is now truthful.
+
+### Lessons logged
+
+- **Audit the wheel + sdist + Docker image before every tag push.** The 60-script bloat was discoverable via a one-line `tar tzf` on every release since 0.1.0. Nobody ran it. Added to the pre-shipping checklist.
+- **"It's plain text so it's portable" is wrong.** A `.tape` file is plain text, but its *content* (conda env name, absolute home path) was M4-Pro-specific. Portability = format + content + dependencies.
+- **A green-looking test badge can lie.** "Known flakes" carried across releases turned out to be stale tests masking nothing — but the badge had been overstating the passing count the whole time. Stale tests are a credibility liability even when the product is fine.

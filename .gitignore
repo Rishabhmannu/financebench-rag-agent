@@ -171,3 +171,8 @@ tests/m1-test/
 # 2026-06-02 disk-full event. Cloned via APFS cp -c so it lives at near-zero
 # extra cost on disk, but huge if accidentally pushed.
 Docker-backup-*.raw
+
+# Pre-shipping cleanup checklist (local-only planning doc paired with
+# DEPLOYMENT_PLAN.md). Captures all package-content audit findings and
+# what's been deferred — internal hygiene record, not for the public repo.
+CLEANUP_PLAN.md

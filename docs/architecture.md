@@ -133,7 +133,7 @@ Separate from the query graph. Lives in [src/ingestion/](../src/ingestion/):
 3. [chunker.py](../src/ingestion/chunker.py) — Recursive splitter (~800 chars, 150 overlap), chunks each page independently so every chunk carries a `page_number`
 4. [qdrant_uploader.py](../src/ingestion/qdrant_uploader.py) — Embeds via OpenAI text-embedding-3-small (1536 dims), upserts to Qdrant in batches
 
-Run via `python scripts/seed_qdrant.py --sample` or `python scripts/ingest_documents.py --input data/raw/`.
+Run via `python scripts/seed_qdrant.py --sample` or `python scripts/internal/data_prep/ingest_documents.py --input data/raw/`.
 
 ## Persistence
 

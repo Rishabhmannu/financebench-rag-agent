@@ -58,7 +58,7 @@ FROM python:3.12-slim
 
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.3.1"
+      version="0.3.2"
 
 # 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
 # src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/
@@ -96,7 +96,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY src/ src/
-COPY scripts/ scripts/
+COPY scripts/seed_qdrant.py scripts/seed_from_hf.py scripts/
 COPY data/sample/ data/sample/
 # 0.1.3: alembic.ini + migrations/ are required by src.api.main lifespan to
 # run schema migrations on boot. Without them the lifespan logs "Alembic
