@@ -176,3 +176,8 @@ Docker-backup-*.raw
 # DEPLOYMENT_PLAN.md). Captures all package-content audit findings and
 # what's been deferred — internal hygiene record, not for the public repo.
 CLEANUP_PLAN.md
+
+# Diagram authoring specs (scaffolding handed to the Excalidraw tool) — kept local.
+# The rendered PNGs + .excalidraw sources under art/ are committed; the verbose
+# generator-emitted spec markdown is not.
+docs/diagrams/excalidraw/*.md

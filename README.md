@@ -73,7 +73,7 @@ financebench seed --from-hf cmpunkmannu/financebench-voyage-finance-2-embeddings
 
 ## Architecture
 
-![Architecture: 16-node LangGraph with RBAC gate, guardrails cascade, simple vs research-agent routing, hallucination check, and HITL approval](https://raw.githubusercontent.com/Rishabhmannu/financebench-rag-agent/main/docs/diagrams/architecture.png)
+![Architecture: 18-node LangGraph pipeline with RBAC gate, guardrails cascade, simple vs research-agent routing, hallucination check, and HITL approval, backed by Qdrant, PostgreSQL, and Redis](https://raw.githubusercontent.com/Rishabhmannu/financebench-rag-agent/main/docs/diagrams/architecture.png)
 
 A router classifies each query as a simple lookup or research-required. Simple lookups take the fast direct path (retrieval → BGE reranker → grader → Claude generator); research queries enter a multi-turn subgraph that decomposes the question, retrieves per sub-question, grades sufficiency, and synthesizes a final answer. RBAC is enforced at the Qdrant payload-filter level — agentic queries cannot bypass access control. High-stakes answers (above a per-role dollar threshold) pause via LangGraph's `interrupt()` for multi-party human approval, with state checkpointed to Postgres so the workflow survives container restarts.
 
