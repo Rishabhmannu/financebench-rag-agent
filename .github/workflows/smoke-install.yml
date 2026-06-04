@@ -45,6 +45,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Version consistency
+        # Pure stdlib check (no backend deps) — asserts every hard-coded version
+        # matches pyproject. Runs here because a version-only bump doesn't touch
+        # eval.yml's path filters, and this is the workflow that fires on every
+        # push/PR to main (where a bump lands). Catches the 0.3.4-class miss.
+        run: |
+          pip install pytest
+          pytest tests/unit/test_version_consistency.py -q
+
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
