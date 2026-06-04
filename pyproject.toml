@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "financebench-rag-agent"
-version = "0.3.3"
+version = "0.3.4"
 description = "Multi-agent RAG system for RBAC-secured financial document Q&A. 72.7% on FinanceBench. Ships a CLI client + self-hostable FastAPI backend."
 readme = "README.md"
 license = "MIT"
@@ -190,6 +190,7 @@ include = [
   "LICENSE",
   "Makefile",
   "Dockerfile",
+  "requirements-backend.txt",
   "compose.minimal.yml",
   "docker-compose.yml",
   ".env.example",

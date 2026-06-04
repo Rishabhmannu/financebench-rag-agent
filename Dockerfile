@@ -13,19 +13,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # to install libxcb1 + libgl1 themselves (apt-get on Debian/Ubuntu, brew on
 # macOS) — out of scope for the default image.
 
-COPY pyproject.toml README.md ./
-# 0.1.2: install CPU-only torch FIRST so [backend]'s sentence-transformers
-# doesn't pull the 2-4 GB of nvidia-cu* libs as transitive deps. M1 build
-# was burning ~20 min downloading CUDA libraries that ARM64 can't use.
-# Once torch is satisfied from the CPU index, .[backend] sees it as
-# already-installed and skips the GPU variant.
+# Deps are installed from a version-free manifest (mirrors pyproject's
+# base + [backend] deps) rather than from pyproject.toml itself, so a
+# version-only bump does NOT invalidate this layer. Before this, COPYing the
+# version-bearing pyproject.toml ahead of the install meant every release
+# changed the layer digest and forced `financebench upgrade` to re-pull the
+# full ~555 MB deps layer even when no dependency had changed. The api
+# container imports src/ from WORKDIR (not from an installed dist), so the
+# package itself does not need to be pip-installed here.
+COPY requirements-backend.txt ./
+# 0.1.2: install CPU-only torch FIRST so sentence-transformers doesn't pull
+# the 2-4 GB of nvidia-cu* libs as transitive deps. M1 build was burning
+# ~20 min downloading CUDA libraries that ARM64 can't use. Once torch is
+# satisfied from the CPU index, the backend deps see it as already-installed
+# and skip the GPU variant.
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
     torch torchvision
 
-# Backend deps are gated behind the [backend] extra as of 0.1.1 so the
-# PyPI wheel stays lean for CLI installers. The api container needs the
-# full backend toolchain, so we explicitly install with [backend].
-RUN pip install --no-cache-dir ".[backend]"
+RUN pip install --no-cache-dir -r requirements-backend.txt
 
 # 0.1.5: pre-install the spaCy English model into system site-packages while
 # we're still root in the builder stage. presidio_analyzer loads this model
@@ -55,20 +60,6 @@ FROM python:3.12-slim
 # docling's OpenCV; docling moved to the optional [docling] extra). Users who
 # install docling via pip ".[docling]" need to add these system packages
 # themselves (apt-get install libxcb1 libgl1 on Debian-based hosts).
-
-LABEL maintainer="Rishabh" \
-      description="FinanceBench RAG Agent API" \
-      version="0.3.3"
-
-# 0.1.5: GIT_SHA build-arg + ENV passthrough. Without this, _git_sha() in
-# src/api/main.py tries `git rev-parse HEAD` against /app, which has no .git/
-# (we deliberately don't COPY .git/ — it would bloat the image), so the banner
-# reports "sha unknown" on every running container. Wizard's
-# _bring_up_stack() passes --build-arg GIT_SHA=$(git rev-parse HEAD) from the
-# host checkout (where .git/ exists), and _git_sha() reads $GIT_SHA before
-# falling back to subprocess.
-ARG GIT_SHA=unknown
-ENV GIT_SHA=${GIT_SHA}
 
 # 0.2.0: silence the onnxruntime "Unknown CPU vendor" warning that fires on
 # every import inside arm64-Linux-on-M1 containers. ORT_LOGGING_LEVEL=3
@@ -130,6 +121,20 @@ RUN chown -R appuser:appuser /app
 RUN mkdir -p /home/appuser/.cache/huggingface /app/logs /app/cost_logs && \
     chown -R appuser:appuser /home/appuser/.cache /app/logs /app/cost_logs
 USER appuser
+
+# Version- and commit-variant instructions are placed AFTER the heavy
+# `COPY --from=builder site-packages` layer on purpose. LABEL version changes
+# every release and GIT_SHA changes every commit; if they sit before the
+# ~555 MB deps COPY, they invalidate its parent chain and force a new layer
+# digest on every build, so `financebench upgrade` re-pulls the full deps layer
+# even when no dependency changed. Keep them here, not at the top.
+ARG GIT_SHA=unknown
+# _git_sha() in src/api/main.py reads $GIT_SHA (the image has no .git/); the
+# wizard passes --build-arg GIT_SHA=$(git rev-parse HEAD) from the host checkout.
+ENV GIT_SHA=${GIT_SHA}
+LABEL maintainer="Rishabh" \
+      description="FinanceBench RAG Agent API" \
+      version="0.3.4"
 
 EXPOSE 8000
 

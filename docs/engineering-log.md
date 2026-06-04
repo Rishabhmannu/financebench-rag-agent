@@ -2291,3 +2291,25 @@ Format gotcha logged: asciinema 3.x writes asciicast **v3**; `agg` reads **v2**.
 
 - Node 20→24 GitHub Action runtime bumps — non-blocking deprecation warnings (forced June 2026); deferred to a normal-push commit rather than risking CI behavior on a release tag.
 - README polish (≤90-line trim, a three-GIF Demos section, publication-grade architecture diagrams via Excalidraw/Figma, gif optimization) — a dedicated pass, not bundled here.
+
+## 0.3.4 — upgrade-friendly image layers + diagram/README polish (shipped 2026-06-04)
+
+The headline fix is a Docker layering change that stops `financebench upgrade` from re-downloading the full dependency layer on every version bump.
+
+### The re-pull bug
+
+On M1, each version upgrade re-pulled ~555 MB even when no dependency had changed. Root cause was layer-cache invalidation: the Dockerfile did `COPY pyproject.toml README.md ./` and then `pip install ".[backend]"`, so the install layer depended on the contents of `pyproject.toml` — which carries `version = "0.3.x"`, bumped on every release. Changing the version string changed the COPY'd file, invalidated the layer, and cascaded through torch + the backend install + the single ~555 MB `site-packages` COPY. A `0.3.2 → 0.3.3` diff was *only* the version line, yet busted the whole deps layer.
+
+Fix, part 1 — the builder: install backend deps from a version-free `requirements-backend.txt` (mirrors `[project].dependencies` + `[backend]` extra; torch stays a separate CPU-index install) instead of from `pyproject.toml`. The api container imports `src/` from `WORKDIR /app` (not from an installed dist) and seed scripts run as `python scripts/...`, so the package itself no longer needs to be pip-installed in the image. A drift check confirmed the manifest matches pyproject exactly (37/37 deps).
+
+Fix, part 2 — the runtime stage (caught during build validation): the builder fix alone was insufficient. `LABEL version=` and `ARG/ENV GIT_SHA` sat *before* the ~555 MB `COPY --from=builder site-packages` in the runtime stage. LABEL changes every release and GIT_SHA every commit, so they invalidated the heavy COPY's build-cache chain and gave it a fresh digest on every build. Moved both to the end of the stage, after all COPYs. Validated empirically: two builds with different `GIT_SHA` produce byte-identical filesystem layers (16 DiffIDs, all matching) while the runtime config still carries the right SHA — proving the deps layer no longer re-pulls on a version/commit bump.
+
+### README / diagrams
+
+- Replaced the naive Mermaid architecture PNG with a hand-drawn Excalidraw hero + 7 component diagrams (RBAC, HITL, memory, retrieval/rerank/grade, research-agent, guardrails, eval); `docs/architecture.md` refreshed to current state (18 nodes, Sonnet 4.6 generator/hallucination, Langfuse observability) and now embeds the gallery. Diagram-spec authoring lives in `scripts/internal/diagrams/` (specs kept local; rendered art committed). One spec error caught pre-publish: the hero mislabeled the hallucination checker as Haiku 4.5 — settings.py ships `claude-sonnet-4-6`.
+- Added HuggingFace-dataset, GHCR-image, and CI badges, and framed the pre-vectorized FinanceBench snapshot on the HF Hub as the reusable contribution it is.
+
+### Investigations that resulted in NO change (verified, documented so they aren't re-litigated)
+
+- **HITL approver visibility.** An approver sees the full draft answer at the review step (mandatory maker-checker — you cannot reject content you haven't read) and, on reject, both parties get the generic blocked message (`route_after_hitl` → `blocked_response` overwrites `final_response`; the real answer is never released to the requester). The approver is independently RBAC-entitled to the content (admin = `*`/`*`, c_level ⊇ finance's corpus), so showing the draft leaks nothing they couldn't retrieve. Latent footgun noted: the review endpoint checks `can_approve` but not the approver's `allowed_confidentiality` against the draft's source chunks — harmless under the current static hierarchy, a defense-in-depth item if a non-superset approver role is ever added.
+- **PyPI bloat.** Audited the built artifacts: wheel is 224 KB (src + cli only), sdist excludes `scripts/internal/**`, `tests/evaluation/**`, `data/raw|models|training`. The dataset-download / training / eval scripts the maintainer "moved to internal instead of deleting" never ship; kept in-repo as corpus-build reproducibility tooling.

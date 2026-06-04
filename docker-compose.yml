@@ -2,7 +2,7 @@ services:
   api:
     # 0.2.0: image: + build: dual setup. See compose.minimal.yml for the
     # full rationale. Same FB_IMAGE_TAG + BUILD_FROM_SOURCE behavior.
-    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.3.3}
+    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.3.4}
     # 0.1.5: build.args.GIT_SHA — see compose.minimal.yml for rationale.
     build:
       context: .

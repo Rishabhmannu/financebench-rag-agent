@@ -5,6 +5,9 @@
 [![LangGraph 0.6](https://img.shields.io/badge/LangGraph-0.6-green.svg)](https://github.com/langchain-ai/langgraph)
 [![Tests](https://img.shields.io/badge/tests-342%20passing-brightgreen.svg)]()
 [![FinanceBench](https://img.shields.io/badge/FinanceBench-72.7%25%20pass-blue.svg)]()
+[![CI](https://github.com/Rishabhmannu/financebench-rag-agent/actions/workflows/smoke-install.yml/badge.svg)](https://github.com/Rishabhmannu/financebench-rag-agent/actions/workflows/smoke-install.yml)
+[![Docker image](https://img.shields.io/badge/GHCR-image-2496ED?logo=docker&logoColor=white)](https://github.com/Rishabhmannu/financebench-rag-agent/pkgs/container/financebench-rag-agent-api)
+[![HuggingFace dataset](https://img.shields.io/badge/HuggingFace-Voyage_embeddings-FFD21E?logo=huggingface&logoColor=white)](https://huggingface.co/datasets/cmpunkmannu/financebench-voyage-finance-2-embeddings)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Rishabhmannu/financebench-rag-agent/blob/main/LICENSE)
 
 A multi-agent RAG system for role-based access-controlled financial document Q&A. Achieves **72.7% correctness pass rate** on the public FinanceBench benchmark using selective agentic retrieval, a BGE cross-encoder reranker, and a self-hosted LLM observability stack.
@@ -65,7 +68,7 @@ financebench login -u analyst         # password analyst123
 financebench chat
 ```
 
-For the full 360-PDF FinanceBench corpus (skips ~$5-15 of Voyage embedding cost + ~30 min ingest):
+The full 360-PDF FinanceBench corpus is published as a pre-vectorized snapshot on the [Hugging Face Hub](https://huggingface.co/datasets/cmpunkmannu/financebench-voyage-finance-2-embeddings) — voyage-finance-2 embeddings plus chunked text and a manifest — so anyone can seed the entire benchmark in minutes and skip ~$5-15 of embedding cost and ~30 min of ingest:
 
 ```bash
 financebench seed --from-hf cmpunkmannu/financebench-voyage-finance-2-embeddings
