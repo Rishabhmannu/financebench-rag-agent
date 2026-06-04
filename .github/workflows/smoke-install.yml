@@ -50,9 +50,12 @@ jobs:
         # matches pyproject. Runs here because a version-only bump doesn't touch
         # eval.yml's path filters, and this is the workflow that fires on every
         # push/PR to main (where a bump lands). Catches the 0.3.4-class miss.
+        # --noconftest skips tests/conftest.py (it imports backend deps this job
+        # deliberately doesn't install); -c /dev/null ignores the pyproject
+        # pytest config (asyncio plugin etc.) — this test needs neither.
         run: |
           pip install pytest
-          pytest tests/unit/test_version_consistency.py -q
+          pytest -c /dev/null --noconftest -q tests/unit/test_version_consistency.py
 
       - name: Install build tooling
         run: |
