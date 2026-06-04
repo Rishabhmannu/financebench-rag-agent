@@ -181,3 +181,7 @@ CLEANUP_PLAN.md
 # The rendered PNGs + .excalidraw sources under art/ are committed; the verbose
 # generator-emitted spec markdown is not.
 docs/diagrams/excalidraw/*.md
+
+# Personal docs (resume etc.) — contains phone/email/address, must never be
+# pushed to the public repo. Kept local for drafting profile/article copy.
+about-me/
