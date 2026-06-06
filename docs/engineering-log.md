@@ -2313,3 +2313,18 @@ Fix, part 2 — the runtime stage (caught during build validation): the builder 
 
 - **HITL approver visibility.** An approver sees the full draft answer at the review step (mandatory maker-checker — you cannot reject content you haven't read) and, on reject, both parties get the generic blocked message (`route_after_hitl` → `blocked_response` overwrites `final_response`; the real answer is never released to the requester). The approver is independently RBAC-entitled to the content (admin = `*`/`*`, c_level ⊇ finance's corpus), so showing the draft leaks nothing they couldn't retrieve. Latent footgun noted: the review endpoint checks `can_approve` but not the approver's `allowed_confidentiality` against the draft's source chunks — harmless under the current static hierarchy, a defense-in-depth item if a non-superset approver role is ever added.
 - **PyPI bloat.** Audited the built artifacts: wheel is 224 KB (src + cli only), sdist excludes `scripts/internal/**`, `tests/evaluation/**`, `data/raw|models|training`. The dataset-download / training / eval scripts the maintainer "moved to internal instead of deleting" never ship; kept in-repo as corpus-build reproducibility tooling.
+
+## 0.3.5 — `financebench upgrade --force` actually works (shipped 2026-06-06)
+
+Patch release for a real CLI bug surfaced by M1 testing.
+
+### The bug
+The managed upgrade clone (`~/.financebench/repo`) had locally-modified tracked files — the demo gifs and `.tape` scripts, regenerated in place during local demo testing. `financebench upgrade` aborted on the dirty tree, and `--force` didn't help: it only relaxed the CLI's own pre-check (`_check_git_clean(..., allow_dirty=force)`) and then still ran `git pull --ff-only`, which itself aborts when tracked files would be overwritten. So `--force` got the user past the gate and straight into the same wall.
+
+### The fix
+`_git_pull` now takes a `force` flag. When set, it runs `git fetch --tags` + `git reset --hard @{u}` (hard-sync to the upstream branch, discarding local clone edits) instead of `git pull --ff-only`. The managed clone is not the user's work, so a hard reset to origin is the correct semantic for "force upgrade to latest." The `--force` help text now says it discards local changes.
+
+Root cause of the dirty clone was *not* `.gitattributes`/autocrlf normalization (ruled out — the gifs are binary and carry no text attributes); they were regenerated in place during local recording. And — worth stating because it was the initial hypothesis — this had nothing to do with the rbac/hitl/memory pipeline code; that was never involved.
+
+### Process note
+Version bumped via `scripts/internal/bump_version.py 0.3.5` (all six sites at once) and verified by `tests/unit/test_version_consistency.py` before tagging — the guardrail added after the 0.3.4 `app.version` miss did its job; no stale version strings this release.

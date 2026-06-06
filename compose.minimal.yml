@@ -17,7 +17,7 @@ services:
     # FB_IMAGE_TAG is set by the wizard from cli.__version__ so each release
     # pulls the matching image. The :-0.2.0 fallback covers users running
     # docker compose by hand.
-    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.3.4}
+    image: ghcr.io/rishabhmannu/financebench-rag-agent-api:${FB_IMAGE_TAG:-0.3.5}
     # 0.1.5: build.args.GIT_SHA — passes the host's `git rev-parse HEAD` (set
     # in the env by cli/commands/setup.py:_bring_up_stack) into the Dockerfile's
     # ARG GIT_SHA → ENV GIT_SHA wiring. _git_sha() in src/api/main.py reads

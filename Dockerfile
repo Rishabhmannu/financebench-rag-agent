@@ -134,7 +134,7 @@ ARG GIT_SHA=unknown
 ENV GIT_SHA=${GIT_SHA}
 LABEL maintainer="Rishabh" \
       description="FinanceBench RAG Agent API" \
-      version="0.3.4"
+      version="0.3.5"
 
 EXPOSE 8000
 

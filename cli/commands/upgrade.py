@@ -81,7 +81,7 @@ def _show_pending_notices() -> None:
 def upgrade(
     full: bool = typer.Option(False, "--full", help="Target docker-compose.yml (11 services) instead of compose.minimal.yml."),
     repo_dir: str = typer.Option(None, "--repo-dir"),
-    force: bool = typer.Option(False, "--force", help="Allow upgrade even if the cloned repo has uncommitted changes (potentially destructive)."),
+    force: bool = typer.Option(False, "--force", help="Discard local changes in the cloned repo (hard-reset to the latest) before upgrading."),
     build: bool = typer.Option(
         False,
         "--build",
@@ -105,7 +105,7 @@ def upgrade(
     _show_pending_notices()
 
     _check_git_clean(path, allow_dirty=force)
-    _git_pull(path)
+    _git_pull(path, force=force)
     _compose_pull(path, compose_file)
     # 0.2.0: build is opt-in. Default flow uses the pre-built GHCR image
     # pulled in the step above.  --build  or  BUILD_FROM_SOURCE=1  forces
@@ -143,13 +143,33 @@ def _check_git_clean(path: Path, allow_dirty: bool) -> None:
         raise typer.Exit(1)
 
 
-def _git_pull(path: Path) -> None:
+def _git_pull(path: Path, force: bool = False) -> None:
     if not (path / ".git").exists():
+        return
+    if force:
+        # --force means "I don't care about local edits in this managed clone."
+        # A plain ff-only pull aborts when tracked files differ (e.g. demo gifs
+        # regenerated in place during local testing), so fetch and hard-reset to
+        # the upstream branch — that's what makes --force actually able to
+        # upgrade a dirty clone instead of hitting the same wall.
+        render_info(f"git fetch + hard reset to upstream in {path} (--force) ...")
+        f = subprocess.run(["git", "fetch", "--tags", "origin"], cwd=path, capture_output=True, text=True, check=False)
+        if f.returncode != 0:
+            render_error(f"git fetch failed:\n{f.stdout}\n{f.stderr}")
+            raise typer.Exit(1)
+        r = subprocess.run(["git", "reset", "--hard", "@{u}"], cwd=path, capture_output=True, text=True, check=False)
+        if r.returncode != 0:
+            render_error(f"git reset --hard failed:\n{r.stdout}\n{r.stderr}")
+            raise typer.Exit(1)
+        console.print(f"[dim]{r.stdout.strip()}[/dim]")
         return
     render_info(f"git pull in {path} ...")
     r = subprocess.run(["git", "pull", "--ff-only"], cwd=path, capture_output=True, text=True, check=False)
     if r.returncode != 0:
-        render_error(f"git pull failed:\n{r.stdout}\n{r.stderr}")
+        render_error(
+            f"git pull failed:\n{r.stdout}\n{r.stderr}\n"
+            f"If this clone has local changes you don't need, re-run with --force."
+        )
         raise typer.Exit(1)
     console.print(f"[dim]{r.stdout.strip()}[/dim]")
 
